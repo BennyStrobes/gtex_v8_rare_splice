@@ -51,6 +51,9 @@ output_root="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_c
 # Directory containing filtered leafcutter clusters
 filtered_cluster_dir=$output_root"clusters_filtered/"
 
+# Directory containing visualizations describing clusters/junctions data
+cluster_visualization_dir=$output_root"visualize_clusters_filtered/"
+
 
 
 
@@ -79,10 +82,11 @@ filtered_cluster_dir=$output_root"clusters_filtered/"
 ##	It first filters junctions if:
 #####1. junction contains no individuals with >= $min_reads mapped to the junction
 #####2. Junction is on a non-autosomal chromosome
-##After these filters, only include clusters that:
+##After these filters, it will re-make leafcutter clusters (after junctions are removed)
+# Lastly, only include clusters that:
 ##### 1. Contain more than 1 junction
-##### 2. Has at least $min_samples_per_cluster with $min_reads_per_sample_in_cluster summed across all valid junctions 
-
+##### 2. Has at least $min_samples_per_cluster with $min_reads_per_sample_in_cluster summed across all valid junctions
+if false; then
 while read tissue_name; do
 	# Input file
 	raw_leafcutter_cluster_file=$leafcutter_cluster_dir$tissue_name"_perind.counts.gz"
@@ -91,12 +95,15 @@ while read tissue_name; do
 	# Submit batch job
 	sbatch filter_clusters.sh $raw_leafcutter_cluster_file $filtered_leafcutter_cluster_file $min_reads $min_reads_per_sample_in_cluster $min_samples_per_cluster
 done<$tissue_names_file
+fi
 
 
 
+#################
+# Part 2: Generate clusters across tissues and map clusters to genes
 
-
-
-
+if false; then
+sh generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir
+fi
 
 
