@@ -154,8 +154,36 @@ def merge_clusters(ss1, ss2, ss_to_clusters, clusters, cluster_number, header_li
     clusters.pop(cluster_name_old_2)  # Remove old cluster names
     return ss_to_clusters, clusters
 
+def check_to_make_sure_individuals_match_other_rv_individauls(sample_names, individual_list, tissue_name):
+	known_individuals = {}
+	f = open(individual_list)
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		tiss_name = data[0]
+		indi_id = data[1]
+		if tiss_name != tissue_name:
+			continue
+		known_individuals[indi_id] = 0
+	f.close()
+	for sample in sample_names:
+		indi = sample.split('-')[0] + '-' + sample.split('-')[1]
+		if indi not in known_individuals:
+			print('erroror!!')
+			pdb.set_trace()
+		known_individuals[indi] = 1
+	for indi in known_individuals:
+		if known_individuals[indi] != 1:
+			print('erororor')
+			pdb.set_trace()
+	return
+
 # Remove Junctions that are non-autosomal and don't have at least 1 sample with at least $min_reads
-def filter_junctions_and_re_assign_clusters(raw_leafcutter_cluster_file, temp_raw_cluster_file, min_reads):
+def filter_junctions_and_re_assign_clusters(raw_leafcutter_cluster_file, temp_raw_cluster_file, min_reads, individual_list, tissue_name):
 	# Mapping from cluster ID to jxns in that cluster
 	clusters = {}
 	# Mapping from SS to cluster ID
@@ -174,6 +202,7 @@ def filter_junctions_and_re_assign_clusters(raw_leafcutter_cluster_file, temp_ra
 		# Skip header
 		if head_count == 0:
 			head_count = head_count + 1
+			check_to_make_sure_individuals_match_other_rv_individauls(data[1:], individual_list, tissue_name)
 			continue
 		# Standard non-header line
 		jxn_name = data[0]
@@ -288,12 +317,15 @@ filtered_leafcutter_cluster_file = sys.argv[2]
 min_reads = int(sys.argv[3])
 min_reads_per_sample_in_cluster = int(sys.argv[4])
 min_samples_per_cluster = int(sys.argv[5])
+individual_list = sys.argv[6]
+tissue_name = sys.argv[7]
 
 # Intermediate junction file that will be deleted at the end of this script
 temp_raw_cluster_file = filtered_leafcutter_cluster_file.split('.')[0] + '_temp.txt' 
 
 # Remove Junctions that are non-autosomal and don't have at least 1 sample with at least $min_reads
-filter_junctions_and_re_assign_clusters(raw_leafcutter_cluster_file, temp_raw_cluster_file, min_reads)
+# Also check to make sure list of individuals being used matches other RV analysis individual lists
+filter_junctions_and_re_assign_clusters(raw_leafcutter_cluster_file, temp_raw_cluster_file, min_reads, individual_list, tissue_name)
 
 # Create mapping from cluster id to a count of the number of junctions in that cluster
 # Create mapping from cluster id to a vector (of length number of samples) that shows number of reads summed across all valid jxns for that cluster
