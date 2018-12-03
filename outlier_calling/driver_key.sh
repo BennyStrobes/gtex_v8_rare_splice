@@ -100,8 +100,7 @@ fi
 ######## 1. Generate clusters that are consistent across tissues (ie Cluster 1 in tissue 1 corresponds to the same set of junctions in all other tissues)
 ######## 2. Map Clusters to genes
 ######## 3. Visualize clusters
-if false; then
 sbatch generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir $gene_list
-fi
+
 
 
