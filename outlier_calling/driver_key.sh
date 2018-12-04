@@ -38,6 +38,8 @@ min_reads="15"
 # We only consider clusters that have at least $min_samples_per_cluster samples that have >= $min_reads_per_sample_in_cluster reads summed across all jxns in that cluster
 min_reads_per_sample_in_cluster="5"
 min_samples_per_cluster="50"
+# Max number of junctions per cluster
+max_number_of_junctions_per_cluster="20"
 
 
 
@@ -57,6 +59,8 @@ filtered_cluster_dir=$output_root"clusters_filtered/"
 # Directory containing visualizations describing clusters/junctions data
 cluster_visualization_dir=$output_root"visualize_clusters_filtered/"
 
+# Directory containing splicing outlier calls
+splicing_outlier_dir=$output_root"splicing_outlier_calls/"
 
 
 
@@ -66,10 +70,9 @@ cluster_visualization_dir=$output_root"visualize_clusters_filtered/"
 
 
 
-
-
-
-
+#############################################################
+# Scripts: Run the following X parts in Series
+#############################################################
 
 
 #################
@@ -100,7 +103,28 @@ fi
 ######## 1. Generate clusters that are consistent across tissues (ie Cluster 1 in tissue 1 corresponds to the same set of junctions in all other tissues)
 ######## 2. Map Clusters to genes
 ######## 3. Visualize clusters
+if false; then
 sbatch generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir $gene_list
+fi
+
+
+
+#################
+# Part 3: Call outliers in each tissue
+
+total_jobs="20"
+
+
+
+
+tissue_type="Muscle_Skeletal"
+tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+covariate_method="none"
+job_number="0"
+output_root=$splicing_outlier_dir$tissue_type"_min_reads_per_sample_"$min_reads_per_sample_in_cluster"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
+sh call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $min_reads_per_sample_in_cluster $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
+
+
 
 
 
