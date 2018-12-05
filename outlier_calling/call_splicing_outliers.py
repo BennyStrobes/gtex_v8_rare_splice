@@ -178,7 +178,7 @@ def outlier_calling_print_helper(arr, cluster_samples, all_samples, t, cluster_i
 def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, start_number, end_number):
 	# Pystan optimizizer
 	#DM_GLM = pystan.StanModel(file = "dm_glm_multi_conc.stan")
-	DM_GLM = pickle.load(open('dm_glm_multi_conc.pkl', 'rb'))
+	DM_GLM = pickle.load(open('/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/outlier_calling/dm_glm_multi_conc.pkl', 'rb'))
 
 	#Initialize output files
 	t_MD = open(output_root + '_md.txt','w')  # Filehandle for matrix of mahalanobis distances
@@ -220,15 +220,18 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		#   1: mahalanobis_distances: vector length num_samples where each element is the mahalanobis distance for that sample
 		#   2. pvalues: vector of length num_samples where each element is the pvalue for that sample
 		#   3. alpha: vector of length num_jxns which defines the fitted dirichlet multinomial distribution
-		mahalanobis_distances, pvalues, alpha = dm_glm.run_dm_outlier_analysis(X, cov_mat, DM_GLM)
+		try:
+			mahalanobis_distances, pvalues, alpha = dm_glm.run_dm_outlier_analysis(X, cov_mat, DM_GLM)
 
-		####################################################################
-		# Print results to output file
-		####################################################################
-		# Print Mahalanobis distance results to output file
-		t_MD = outlier_calling_print_helper(mahalanobis_distances, cluster_samples, all_samples, t_MD, cluster_id)
-		# Print emperical pvalue resutls to output file
-		t_pvalue = outlier_calling_print_helper(pvalues, cluster_samples, all_samples, t_pvalue, cluster_id)
+			####################################################################
+			# Print results to output file
+			####################################################################
+			# Print Mahalanobis distance results to output file
+			t_MD = outlier_calling_print_helper(mahalanobis_distances, cluster_samples, all_samples, t_MD, cluster_id)
+			# Print emperical pvalue resutls to output file
+			t_pvalue = outlier_calling_print_helper(pvalues, cluster_samples, all_samples, t_pvalue, cluster_id)
+		except:
+			print('miss: ' + cluster_id)
 	t_MD.close()
 	t_pvalue.close()
 

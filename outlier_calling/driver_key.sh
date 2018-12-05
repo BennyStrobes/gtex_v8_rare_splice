@@ -29,6 +29,11 @@ gencode_gene_annotation_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/s
 # Downloaded from scp.nygenome.org:/data/delivery/gtex-rare/data/gtexV8_inds_by_tissue.txt on 11/30/18
 individual_list="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtexV8_inds_by_tissue.txt"
 
+# List of european ancestry individuals (extracted from Nicole Ferraro's variant list: "all_rare_variants_SNPs_10kb_genebody.txt")
+european_ancestry_individual_list="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/european_ancestry_individuals.txt"
+
+
+
 
 #############################################################
 #Parameters
@@ -61,6 +66,9 @@ cluster_visualization_dir=$output_root"visualize_clusters_filtered/"
 
 # Directory containing splicing outlier calls
 splicing_outlier_dir=$output_root"splicing_outlier_calls/"
+
+# Directory containing visualizations of outlier calls
+splicing_outlier_visualization_dir=$output_root"visualize_splicing_outlier_calls/"
 
 
 
@@ -111,18 +119,34 @@ fi
 
 #################
 # Part 3: Call outliers in each tissue
-
+# How many nodes to run in parallel
 total_jobs="20"
+# Whether to include covariates in GLM
+covariate_method="none"
 
 
 
 
 tissue_type="Muscle_Skeletal"
+# Input junction file (for current tissue)
 tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
-covariate_method="none"
-job_number="0"
-output_root=$splicing_outlier_dir$tissue_type"_min_reads_per_sample_"$min_reads_per_sample_in_cluster"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
-sh call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $min_reads_per_sample_in_cluster $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
+if false; then
+# Loop through nodes (to parallelize on)
+for job_number in $(seq 0 `expr $total_jobs - "1"`); do
+	output_root=$splicing_outlier_dir$tissue_type"_min_reads_per_sample_"$min_reads_per_sample_in_cluster"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
+	sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $min_reads_per_sample_in_cluster $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
+done
+fi
+
+
+
+
+
+
+
+#################
+# Part 4: Merge outlier calls (across parallelization runs) and visualize outlier calls (in each tissue seperately)
+sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $min_reads_per_sample_in_cluster $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list
 
 
 
