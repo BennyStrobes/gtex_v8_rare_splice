@@ -37,5 +37,5 @@ total_jobs = int(sys.argv[2])
 
 
 
-merge_parallelized_results(output_root, "emperical_pvalue.txt", total_jobs)
 merge_parallelized_results(output_root, "md.txt", total_jobs)
+merge_parallelized_results(output_root, "emperical_pvalue.txt", total_jobs)
