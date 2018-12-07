@@ -75,10 +75,7 @@ def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_ver
 			pvalz = np.asarray(data[1:]).astype(float)
 			for position, pvalue in enumerate(pvalz):
 				indi = position_to_indi[position]
-				##$$$$$##
-				# if indi in individuals and pvalue < pvalue_threshold and np.isnan(pvalue) == False:
-				##$$$$$##
-				if indi in individuals and pvalue > pvalue_threshold and np.isnan(pvalue) == False:
+				if indi in individuals and pvalue < pvalue_threshold and np.isnan(pvalue) == False:
 					cluster_struct[cluster_id]['outlier_individuals'][indi] = 1
 	f.close()
 	return cluster_struct
@@ -170,10 +167,7 @@ individuals = {}
 # Extract list of individuals for each tissue
 for tissue in tissues:
 	# Use outlier file to get list of individuals we have RNA-seq for
-	##$$$$$##
-	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_md.txt'
-	#outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
-	##$$$$$##
+	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
 	individuals[tissue] = extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, european_ancestry_individual_list)
 	
 
@@ -181,10 +175,7 @@ for tissue in tissues:
 cluster_struct = {}
 # Extract outliers in each tissue and save results in cluster_struct
 for tissue in tissues:
-	##$$$$$##
-	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_md.txt'
-	#outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
-	##$$$$$##
+	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
 	cluster_struct[tissue] = extract_outliers(outlier_file, individuals[tissue], pvalue_threshold, enrichment_version)
 
 # Add RV calls to cluster_struct object

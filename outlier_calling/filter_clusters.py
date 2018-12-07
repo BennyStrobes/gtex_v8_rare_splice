@@ -74,8 +74,8 @@ def create_mapping_from_cluster_id_to_num_jxns(raw_leafcutter_cluster_file, min_
 
 
 # Check if cluster has at least $min_samples_per_cluster with $min_reads_per_sample_in_cluster summed across all valid junctions
-def check_if_cluster_has_enough_samples(num_reads, min_reads_per_sample_in_cluster, min_samples_per_cluster):
-	if len(np.where(num_reads >= min_reads_per_sample_in_cluster)[0]) >= min_samples_per_cluster:
+def check_if_cluster_has_enough_samples(num_reads, min_reads_per_sample_in_cluster, min_fraction_expressed_samples_per_cluster):
+	if len(np.where(num_reads >= min_reads_per_sample_in_cluster)[0])/float(len(num_reads)) >= min_fraction_expressed_samples_per_cluster:
 		return True
 	else:
 		return False
@@ -84,7 +84,7 @@ def check_if_cluster_has_enough_samples(num_reads, min_reads_per_sample_in_clust
 # Remove clusters that:
 ## 1. Only have 1 junction
 ## 2. Have fewer than $min_samples_per_cluster with >= $min_reads_per_sample_in_cluster
-def filter_jxn_file(raw_leafcutter_cluster_file, filtered_leafcutter_cluster_file, min_reads, min_reads_per_sample_in_cluster, min_samples_per_cluster, cluster_id_to_num_jxn, cluster_id_to_num_reads):
+def filter_jxn_file(raw_leafcutter_cluster_file, filtered_leafcutter_cluster_file, min_reads, min_reads_per_sample_in_cluster, min_fraction_expressed_samples_per_cluster, cluster_id_to_num_jxn, cluster_id_to_num_reads):
 	# Create dictionary list of valid chromsome strings
 	valid_chromosomes = get_valid_chromosomes()
 	# Open output file
@@ -119,7 +119,7 @@ def filter_jxn_file(raw_leafcutter_cluster_file, filtered_leafcutter_cluster_fil
 		# Check if jxn passes our filters
 		if chromer in valid_chromosomes and check_if_jxn_has_sample_with_more_than_min_reads(jxn_reads, min_reads):
 			# Check if cluster passes our filters (cluster has at least 2 jxns that pass filters) AND at least $min_samples_per_cluster with $min_reads_per_sample_in_cluster summed across all valid junctions
-			if cluster_id_to_num_jxn[cluster_id] >= 2 and check_if_cluster_has_enough_samples(cluster_id_to_num_reads[cluster_id], min_reads_per_sample_in_cluster, min_samples_per_cluster):
+			if cluster_id_to_num_jxn[cluster_id] >= 2 and check_if_cluster_has_enough_samples(cluster_id_to_num_reads[cluster_id], min_reads_per_sample_in_cluster, min_fraction_expressed_samples_per_cluster):
 				t.write(jxn_name + '\t' + '\t'.join(jxn_reads.astype(str)) + '\n')
 	f.close()
 	t.close()
@@ -311,12 +311,72 @@ def filter_junctions_and_re_assign_clusters(raw_leafcutter_cluster_file, temp_ra
 	t.close()
 
 
+def remove_clusters_with_only_one_jxn(temp_raw_cluster_file, temp_raw_cluster_file2):
+	f = open(temp_raw_cluster_file)
+	head_count = 0
+	clusters = {}
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		cluster_id = data[0].split(':')[-1]
+		if cluster_id not in clusters:
+			clusters[cluster_id] = 0
+		clusters[cluster_id] = clusters[cluster_id] + 1
+	f.close()
+	bad_clusters = {}
+	for cluster in clusters.keys():
+		if clusters[cluster] == 1:
+			bad_clusters[cluster] = 0
+	f = open(temp_raw_cluster_file)
+	head_count = 0
+	t = open(temp_raw_cluster_file2, 'w')
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write(line + '\n')
+			continue
+		cluster_id = data[0].split(':')[-1]
+		if cluster_id in bad_clusters:
+			continue
+		t.write(line + '\n')
+	f.close()
+	t.close()
+
+def make_num_reads_per_cluster_file(temp_raw_cluster_file2, num_reads_per_cluster_file):
+	f = open(temp_raw_cluster_file2)
+	t = open(num_reads_per_cluster_file, 'w')
+	head_count = 0
+	clusters = {}
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write(line + '\n')
+			continue
+		jxn_reads = extract_jxn_reads(data[1:])
+		cluster_id = data[0].split(':')[3]
+		if cluster_id not in clusters:
+			clusters[cluster_id] = jxn_reads
+		else:
+			clusters[cluster_id] = clusters[cluster_id] + jxn_reads 
+	f.close()
+	for cluster_id in clusters.keys():
+		counts = clusters[cluster_id].astype(str)
+		t.write(cluster_id + '\t' + '\t'.join(counts) + '\n')
+	t.close()
+
 
 raw_leafcutter_cluster_file = sys.argv[1]
 filtered_leafcutter_cluster_file = sys.argv[2]
 min_reads = int(sys.argv[3])
 min_reads_per_sample_in_cluster = int(sys.argv[4])
-min_samples_per_cluster = int(sys.argv[5])
+min_fraction_expressed_samples_per_cluster = float(sys.argv[5])
 individual_list = sys.argv[6]
 tissue_name = sys.argv[7]
 
@@ -327,15 +387,24 @@ temp_raw_cluster_file = filtered_leafcutter_cluster_file.split('.')[0] + '_temp.
 # Also check to make sure list of individuals being used matches other RV analysis individual lists
 filter_junctions_and_re_assign_clusters(raw_leafcutter_cluster_file, temp_raw_cluster_file, min_reads, individual_list, tissue_name)
 
+temp_raw_cluster_file2 = filtered_leafcutter_cluster_file.split('.')[0] + '_no_cluster_filter.txt'
+# Remove clusters that only have one junction
+remove_clusters_with_only_one_jxn(temp_raw_cluster_file, temp_raw_cluster_file2)
+
+# Create file showing number of reads per cluster (summing reads across all junctions in that cluster)
+num_reads_per_cluster_file = filtered_leafcutter_cluster_file.split('_filtered_jx')[0] + '_num_reads_per_cluster.txt'
+make_num_reads_per_cluster_file(temp_raw_cluster_file2, num_reads_per_cluster_file)
+
+
 # Create mapping from cluster id to a count of the number of junctions in that cluster
 # Create mapping from cluster id to a vector (of length number of samples) that shows number of reads summed across all valid jxns for that cluster
-cluster_id_to_num_jxn, cluster_id_to_num_reads = create_mapping_from_cluster_id_to_num_jxns(temp_raw_cluster_file, min_reads)
+cluster_id_to_num_jxn, cluster_id_to_num_reads = create_mapping_from_cluster_id_to_num_jxns(temp_raw_cluster_file2, min_reads)
 
 # Filter $raw_leafcutter_cluster_file and print results to $filtered_leafcutter_cluster_file
 # Remove clusters that:
 ## 1. Only have 1 junction
 ## 2. Have fewer than $min_samples_per_cluster with >= $min_reads_per_sample_in_cluster
-filter_jxn_file(temp_raw_cluster_file, filtered_leafcutter_cluster_file, min_reads, min_reads_per_sample_in_cluster, min_samples_per_cluster, cluster_id_to_num_jxn, cluster_id_to_num_reads)
+filter_jxn_file(temp_raw_cluster_file2, filtered_leafcutter_cluster_file, min_reads, min_reads_per_sample_in_cluster, min_fraction_expressed_samples_per_cluster, cluster_id_to_num_jxn, cluster_id_to_num_reads)
 
 
 # Delete intermediate junction file

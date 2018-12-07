@@ -11,8 +11,11 @@ cluster_info_file="$2"
 rare_variant_dir="$3"
 
 
+
+
 # Range of Distances
 distances=( "4" "6" "8" "10" "100" "1000")
+
 
 # Loop through distances
 for distance in "${distances[@]}"

@@ -40,9 +40,9 @@ european_ancestry_individual_list="/work-zfs/abattle4/bstrober/rare_variant/gtex
 #############################################################
 #We only consider junctions that have at least one sample with greater than or equal to $min_reads
 min_reads="15"
-# We only consider clusters that have at least $min_samples_per_cluster samples that have >= $min_reads_per_sample_in_cluster reads summed across all jxns in that cluster
-min_reads_per_sample_in_cluster="5"
-min_samples_per_cluster="50"
+# We only consider clusters where $min_fraction_samples_per_cluster fraction of samples have >= $min_reads_per_sample_in_cluster reads summed across all jxns in that cluster
+min_reads_per_sample_in_cluster="3"
+min_fraction_expressed_samples_per_cluster=".8"
 # Max number of junctions per cluster
 max_number_of_junctions_per_cluster="20"
 
@@ -92,7 +92,7 @@ splicing_outlier_visualization_dir=$output_root"visualize_splicing_outlier_calls
 ##After these filters, it will re-make leafcutter clusters (after junctions are removed)
 # Lastly, only include clusters that:
 ##### 1. Contain more than 1 junction
-##### 2. Has at least $min_samples_per_cluster with $min_reads_per_sample_in_cluster summed across all valid junctions
+##### 2. We only consider clusters where $min_fraction_samples_per_cluster fraction of samples have >= $min_reads_per_sample_in_cluster reads summed across all jxns in that cluster
 if false; then
 while read tissue_name; do
 	# Input file
@@ -100,7 +100,7 @@ while read tissue_name; do
 	# Output file
 	filtered_leafcutter_cluster_file=$filtered_cluster_dir$tissue_name"_filtered_jxns.txt"
 	# Submit batch job
-	sbatch filter_clusters.sh $raw_leafcutter_cluster_file $filtered_leafcutter_cluster_file $min_reads $min_reads_per_sample_in_cluster $min_samples_per_cluster $individual_list $tissue_name
+	sbatch filter_clusters.sh $raw_leafcutter_cluster_file $filtered_leafcutter_cluster_file $min_reads $min_reads_per_sample_in_cluster $min_fraction_expressed_samples_per_cluster $individual_list $tissue_name
 done<$tissue_names_file
 fi
 
@@ -124,17 +124,22 @@ total_jobs="20"
 # Whether to include covariates in GLM
 covariate_method="none"
 
-
-
-
 tissue_type="Muscle_Skeletal"
-# Input junction file (for current tissue)
-tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
-# Loop through nodes (to parallelize on)
+
+if false; then
+	job_number="0"
+	tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+
+	output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_debug_"$job_number"_"$total_jobs
+	sh call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
+fi
+
 if false; then
 for job_number in $(seq 0 `expr $total_jobs - "1"`); do
-	output_root=$splicing_outlier_dir$tissue_type"_min_reads_per_sample_"$min_reads_per_sample_in_cluster"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
-	sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $min_reads_per_sample_in_cluster $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
+	tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+
+	output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
+	sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
 done
 fi
 
@@ -147,8 +152,6 @@ fi
 #################
 # Part 4: Merge outlier calls (across parallelization runs) and visualize outlier calls (in each tissue seperately)
 if false; then
-sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $min_reads_per_sample_in_cluster $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list
+sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list
 fi
-
-
 

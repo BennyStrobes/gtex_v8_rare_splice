@@ -3,7 +3,20 @@ import os
 import sys
 import pdb
 
+
+def make_sure_files_exist(output_root, total_jobs, suffix):
+	booly = True
+	for job_number in range(total_jobs):
+		file_name = output_root + str(job_number) + '_' + str(total_jobs) + '_' + suffix
+		if os.path.isfile(file_name) == False:
+			booly = False
+	return booly
+
 def merge_parallelized_results(output_root, suffix, total_jobs):
+	to_run = make_sure_files_exist(output_root, total_jobs, suffix)
+	if to_run == False:
+		print('Missing required input files. Please re-evaluate :)')
+		return
 	# Open output (merged result) file handle
 	t = open(output_root + 'merged_' + suffix, 'w')
 	# Loop through parrallelized jobs

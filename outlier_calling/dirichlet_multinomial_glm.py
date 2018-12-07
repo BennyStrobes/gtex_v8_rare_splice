@@ -4,6 +4,7 @@ import sys
 import pdb
 import pystan
 import pickle
+import time
 
 
 ###########################################################
@@ -100,16 +101,25 @@ def generate_background_mahalanobis_distances(alpha, num_samples, num_reads):
 	# Compute mahalanobis distances for all of these samples 
 	###################
 	# initialize vector to keep track of MD's
-	sample_mahalanobis_distances = []
+	sample_mahalanobis_distances_old = []
 	# Compute quantities required for MD (that are shared across all samples)
 	nn = np.sum(x[0,:])
 	alpha_0 = np.sum(alpha)
 	cov = compute_dm_covariance_matrix(nn, alpha)
+
 	mu = nn*alpha/alpha_0
 	inv_cov = np.linalg.pinv(cov)
+	diff_mat = x - mu
+
 	# Compute MD for each sample
-	for sample_num in range(num_samples):
-		sample_mahalanobis_distances.append(compute_mahalanobis_distance_with_precomputed_quantities(x[sample_num,:], mu, inv_cov))
+	# for sample_num in range(num_samples):
+		#sample_mahalanobis_distances_old.append(compute_mahalanobis_distance_with_precomputed_quantities(x[sample_num,:], mu, inv_cov))
+
+	# Compute MD for each sample using vector math
+	sample_mahalanobis_distances = np.sqrt(np.sum(np.multiply(np.dot(diff_mat,inv_cov),diff_mat),axis=1))
+	# Convert from matrix to array
+	sample_mahalanobis_distances = np.squeeze(np.asarray(sample_mahalanobis_distances))
+
 	return np.asarray(sample_mahalanobis_distances)
 
 
@@ -138,7 +148,7 @@ def run_dm_outlier_analysis(X, cov_mat, DM_GLM):
 	#########################################################
 	#Take num_samples for the fitted DM. For each draw, compute mahalanobis distance
 	num_reads = 20000  # Number of reads per sample
-	num_samples = 100000  # Number of samples
+	num_samples = 1000000  # Number of samples
 	sample_mahalanobis_distances = generate_background_mahalanobis_distances(alpha, num_samples, num_reads)
 
 

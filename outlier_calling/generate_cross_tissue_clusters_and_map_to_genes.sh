@@ -15,13 +15,12 @@ cluster_visualization_dir="$4"
 gene_list="$5"
 
 
-if false; then
 python generate_cross_tissue_clusters.py $tissue_names_file $filtered_cluster_dir
 
 
 
 python map_clusters_to_genes.py $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $gene_list
-fi
+
 
 
 

@@ -7,12 +7,11 @@
 
 
 tissue_names_file="$1"
-min_reads_per_sample_in_cluster="$2"
-covariate_method="$3"
-total_jobs="$4"
-splicing_outlier_dir="$5"
-splicing_outlier_visualization_dir="$6"
-european_ancestry_individual_list="$7"
+covariate_method="$2"
+total_jobs="$3"
+splicing_outlier_dir="$4"
+splicing_outlier_visualization_dir="$5"
+european_ancestry_individual_list="$6"
 
 
 
@@ -24,16 +23,14 @@ european_ancestry_individual_list="$7"
 if false; then
 while read tissue_type; do
 	echo $tissue_type
-	output_root=$splicing_outlier_dir$tissue_type"_min_reads_per_sample_"$min_reads_per_sample_in_cluster"_covariate_method_"$covariate_method"_"
+	output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_"
 	python merge_splicing_outlier_calls.py $output_root $total_jobs
 
 done<$tissue_names_file
 fi
-	if false; then
 	tissue_type="Muscle_Skeletal"
-	output_root=$splicing_outlier_dir$tissue_type"_min_reads_per_sample_"$min_reads_per_sample_in_cluster"_covariate_method_"$covariate_method"_"
+	output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_"
 	python merge_splicing_outlier_calls.py $output_root $total_jobs
-	fi
 
 
 #################

@@ -152,6 +152,24 @@ histogram_showing_number_of_genes_per_cluster <- function(cluster_info_file, out
 
 }
 
+histogram_showing_fraction_of_expressed_samples <- function(tissue_name, min_reads, input_file, output_file) {
+	data_table <- read.table(input_file,header=TRUE)[]
+	row = dim(data_table)[1]
+	col = dim(data_table)[2]
+	#frac_expressed <- c()
+	data_table <- data_table[,2:col]
+	col = dim(data_table)[2]
+	expressed <- data_table >= min_reads
+
+	frac_expressed <- rowSums(expressed)/col
+
+	df <- data.frame(fraction_expressed=frac_expressed)
+	histo <- ggplot(data=df, aes(x=fraction_expressed)) + geom_histogram() +
+		labs(x =paste0("Fraction of expressed (>= ", min_reads," read) samples / Cluster"), y="Number of clusters", title= paste0(tissue_name)) +
+		theme(text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), plot.title = element_text(hjust = 0.5), legend.title = element_text(size=8)) 
+	ggsave(histo,file=output_file,width = 15,height=10.5,units="cm")
+
+}	
 
 
 
@@ -165,25 +183,36 @@ cluster_visualization_dir <- args[3]
 # Histogram showing number of genes per cluster
 ###################################################
 cluster_info_file <- paste0(filtered_cluster_dir, "cluster_info.txt")
-output_file <- paste0(cluster_visualization_dir, "number_of_genes_per_cluster.png")
+output_file <- paste0(cluster_visualization_dir, "number_of_genes_per_cluster.pdf")
 histogram_showing_number_of_genes_per_cluster(cluster_info_file, output_file)
 
 
 # Extract vector tissue names
 tissue_names <- as.character(unlist(read.table(tissue_names_file,header=FALSE), use.names=FALSE))
 
+##################################################################
+# Histogram showing fraction of samples w > $min_reads reads summed across all junctions
+##################################################################
+
+for (iter_num in 1:length(tissue_names)) {
+	tissue_name <- tissue_names[iter_num]
+	min_reads <- 3
+	input_file <- paste0(filtered_cluster_dir, tissue_name, "_num_reads_per_cluster.txt")
+	output_file <- paste0(cluster_visualization_dir, "fraction_of_", min_reads,"_expressed_samples_per_cluster_", tissue_name, "_histogram.pdf")
+	histogram_showing_fraction_of_expressed_samples(tissue_name, min_reads, input_file, output_file)
+}
 
 ###################################################
 # Barplot showing number of clusters per tissue
 ###################################################
-output_file <- paste0(cluster_visualization_dir, "number_of_clusters_bar_plot.png")
+output_file <- paste0(cluster_visualization_dir, "number_of_clusters_bar_plot.pdf")
 barplot_showing_number_of_clusters_per_tissue(tissue_names, filtered_cluster_dir, output_file)
 
 
 ###################################################
 # Barplot showing number of jxns per tissue
 ###################################################
-output_file <- paste0(cluster_visualization_dir, "number_of_jxns_bar_plot.png")
+output_file <- paste0(cluster_visualization_dir, "number_of_jxns_bar_plot.pdf")
 barplot_showing_number_of_jxns_per_tissue(tissue_names, filtered_cluster_dir, output_file)
 
 
@@ -191,7 +220,7 @@ barplot_showing_number_of_jxns_per_tissue(tissue_names, filtered_cluster_dir, ou
 ###################################################
 # Boxplot showing number of junctions per cluster per tissue
 ###################################################
-output_file <- paste0(cluster_visualization_dir, "number_of_jxns_per_cluster_box_plot.png")
+output_file <- paste0(cluster_visualization_dir, "number_of_jxns_per_cluster_box_plot.pdf")
 boxplot_showing_number_of_jxns_per_cluster_per_tissue(tissue_names, filtered_cluster_dir, output_file)
 
 
@@ -200,8 +229,7 @@ boxplot_showing_number_of_jxns_per_cluster_per_tissue(tissue_names, filtered_clu
 ###################################################
 for (iter_num in 1:length(tissue_names)) {
 	tissue_name <- tissue_names[iter_num]
-	print(tissue_name)
-	output_file <- paste0(cluster_visualization_dir, "number_of_jxns_per_cluster_", tissue_name, "_histogram.png")
+	output_file <- paste0(cluster_visualization_dir, "number_of_jxns_per_cluster_", tissue_name, "_histogram.pdf")
 	histogram_showing_number_of_jxns_per_cluster_per_tissue(tissue_name, filtered_cluster_dir, output_file)
 }
 

@@ -126,7 +126,7 @@ def add_covariates_to_cluster_jxn_data_structure(cluster_jxn_data_structure, cov
 	return cluster_jxn_data_structure
 
 
-def create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, min_reads_per_sample_in_cluster, covariate_method, job_number):
+def create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method, job_number):
 	#Get raw data structure
 	#Also get samples, this is the maximum possible samples after filtering
 	cluster_jxn_data_structure, samples = extract_raw_cluster_jxn_data_structure(tissue_specific_jxn_file)
@@ -135,7 +135,7 @@ def create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_
 	cluster_jxn_data_structure = max_number_of_jxns_filter_ignore_genes(cluster_jxn_data_structure, max_number_of_junctions_per_cluster)
 
 	# Remove samples with less than $min_reads_per_sample_in_cluster reads (summed acrosss all junctions in cluster)
-	cluster_jxn_data_structure = min_reads_per_sample_filter(cluster_jxn_data_structure, min_reads_per_sample_in_cluster)
+	# cluster_jxn_data_structure = min_reads_per_sample_filter(cluster_jxn_data_structure, min_reads_per_sample_in_cluster)
 
 	# Add Covariate Matrix to cluster_jxn_data_structure
 	cluster_jxn_data_structure = add_covariates_to_cluster_jxn_data_structure(cluster_jxn_data_structure, covariate_method)
@@ -188,7 +188,8 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 	t_pvalue.write('CLUSTER_ID\t' + '\t'.join(all_samples) + '\n')
 
 	start_time = time.time()
-
+	county = 0 
+	total = 0
 	# Loop through cluster_id
 	for counter, cluster_id in enumerate(sorted(cluster_jxn_data_structure.keys())):
 		# Skip cluster_ids not in this parallelization run
@@ -205,6 +206,7 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		print('##################')
 		print('START ' + cluster_id)
 
+
 		####################################################################
 		# Actual Analysis
 		####################################################################
@@ -214,7 +216,6 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		cluster_samples = cluster_jxn_data_structure[cluster_id]['samples']
 		# Extract covariate matrix (dim len(cluster_samples)Xnum_cov)
 		cov_mat = cluster_jxn_data_structure[cluster_id]['covariate_matrix']
-
 		# Run outlier analysis:
 		# Return:
 		#   1: mahalanobis_distances: vector length num_samples where each element is the mahalanobis distance for that sample
@@ -222,6 +223,7 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		#   3. alpha: vector of length num_jxns which defines the fitted dirichlet multinomial distribution
 		try:
 			mahalanobis_distances, pvalues, alpha = dm_glm.run_dm_outlier_analysis(X, cov_mat, DM_GLM)
+
 
 			####################################################################
 			# Print results to output file
@@ -232,6 +234,8 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 			t_pvalue = outlier_calling_print_helper(pvalues, cluster_samples, all_samples, t_pvalue, cluster_id)
 		except:
 			print('miss: ' + cluster_id)
+	print(county)
+	print(total)
 	t_MD.close()
 	t_pvalue.close()
 
@@ -247,20 +251,18 @@ tissue_type = sys.argv[1]
 tissue_specific_jxn_file = sys.argv[2]
 # What type of covariates to include
 covariate_method = sys.argv[3]
-# Minimum number of reads (summed across junctions) a sample must have
-min_reads_per_sample_in_cluster = int(sys.argv[4])
 # Throw out clusters with more than $max_number_of_junctions_per_cluster
-max_number_of_junctions_per_cluster = int(sys.argv[5])
+max_number_of_junctions_per_cluster = int(sys.argv[4])
 # Stem used for output files
-output_root = sys.argv[6]
+output_root = sys.argv[5]
 # Following are used for parallelization purposes
-job_number = int(sys.argv[7])
-total_jobs = int(sys.argv[8])
+job_number = int(sys.argv[6])
+total_jobs = int(sys.argv[7])
 
 
 # Extract junction data and place in compact data structure
 # Keys are cluster_ids and values are jxn_counts
-cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, min_reads_per_sample_in_cluster, covariate_method, job_number)
+cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method, job_number)
 
 
 ########################################
