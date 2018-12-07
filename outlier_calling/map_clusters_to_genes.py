@@ -22,6 +22,13 @@ def add_gene_to_chromosome_object(chromosome, start, end, gene_name):
             chromosome[pos] = chromosome[pos] + ',' + gene_name
     return chromosome
 
+#Fill in chromosome object from chromosome[start:end+1] with the addition of this gene name
+def add_position_to_chromosome_object(chromosome, pos, gene_name):
+    if chromosome[pos] == 'NULL':  # No genes already mapped to this position
+        chromosome[pos] = gene_name
+    else:  # at least one gene already mapped to this position
+        chromosome[pos] = chromosome[pos] + ',' + gene_name
+    return chromosome
 
 #Create an array of lenth(chromosome) [in bp]. Value of an element corresponds to a list of genes that overlap that basepair. This is used for efficient searching.
 def make_chromosome_with_gene_names(chrom_num, gencode_hg19_gene_annotation_file, valid_genes):
@@ -59,6 +66,48 @@ def make_chromosome_with_gene_names(chrom_num, gencode_hg19_gene_annotation_file
         #Fill in chromosome object from chromosome[start:end+1] with the addition of this gene name
         chromosome = add_gene_to_chromosome_object(chromosome, start, end, gene_name)
         #NOTE: ENSAMBLE Id's never come up more than once when gene_part == 'gene'
+    return chromosome
+
+#Create an array of lenth(chromosome) [in bp]. Value of an element corresponds to a list of genes that overlap that basepair. This is used for efficient searching.
+def make_chromosome_with_gene_names_with_exon(chrom_num, gencode_hg19_gene_annotation_file, valid_genes):
+    #initialize chromosome array
+    chromosome = ['NULL']*259250621
+    parts = {}
+    #loop through gencode file
+    f = gzip.open(gencode_hg19_gene_annotation_file)
+    for line in f:
+        line = line.rstrip()
+        data = line.split()
+        if line.startswith('#'):  # ignore header lines
+            continue
+        # Parse line
+        gene_info_arr = data[8].split(';')
+        hits = 0
+        for ele in gene_info_arr:
+            info = ele.split('=')
+            if info[0] == 'gene_id':
+                hits = hits + 1
+                gene_name = info[1]
+        if hits != 1:
+            print('fundamental assumption error!!')
+            pdb.set_trace()
+        line_chrom_num = data[0]
+        gene_part = data[2]  # gene,UTR,exon,etc
+        parts[gene_part] = 1
+        # Skip genes not in our valid gene set
+        if gene_name not in valid_genes:
+            continue
+        if line_chrom_num != 'chr' + chrom_num:  # limit to chromosome of interest
+            continue
+        if gene_part != 'exon':  # ignore other parts of the gene as 'gene' encomposes everything
+            continue
+        start = int(data[3])  # 5' gene start site (this is the min of all UTR,exons,etc)
+        end = int(data[4])  # 3' gene end site (this is the max of all UTR,exons,etc)
+        #Fill in chromosome object from chromosome[start:end+1] with the addition of this gene name
+        chromosome = add_position_to_chromosome_object(chromosome, start, gene_name)
+        chromosome = add_position_to_chromosome_object(chromosome, end, gene_name)
+        #NOTE: ENSAMBLE Id's never come up more than once when gene_part == 'gene'
+    f.close()
     return chromosome
 
 
@@ -112,6 +161,17 @@ def map_clusters_on_chromosome(chrom_num, cluster_to_genes_mapping, clusters_fil
         cluster_to_genes_mapping = align_clusters_to_genes(chromosome, chrom_num, cluster_to_genes_mapping, input_file_name)
     return cluster_to_genes_mapping
 
+#Perform mapping analysis on each chromosome seperately
+#At each chromosome update the cluster_to_genes_mapping for clusters on that chromosome
+def map_clusters_on_chromosome_with_exon(chrom_num, cluster_to_genes_mapping, clusters_filter_output_dir, input_suffix, tissues, gencode_hg19_gene_annotation_file, valid_genes):
+    #Create an array of lenth(chromosome) [in bp]. Value of an element corresponds to a list of genes that overlap that basepair. This is used for efficient searching.
+    chromosome = make_chromosome_with_gene_names_with_exon(chrom_num, gencode_hg19_gene_annotation_file, valid_genes)
+    #Loop through jxn file. For each jxn, see what genes overlap is 5' ss and 3' ss. And the union of the genes to cluster_to_genes_mapping for the jxns associated cluster
+    for tissue in tissues:
+        input_file_name = clusters_filter_output_dir + tissue + input_suffix
+        cluster_to_genes_mapping = align_clusters_to_genes(chromosome, chrom_num, cluster_to_genes_mapping, input_file_name)
+    return cluster_to_genes_mapping
+
 
 def print_helper_map_clusters_to_genes(input_file_name, output_file_name, cluster_to_genes_mapping):
     f = open(input_file_name)
@@ -131,6 +191,22 @@ def print_helper_map_clusters_to_genes(input_file_name, output_file_name, cluste
         new_jxn_id = data[0] + ':' + cluster_to_genes_mapping[cluster_id]
         t.write(new_jxn_id + '\t' + '\t'.join(data[1:]) + '\n')
     t.close()
+
+def map_clusters_to_genes_with_exons(tissues, gencode_hg19_file, clusters_filter_output_dir, input_suffix, output_suffix, valid_genes):
+    #Main dictionary to keep track of cluster --> genes.
+    #Key will be leafcutter cluster id. Value is string gene1,gene2,gene3,... Or 'NULL' if no gene is mapped
+    cluster_to_genes_mapping = {}
+    #Perform mapping analysis on each chromosome seperately
+    #At each chromosome update the cluster_to_genes_mapping for clusters on that chromosome
+    for chrom_num in range(1, 23):
+        print(chrom_num)
+        cluster_to_genes_mapping = map_clusters_on_chromosome_with_exon(str(chrom_num), cluster_to_genes_mapping, clusters_filter_output_dir, input_suffix, tissues, gencode_hg19_file, valid_genes)
+
+    for tissue in tissues:
+        print(tissue)
+        input_file = clusters_filter_output_dir + tissue + input_suffix
+        output_file = clusters_filter_output_dir + tissue + output_suffix
+        print_helper_map_clusters_to_genes(input_file, output_file, cluster_to_genes_mapping)
 
 
 def map_clusters_to_genes(tissues, gencode_hg19_file, clusters_filter_output_dir, input_suffix, output_suffix, valid_genes):
@@ -210,9 +286,19 @@ tissues = extract_tissues(tissue_list_input_file)  # get array of tissue types
 valid_genes = extract_list_of_valid_ensamble_ids(gene_list)
 
 input_suffix = '_filtered_jxns_cross_tissue_clusters.txt'  # Suffix of input files
-output_suffix = '_filtered_jxns_cross_tissue_clusters_gene_mapped.txt'  # Suffix of output files
+output_suffix = '_filtered_jxns_cross_tissue_clusters_full_gene_mapped.txt'  # Suffix of output files
 
 map_clusters_to_genes(tissues, gencode_hg19_file, clusters_filter_output_dir, input_suffix, output_suffix, valid_genes)
 
 # Make output file containing all clusters (generated in map_clusters_to_genes) as well as which junctions are mapped to which cluster, as well as which genes are mapped to which cluster
+report_cluster_info(tissues, clusters_filter_output_dir, output_suffix, clusters_filter_output_dir + 'cluster_info_full_gene_mapped.txt')
+
+
+
+input_suffix = '_filtered_jxns_cross_tissue_clusters.txt'  # Suffix of input files
+output_suffix = '_filtered_jxns_cross_tissue_clusters_gene_mapped.txt'  # Suffix of output files
+
+map_clusters_to_genes_with_exons(tissues, gencode_hg19_file, clusters_filter_output_dir, input_suffix, output_suffix, valid_genes)
 report_cluster_info(tissues, clusters_filter_output_dir, output_suffix, clusters_filter_output_dir + 'cluster_info.txt')
+
+
