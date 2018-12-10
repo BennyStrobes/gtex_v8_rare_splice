@@ -30,9 +30,6 @@ done<$tissue_names_file
 fi
 
 #################
-# Code identifying "global outliers" as well as multi-tissue outliers. Also some code limiting to European Ancestry individuals
-
-#################
 # Identify and remove "global outliers" (ie. donors that are median(pvalue) outliers in a large number of clusters)
 # To be eligible to be a "global outlier", (individual, cluster) pair must be expressed in at least $min_number_of_expressed_tissues
 min_number_of_expressed_tissues="5"
@@ -41,4 +38,16 @@ num_global_outlier_clusters="500"
 # Anything less than p=$pvalue_threshold is considered an outlier
 pvalue_threshold=".0456"
 
+if false; then
 python identify_and_remove_global_outliers.py $tissue_names_file $splicing_outlier_dir $covariate_method $min_number_of_expressed_tissues $num_global_outlier_clusters $pvalue_threshold $european_ancestry_individual_list
+fi
+
+
+#################
+# Create file containing cross-tissue outliers (ie median(pvalue) across observed tissues)
+# To be eligible to be a "cross tissue outlier", (individual, cluster) pair must be expressed in at least $min_number_of_expressed_tissues
+min_number_of_expressed_tissues="5"
+# A donor is called a "global outlier" if it is a median(pvalue) outlier in at least $num_global_outlier_clusters clusters
+num_global_outlier_clusters="500"
+
+python identify_cross_tissue_outliers.py $tissue_names_file $splicing_outlier_dir $covariate_method $min_number_of_expressed_tissues $european_ancestry_individual_list $num_global_outlier_clusters
