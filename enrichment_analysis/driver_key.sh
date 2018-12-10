@@ -70,8 +70,7 @@ if false; then
 sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
 fi
 
-if false; then
 sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $tissue_names_file
-fi
+
 
 

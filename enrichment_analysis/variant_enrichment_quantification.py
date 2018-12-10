@@ -159,7 +159,7 @@ pvalue_threshold = float(sys.argv[8])
 tissues = get_tissue_array(tissue_names_file)
 
 ##$$$$$##
-tissues = tissues[33:34]
+# tissues = ['Adipose_Subcutaneous', 'Muscle_Skeletal']
 ##$$$$$##
 
 # In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
