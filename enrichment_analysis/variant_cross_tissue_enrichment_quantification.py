@@ -4,23 +4,6 @@ import sys
 import pdb
 
 
-
-
-
-
-
-# Extract vector of tissue names
-def get_tissue_array(tissue_names_file):
-	arr = []
-	f = open(tissue_names_file)
-	for line in f:
-		line = line.rstrip()
-		arr.append(line)
-	f.close()
-	return arr
-
-
-
 # In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
 def extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, european_ancestry_individual_list):
 	# Extract dictionary list of european ancestry individuals
@@ -48,6 +31,7 @@ def extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, eu
 			union_indiz[indi] = 1
 	return union_indiz
 
+
 # Extract outliers in each tissue and save results in cluster_struct
 def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_version):
 	# Initialize object keeping track of outlier calls
@@ -70,6 +54,8 @@ def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_ver
 		cluster_struct[cluster_id] = {}
 		cluster_struct[cluster_id]['outlier_individuals'] = {}
 		cluster_struct[cluster_id]['rv_individuals'] = {}
+		cluster_struct[cluster_id]['num_observed_samples'] = len(np.where(np.asarray(data[1:]) != 'NaN')[0])
+
 		# Don't limit to most extreme outlier / cluster. Just take everyone that passes a threshold
 		if enrichment_version == 'all':
 			pvalz = np.asarray(data[1:]).astype(float)
@@ -81,7 +67,7 @@ def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_ver
 	return cluster_struct
 
 # Add RV calls to cluster_struct object
-def extract_rare_variants(variant_bed_file, cluster_struct, individuals, tissues):
+def extract_rare_variants(variant_bed_file, cluster_struct, individuals):
 	# Stream variant file
 	f = open(variant_bed_file)
 	for line in f:
@@ -90,20 +76,19 @@ def extract_rare_variants(variant_bed_file, cluster_struct, individuals, tissues
 		# Extract relevent fields
 		indi = data[0]
 		cluster_id = data[6]
-		# Add RV in each tissue that the individual has RNA-seq
-		for tissue in tissues:
-			# Don't have RNA-seq for this individual in this tissue
-			if indi not in individuals[tissue]:
-				continue
-			# Cluster_id not in this tissue
-			if cluster_id not in cluster_struct[tissue]:
-				continue
-			cluster_struct[tissue][cluster_id]['rv_individuals'][indi] = 1
+		# Add RV
+		# Don't have RNA-seq for this individual
+		if indi not in individuals:
+			continue
+		# Cluster_id not in this tissue
+		if cluster_id not in cluster_struct:
+			continue
+		cluster_struct[cluster_id]['rv_individuals'][indi] = 1
 	f.close()
 	return cluster_struct
 
 # Do enrichment analysis in each tissue
-def enrichment_analysis(tissue, cluster_struct, output_handle, num_samp):
+def enrichment_analysis(namer, cluster_struct, output_handle):
 	# Keep track of the following quantities
 	a = 0 #outliers with rare variant
 	b = 0 #outliers
@@ -116,6 +101,8 @@ def enrichment_analysis(tissue, cluster_struct, output_handle, num_samp):
 		rv_indi = cluster_struct[cluster_id]['rv_individuals']
 		# dictionary containing all individuals that have a RV for this cluster
 		outlier_indi = cluster_struct[cluster_id]['outlier_individuals']
+
+		num_samp = cluster_struct[cluster_id]['num_observed_samples']
 
 		# Skip Clusters that have no outliers
 		if len(outlier_indi) == 0:
@@ -137,54 +124,40 @@ def enrichment_analysis(tissue, cluster_struct, output_handle, num_samp):
 	num_frac = float(a)/float(b)
 	den_frac = float(c)/float(d)
 	odds_ratio = (num_frac/den_frac)
-	output_handle.write(tissue + '\t' + str(a) + '\t' + str(b) + '\t' + str(c) + '\t' + str(d) + '\t' + str(odds_ratio) + '\n')
+	output_handle.write(namer + '\t' + str(a) + '\t' + str(b) + '\t' + str(c) + '\t' + str(d) + '\t' + str(odds_ratio) + '\n')
 
 	return output_handle
-
-
 
 #############################
 # Command Line Args
 #############################
 variant_bed_file = sys.argv[1]
 output_root = sys.argv[2]
-splicing_outlier_dir = sys.argv[3]
-splicing_outlier_suffix = sys.argv[4]
-european_ancestry_individual_list = sys.argv[5]
-tissue_names_file = sys.argv[6]
-enrichment_version = sys.argv[7]
-pvalue_threshold = float(sys.argv[8])
-
-
-# Extract vector of tissue names
-tissues = get_tissue_array(tissue_names_file)
-
-# In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
-individuals = {}
-# Extract list of individuals for each tissue
-for tissue in tissues:
-	# Use outlier file to get list of individuals we have RNA-seq for
-	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
-	individuals[tissue] = extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, european_ancestry_individual_list)
-	
-
-# Initialize object to keep track of outliers and rvs
-cluster_struct = {}
-# Extract outliers in each tissue and save results in cluster_struct
-for tissue in tissues:
-	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
-	cluster_struct[tissue] = extract_outliers(outlier_file, individuals[tissue], pvalue_threshold, enrichment_version)
-
-# Add RV calls to cluster_struct object
-cluster_struct = extract_rare_variants(variant_bed_file, cluster_struct, individuals, tissues)
+splicing_outlier_file = sys.argv[3]
+european_ancestry_individual_list = sys.argv[4]
+enrichment_version = sys.argv[5]
 
 # Output File
 output_file = output_root + '.txt'
 output_handle = open(output_file, 'w')
-# Do enrichment analysis in each tissue
-for tissue in tissues:
-	output_handle = enrichment_analysis(tissue, cluster_struct[tissue], output_handle, len(individuals[tissue]))
 
+# Loop through pvalue thresholds
+pvalue_thresholds = [.000001, .00001, .0001, .001]
+for pvalue_threshold in pvalue_thresholds:
+	# In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
+	individuals = {}
 
+	# Use outlier file to get list of individuals we have RNA-seq for
+	individuals = extract_individuals_that_have_rna_and_are_european_ancestry(splicing_outlier_file, european_ancestry_individual_list)
+
+	# Initialize object to keep track of outliers and rvs
+	cluster_struct = {}
+	# Extract outliers in each tissue and save results in cluster_struct
+	cluster_struct = extract_outliers(splicing_outlier_file, individuals, pvalue_threshold, enrichment_version)
+
+	# Add RV calls to cluster_struct object
+	cluster_struct = extract_rare_variants(variant_bed_file, cluster_struct, individuals)
+
+	# Do enrichment analysis
+	output_handle = enrichment_analysis("cross_tissue_" + str(pvalue_threshold), cluster_struct, output_handle)
 output_handle.close()
-

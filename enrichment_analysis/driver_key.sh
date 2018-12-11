@@ -32,8 +32,11 @@ splicing_outlier_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/
 
 # Suffix for tissue-specific file_names in $splicing_outlier_dir
 # Filenames are of form: $splicing_outlier_calling_dir$tissue_name$splicing_outlier_suffix"_emperical_pvalue.txt"
-splicing_outlier_suffix="_covariate_method_none_no_global_outliers_ea_only_merged"
+splicing_outlier_suffix="_covariate_method_none_no_global_outliers_ea_only"
 
+# Suffix for tissue-specific file_names in $splicing_outlier_dir
+# Filenames are of form: $splicing_outlier_calling_dir$tissue_name$splicing_outlier_suffix"_emperical_pvalue.txt"
+splicing_outlier_include_global_outliers_suffix="_covariate_method_none"
 
 
 
@@ -70,8 +73,13 @@ if false; then
 sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
 fi
 
+#################
+# Part 2: Compute enrichment of rare variants within spliding outlier calls
+# Do this enrichments:
+#    1. For each of the tissues, independently
+#    2. For cross tissue outliers (median pvalue)
 if false; then
-sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $tissue_names_file
+sbatch variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file
 fi
 
 
