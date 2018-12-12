@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=12:00:00
+#SBATCH --time=14:00:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 
@@ -27,9 +27,8 @@ enrichment_version="all"
 # Range of Distances
 distances=( "4" "6" "8" "10" "100" "1000")
 # Range of pvalue thresholds
-pvalue_thresholds=( ".000001" ".00001" ".001" )
+pvalue_thresholds=( ".000001" ".00001" ".0001" ".001" )
 
-if false; then
 # Loop through distances
 for distance_window in "${distances[@]}"; do
 	# Loop through range of pvalue thresholds
@@ -50,7 +49,7 @@ for distance_window in "${distances[@]}"; do
 
 	done
 done
-fi
+
 
 
 
@@ -61,8 +60,9 @@ fi
 
 distances=( "4" "6" "8" "10" "100" "1000")
 # Loop through distances
-if false; then
 for distance_window in "${distances[@]}"; do
+
+	echo "Multi-tissue distance="$distance_window
 
 	# Run cross tissue enrichment using this sized window
 	splicing_outlier_file=$splicing_outlier_dir"cross_tissue"$splicing_outlier_suffix"_emperical_pvalue.txt"
@@ -70,11 +70,13 @@ for distance_window in "${distances[@]}"; do
 	output_root=$variant_enrichment_dir"cross_tissue_variant_outlier_enrichment_distance_"$distance_window"_version_"$enrichment_version
 	python variant_cross_tissue_enrichment_quantification.py $variant_bed_file $output_root $splicing_outlier_file $european_ancestry_individual_list $enrichment_version
 done
-fi
+
+
 
 
 ##################################
 # Visualize enrichments of rare variants within splicing outlier calls
 ##################################
+if false; then
 Rscript visualize_enrichment_of_rare_variants_within_outliers.R $visualize_variant_enrichment_dir $variant_enrichment_dir $tissue_names_file $tissue_colors_file
-
+fi

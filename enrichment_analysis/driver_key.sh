@@ -85,7 +85,7 @@ fi
 #    1. For each of the tissues, independently
 #    2. For cross tissue outliers (median pvalue)
 # Then visualize enrichments
-sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file
+sbatch variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file
 
 
 

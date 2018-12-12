@@ -31,9 +31,11 @@ tbt_variant_outlier_enrichment_errorbar_plot <- function(tissue_by_tissue_enrich
 		orat <- (a/b)/(c/d)
 		# Compute error bars for this orat
 		log_orat <- log(orat)
-		bounds <- 1.96*sqrt((1.0/a) + (1.0/b) + (1.0/c) + (1.0/d))
-		upper_bound <- exp(log_orat + bounds)
-		lower_bound <- exp(log_orat - bounds) 
+		log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
+		#upper_bound <- exp(log_orat + log_bounds)
+		#lower_bound <- exp(log_orat - log_bounds) 
+		upper_bound <- orat*exp(log_bounds)
+		lower_bound <- orat*exp(-log_bounds)
 
 		# Add information to vectors
 		tissue_names <- c(tissue_names, tissue_name)
@@ -44,7 +46,6 @@ tbt_variant_outlier_enrichment_errorbar_plot <- function(tissue_by_tissue_enrich
 
 	# Add information to data frame
 	df <- data.frame(tissue_names=factor(tissue_names), odds_ratios=odds_ratios, lower_bounds=lower_bounds, upper_bounds=upper_bounds)
-
 	error_bar_plot <- ggplot() + geom_errorbar(data=df, mapping=aes(x=tissue_names,ymin=lower_bounds, ymax=upper_bounds), colour=color_vector) +
 					geom_point(data=df, mapping=aes(x=tissue_names, y=odds_ratios), colour=color_vector) +
 					labs(x = "Tissue", y = "Enrichment", title=title) +
@@ -106,9 +107,10 @@ cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrich
 			orat <- (a/b)/(c/d)
 			# Compute error bars for this orat
 			log_orat <- log(orat)
-			bounds <- 1.96*sqrt((1.0/a) + (1.0/b) + (1.0/c) + (1.0/d))
-			upper_bound <- exp(log_orat + bounds)
-			lower_bound <- exp(log_orat - bounds) 
+			log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
+			upper_bound <- orat*exp(log_bounds)
+			lower_bound <- orat*exp(-log_bounds)
+
 
 			# Add data to vectors
 			pvalues <- c(pvalues, pvalue)
@@ -159,7 +161,7 @@ version <- "all"
 tissue_by_tissue_enrichment_file <- paste0(variant_enrichment_dir, "tbt_variant_outlier_enrichment_pvalue_", pvalue_threshold, "_distance_", distance, "_version_",version,".txt")
 output_file <- paste0(visualize_variant_enrichment_dir, "tbt_variant_outlier_enrichment_pvalue_", pvalue_threshold, "_distance_", distance, "_version_",version, "_errorbar.pdf")
 title <- paste0("distance=",distance, " / pvalue=", pvalue_threshold)
-#tbt_variant_outlier_enrichment_errorbar_plot(tissue_by_tissue_enrichment_file, output_file, title, color_vector)
+tbt_variant_outlier_enrichment_errorbar_plot(tissue_by_tissue_enrichment_file, output_file, title, color_vector)
 
 
 output_file <- paste0(visualize_variant_enrichment_dir, "cross_tissue_variant_outlier_enrichment_version_",version,"_errorbar.pdf")
