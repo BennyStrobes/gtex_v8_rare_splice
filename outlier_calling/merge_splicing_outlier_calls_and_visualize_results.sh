@@ -49,5 +49,12 @@ fi
 min_number_of_expressed_tissues="5"
 # A donor is called a "global outlier" if it is a median(pvalue) outlier in at least $num_global_outlier_clusters clusters
 num_global_outlier_clusters="500"
-
+if false; then
 python identify_cross_tissue_outliers.py $tissue_names_file $splicing_outlier_dir $covariate_method $min_number_of_expressed_tissues $european_ancestry_individual_list $num_global_outlier_clusters
+fi
+
+
+#################
+# Visualize distribution of outier calls
+Rscript visualize_outlier_calls.R $tissue_names_file $covariate_method $splicing_outlier_dir $splicing_outlier_visualization_dir
+

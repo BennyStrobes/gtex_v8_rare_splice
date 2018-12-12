@@ -275,6 +275,7 @@ def extract_list_of_valid_ensamble_ids(gene_list):
     return valid_genes
 
 
+
 tissue_list_input_file = sys.argv[1]
 clusters_filter_output_dir = sys.argv[2]  # Input dir and output dir
 gencode_hg19_file = sys.argv[3]
@@ -300,5 +301,8 @@ output_suffix = '_filtered_jxns_cross_tissue_clusters_gene_mapped.txt'  # Suffix
 
 map_clusters_to_genes_with_exons(tissues, gencode_hg19_file, clusters_filter_output_dir, input_suffix, output_suffix, valid_genes)
 report_cluster_info(tissues, clusters_filter_output_dir, output_suffix, clusters_filter_output_dir + 'cluster_info.txt')
+
+
+
 
 

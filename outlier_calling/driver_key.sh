@@ -148,6 +148,7 @@ fi
 
 #################
 # Part 4: Merge outlier calls (across parallelization runs) and visualize outlier calls (in each tissue seperately)
+if false; then
 sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list
-
+fi
 
