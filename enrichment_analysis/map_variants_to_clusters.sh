@@ -2,6 +2,7 @@
 
 #SBATCH
 #SBATCH --time=8:00:00
+#SBATCH --mem=10GB
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 
@@ -24,5 +25,4 @@ do
 	variant_cluster_bed_file=$rare_variant_dir"variant_cluster_bed_"$distance".txt"
 	variant_cluster_only_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance".txt"
 	python map_variants_to_clusters.py $variant_bed_file $variant_cluster_bed_file $variant_cluster_only_bed_file $cluster_info_file $distance
-
 done

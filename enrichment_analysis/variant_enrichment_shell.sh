@@ -13,6 +13,8 @@ splicing_outlier_suffix="$4"
 splicing_outlier_include_global_outliers_suffix="$5"
 european_ancestry_individual_list="$6"
 tissue_names_file="$7"
+visualize_variant_enrichment_dir="$8"
+tissue_colors_file="$9"
 
 # Whether to take 'top_outlier' per cluster of 'all' variants per cluster
 enrichment_version="all"
@@ -27,6 +29,7 @@ distances=( "4" "6" "8" "10" "100" "1000")
 # Range of pvalue thresholds
 pvalue_thresholds=( ".000001" ".00001" ".001" )
 
+if false; then
 # Loop through distances
 for distance_window in "${distances[@]}"; do
 	# Loop through range of pvalue thresholds
@@ -47,6 +50,9 @@ for distance_window in "${distances[@]}"; do
 
 	done
 done
+fi
+
+
 
 
 ##################################
@@ -55,12 +61,20 @@ done
 
 distances=( "4" "6" "8" "10" "100" "1000")
 # Loop through distances
+if false; then
 for distance_window in "${distances[@]}"; do
 
 	# Run cross tissue enrichment using this sized window
 	splicing_outlier_file=$splicing_outlier_dir"cross_tissue"$splicing_outlier_suffix"_emperical_pvalue.txt"
 	variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance_window".txt"
-	output_root=$variant_enrichment_dir"cross_tissue_variant_outlier_include_global_outlier_enrichment_distance_"$distance_window"_version_"$enrichment_version
+	output_root=$variant_enrichment_dir"cross_tissue_variant_outlier_enrichment_distance_"$distance_window"_version_"$enrichment_version
 	python variant_cross_tissue_enrichment_quantification.py $variant_bed_file $output_root $splicing_outlier_file $european_ancestry_individual_list $enrichment_version
-
 done
+fi
+
+
+##################################
+# Visualize enrichments of rare variants within splicing outlier calls
+##################################
+Rscript visualize_enrichment_of_rare_variants_within_outliers.R $visualize_variant_enrichment_dir $variant_enrichment_dir $tissue_names_file $tissue_colors_file
+

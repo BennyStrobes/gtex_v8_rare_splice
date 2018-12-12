@@ -137,6 +137,7 @@ splicing_outlier_file = sys.argv[3]
 european_ancestry_individual_list = sys.argv[4]
 enrichment_version = sys.argv[5]
 
+pdb.set_trace()
 # Output File
 output_file = output_root + '.txt'
 output_handle = open(output_file, 'w')
