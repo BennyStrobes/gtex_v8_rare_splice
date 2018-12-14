@@ -137,7 +137,6 @@ splicing_outlier_file = sys.argv[3]
 european_ancestry_individual_list = sys.argv[4]
 enrichment_version = sys.argv[5]
 
-pdb.set_trace()
 # Output File
 output_file = output_root + '.txt'
 output_handle = open(output_file, 'w')
@@ -145,9 +144,6 @@ output_handle = open(output_file, 'w')
 # Loop through pvalue thresholds
 pvalue_thresholds = [.000001, .00001, .0001, .001]
 for pvalue_threshold in pvalue_thresholds:
-	# In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
-	individuals = {}
-
 	# Use outlier file to get list of individuals we have RNA-seq for
 	individuals = extract_individuals_that_have_rna_and_are_european_ancestry(splicing_outlier_file, european_ancestry_individual_list)
 

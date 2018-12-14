@@ -79,7 +79,7 @@ get_color_vector <- function(tissue_colors, tissue_names) {
 }
 
 cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrichment_dir, output_file, version) {
-	distances <- c("4", "6", "8")
+	distances <- c("4", "6", "8", "10", "100", "1000")
 
 	# Initialize vectors
 	pvalues <- c()
@@ -122,14 +122,14 @@ cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrich
 	}
 
 	# Make data frame
-	df <- data.frame(pvalues=factor(pvalues,levels=(as.character(pvalue_string))), odds_ratios=odds_ratios, lower_bounds=lower_bounds, upper_bounds=upper_bounds,distance=factor(distance_vec))
+	df <- data.frame(pvalues=factor(pvalues,levels=(as.character(pvalue_string))), odds_ratios=odds_ratios, lower_bounds=lower_bounds, upper_bounds=upper_bounds,distance=factor(distance_vec,levels=distances))
 	dodge <- position_dodge(width=0.9)
 	error_bar_plot <- ggplot() + geom_errorbar(data=df, mapping=aes(x=distance,ymin=lower_bounds, ymax=upper_bounds, colour=pvalues), position=dodge) +
 					geom_point(data=df, mapping=aes(x=distance, y=odds_ratios, colour=pvalues), position=dodge) +
 					labs(x = "Distance", y = "Enrichment", colour="p-value") +
 					theme(text = element_text(size=10),axis.text=element_text(size=9), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=9), legend.title = element_text(size=10)) 
 
-	ggsave(error_bar_plot, file=output_file,width = 16,height=10.5,units="cm")
+	ggsave(error_bar_plot, file=output_file,width = 19,height=10.5,units="cm")
 
 }
 

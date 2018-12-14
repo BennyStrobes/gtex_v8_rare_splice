@@ -28,7 +28,6 @@ enrichment_version="all"
 distances=( "4" "6" "8" "10" "100" "1000")
 # Range of pvalue thresholds
 pvalue_thresholds=( ".000001" ".00001" ".0001" ".001" )
-
 # Loop through distances
 for distance_window in "${distances[@]}"; do
 	# Loop through range of pvalue thresholds
@@ -77,6 +76,5 @@ done
 ##################################
 # Visualize enrichments of rare variants within splicing outlier calls
 ##################################
-if false; then
 Rscript visualize_enrichment_of_rare_variants_within_outliers.R $visualize_variant_enrichment_dir $variant_enrichment_dir $tissue_names_file $tissue_colors_file
-fi
+

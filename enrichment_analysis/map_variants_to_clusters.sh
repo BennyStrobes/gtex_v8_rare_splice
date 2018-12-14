@@ -15,7 +15,7 @@ rare_variant_dir="$3"
 
 
 # Range of Distances
-distances=( "4" "6" "8" "10" "100" "1000")
+distances=( "4" "6" "8" "10" "20" "100" "1000")
 
 
 # Loop through distances
