@@ -274,7 +274,68 @@ def extract_list_of_valid_ensamble_ids(gene_list):
     f.close()
     return valid_genes
 
+# First extract dictionary list of ensamble ids used in our analysis
+def extract_list_of_used_ensamble_ids(cluster_info_file):
+    # Initialize output list
+    ensamble_ids = {}
+    # Used to skip header
+    head_count = 0
+    # Stream input file
+    f = open(cluster_info_file)
+    for line in f:
+        line = line.rstrip()
+        data = line.split()
+        # Skip header
+        if head_count == 0:
+            head_count = head_count + 1
+            continue
+        # Get array of genes mapped to this cluster (use array b/c there can be more than one gene)
+        gene_arr = data[2].split(',')
+        for gene in gene_arr:
+            ensamble_ids[gene] = 1
+    f.close()
+    return ensamble_ids
 
+# Make text file summarizing exons
+def make_text_file_summarizing_exons(cluster_info_file, gencode_hg19_file, exon_file):
+    # First extract dictionary list of ensamble ids used in our analysis
+    ensamble_ids = extract_list_of_used_ensamble_ids(cluster_info_file)
+    # Open output file handle and print header
+    t = open(exon_file, 'w')
+    t.write('chr\tstart\tend\tstrand\tgene_name\n')
+
+    # Stream gencode file
+    #loop through gencode file
+    f = gzip.open(gencode_hg19_file)
+    for line in f:
+        line = line.rstrip()
+        data = line.split()
+        if line.startswith('#'):  # ignore header lines
+            continue
+        # Parse line
+        gene_info_arr = data[8].split(';')
+        hits = 0
+        for ele in gene_info_arr:
+            info = ele.split('=')
+            if info[0] == 'gene_id':
+                hits = hits + 1
+                gene_name = info[1]
+        if hits != 1:
+            print('fundamental assumption error!!')
+            pdb.set_trace()
+        line_chrom_num = data[0]
+        gene_part = data[2]  # gene,UTR,exon,etc
+        # Skip genes not in our valid gene set
+        if gene_name not in ensamble_ids:
+            continue
+        if gene_part != 'exon':  # ignore other parts of the gene that are not the exon
+            continue
+        start = data[3]  # 5' gene start site (this is the min of all UTR,exons,etc)
+        end = data[4]  # 3' gene end site (this is the max of all UTR,exons,etc)
+        strand = data[6]
+        t.write(line_chrom_num + '\t' + start + '\t' + end + '\t' + strand + '\t' + gene_name + '\n')
+    t.close()
+    f.close()
 
 tissue_list_input_file = sys.argv[1]
 clusters_filter_output_dir = sys.argv[2]  # Input dir and output dir
@@ -302,6 +363,11 @@ output_suffix = '_filtered_jxns_cross_tissue_clusters_gene_mapped.txt'  # Suffix
 map_clusters_to_genes_with_exons(tissues, gencode_hg19_file, clusters_filter_output_dir, input_suffix, output_suffix, valid_genes)
 report_cluster_info(tissues, clusters_filter_output_dir, output_suffix, clusters_filter_output_dir + 'cluster_info.txt')
 
+
+# Make text file summarizing exons
+cluster_info_file = clusters_filter_output_dir + 'cluster_info.txt'  # Input file (created in above lines)
+exon_file = clusters_filter_output_dir + 'gencode_v26_exons.txt'  # Output file
+make_text_file_summarizing_exons(cluster_info_file, gencode_hg19_file, exon_file)
 
 
 

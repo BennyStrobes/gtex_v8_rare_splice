@@ -51,4 +51,9 @@ fi
 # With the goal of understanding difference between defining exons based on gencode vs calling exons via exon-exon junction data
 pvalue_threshold=".0001"
 distance="20"
+if false; then
 python debug_variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_debug_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance
+fi
+
+Rscript visualize_debug_variant_position_enrichment_quantification.R $variant_position_enrichment_debug_dir $pvalue_threshold $distance
+
