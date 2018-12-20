@@ -126,7 +126,7 @@ def add_covariates_to_cluster_jxn_data_structure(cluster_jxn_data_structure, cov
 	return cluster_jxn_data_structure
 
 
-def create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method, job_number):
+def create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method):
 	#Get raw data structure
 	#Also get samples, this is the maximum possible samples after filtering
 	cluster_jxn_data_structure, samples = extract_raw_cluster_jxn_data_structure(tissue_specific_jxn_file)
@@ -262,7 +262,7 @@ total_jobs = int(sys.argv[7])
 
 # Extract junction data and place in compact data structure
 # Keys are cluster_ids and values are jxn_counts
-cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method, job_number)
+cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method)
 
 
 ########################################

@@ -15,7 +15,8 @@ splicing_outlier_suffix="$5"
 european_ancestry_individual_list="$6"
 gencode_gene_annotation_file="$7"
 cluster_info_file="$8"
-variant_position_enrichment_debug_dir="$9"
+exon_file="$9"
+
 
 
 ########################
@@ -33,27 +34,17 @@ for distance in "${distances[@]}"; do
 # Loop through pvalue thresholds
 	for pvalue_threshold in "${pvalue_thresholds[@]}"; do
 		echo $distance"_"$pvalue_threshold
-		python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance
+		python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file
 	done
 done
 fi
 
+
 ########################
 # Visualize results
 ########################
-if false; then
 Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
-fi
 
 
 
-# Debugging directory containing visualizations of variant position analysis (ie distance between RV and splice sites)
-# With the goal of understanding difference between defining exons based on gencode vs calling exons via exon-exon junction data
-pvalue_threshold=".0001"
-distance="20"
-if false; then
-python debug_variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_debug_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance
-fi
-
-Rscript visualize_debug_variant_position_enrichment_quantification.R $variant_position_enrichment_debug_dir $pvalue_threshold $distance
 

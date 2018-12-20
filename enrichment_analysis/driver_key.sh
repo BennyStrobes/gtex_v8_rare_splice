@@ -45,6 +45,13 @@ splicing_outlier_suffix="_covariate_method_none_no_global_outliers_ea_only"
 # Filenames are of form: $splicing_outlier_calling_dir$tissue_name$splicing_outlier_suffix"_emperical_pvalue.txt"
 splicing_outlier_include_global_outliers_suffix="_covariate_method_none"
 
+# File containing exons of genes relevent to our analysis
+# File created in outlier calling
+exon_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/clusters_filtered/gencode_v26_exons.txt"
+
+# Directory containing filtered junction read counts
+filtered_cluster_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/clusters_filtered/"
+
 
 
 
@@ -70,10 +77,9 @@ variant_position_enrichment_dir=$output_root"variant_position_enrichment/"
 # Directory containing visualizations of variant position analysis (ie distance between RV and splice sites)
 visualize_variant_position_enrichment_dir=$output_root"visualize_variant_position_enrichment/"
 
+# Directory containing visualizations of cluster distributions for outliers compared to non-outliers
+visualize_cluster_distribution_dir=$output_root"visualize_cluster_distribution/"
 
-# Debugging directory containing visualizations of variant position analysis (ie distance between RV and splice sites)
-# With the goal of understanding difference between defining exons based on gencode vs calling exons via exon-exon junction data
-variant_position_enrichment_debug_dir=$output_root"variant_position_enrichment_debug/"
 
 
 #############################################################
@@ -104,6 +110,12 @@ fi
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
 # Then visualize results
-sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $variant_position_enrichment_debug_dir
+sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file
 
+
+#################
+# Part 4: Visualize cluster distributions for outliers compared to non-outliers
+if false; then
+sh visualize_cluster_distribution_shell.sh $rare_variant_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $cluster_info_file $exon_file $visualize_cluster_distribution_dir $tissue_names_file $filtered_cluster_dir
+fi
 
