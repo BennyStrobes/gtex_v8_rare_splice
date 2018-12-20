@@ -119,8 +119,9 @@ make_distance_density_plot_seperated_by_ss_type <- function(distance_window, inl
 variant_position_enrichment_dir <- args[1]  # Input dir
 visualize_variant_position_enrichment_dir <- args[2]  # Output dir
 
-
-
+#######################
+# Plots for RV
+#########################
 # Make density plot of distance between rare variants and splice sites 
 # Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
 distance <- "10"
@@ -140,6 +141,36 @@ pvalue_threshold <- "1e-05"
 outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
 inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
 output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_density_plot.pdf")
+title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
+make_distance_density_plot_seperated_by_ss_type(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
+
+
+
+
+#######################
+# Plots for sQTLs
+#########################
+# Make density plot of distance between rare variants and splice sites 
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+distance <- "10"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-11"
+tissue_name <- "Muscle_Skeletal"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, tissue_name, "_sqtl_significant_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, tissue_name, "_sqtl_background_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, tissue_name, "_sqtl_distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_density_plot.pdf")
+title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
+make_distance_density_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
+
+# Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites)
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+distance <- "10"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-11"
+tissue_name <- "Muscle_Skeletal"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, tissue_name, "_sqtl_significant_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, tissue_name, "_sqtl_background_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, tissue_name, "_sqtl_distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_density_plot.pdf")
 title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
 make_distance_density_plot_seperated_by_ss_type(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
 
