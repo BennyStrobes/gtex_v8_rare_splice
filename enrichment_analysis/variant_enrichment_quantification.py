@@ -89,7 +89,7 @@ def extract_rare_variants(variant_bed_file, cluster_struct, individuals, tissues
 		data = line.split()
 		# Extract relevent fields
 		indi = data[0]
-		cluster_id = data[6]
+		cluster_id = data[8]
 		# Add RV in each tissue that the individual has RNA-seq
 		for tissue in tissues:
 			# Don't have RNA-seq for this individual in this tissue

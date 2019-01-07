@@ -75,7 +75,7 @@ def extract_rare_variants(variant_bed_file, cluster_struct, individuals):
 		data = line.split()
 		# Extract relevent fields
 		indi = data[0]
-		cluster_id = data[6]
+		cluster_id = data[8]
 		# Add RV
 		# Don't have RNA-seq for this individual
 		if indi not in individuals:

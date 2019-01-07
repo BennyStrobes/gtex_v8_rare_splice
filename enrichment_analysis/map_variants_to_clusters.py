@@ -71,7 +71,7 @@ def make_chromosome(cluster_info_file, chrom_num, distance):
 
 
 # Stream variant bed file. For each variant on the current chromosome, try to map to a cluster
-def stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, t_filter, chrom_num):
+def stream_=(cluster_chromosome, variant_bed_file, t, t_filter, chrom_num):
 	chrom_string = 'chr' + str(chrom_num)
 	# Stream variant file
 	f = open(variant_bed_file)

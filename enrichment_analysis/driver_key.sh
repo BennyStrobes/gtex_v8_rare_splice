@@ -57,6 +57,12 @@ filtered_cluster_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/
 # Each file name is formatted as $tissue_name".v8.sqtl_allpairs.txt"
 sqtl_dir="/work-zfs/abattle4/lab_data/GTEx_v8/sqtl/GTEx_Analysis_v8_sQTL_all_associations/"
 
+# File containing high-confidence human branchpoints according to https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4315302/
+# Their analysis was done in K562 cells
+# Downloaded on 1/7/19
+# It is in hg19 reference. Need to liftover!
+branchpoint_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/supp_gr.182899.114_Supplemental_DataS2.bed"
+
 
 
 
@@ -85,6 +91,12 @@ visualize_variant_position_enrichment_dir=$output_root"visualize_variant_positio
 # Directory containing visualizations of cluster distributions for outliers compared to non-outliers
 visualize_cluster_distribution_dir=$output_root"visualize_cluster_distribution/"
 
+# Directory containing data for branchpoint enrichments
+branchpoint_enrichment_dir=$output_root"branchpoint_enrichment/"
+
+# Directory containing visualizations for branchpoint enrichments
+visualize_branchpoint_enrichment_dir=$output_root"visualize_branchpoint_enrichment/"
+
 
 
 #############################################################
@@ -99,7 +111,7 @@ visualize_cluster_distribution_dir=$output_root"visualize_cluster_distribution/"
 # We have variant calls ($variant_bed_file) for all European Ancestry individuals
 # We now map these variant calls to clusters if that variant is in a window (of a range of sizes) around a splice site in that cluster
 if false; then
-sh map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
+sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
 fi
 
 #################
@@ -115,12 +127,19 @@ fi
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
 # Then visualize results
+if false; then
 sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $sqtl_dir
-
+fi
 
 #################
 # Part 4: Visualize cluster distributions for outliers compared to non-outliers
 if false; then
 sh visualize_cluster_distribution_shell.sh $rare_variant_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $cluster_info_file $exon_file $visualize_cluster_distribution_dir $tissue_names_file $filtered_cluster_dir
 fi
+
+#################
+# Part 5: Compute enrichments in branchpoints for outliers vs non-outliers
+# Then visualize results
+sh branchpoint_enrichment_shell.sh $variant_bed_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir
+
 

@@ -190,8 +190,8 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 	# Open output file handles
 	t_outlier = open(outlier_positions_file, 'w')
 	t_inlier = open(inlier_positions_file, 'w')
-	t_outlier.write('distance\tsplice_site_type\n')
-	t_inlier.write('distance\tsplice_site_type\n')
+	t_outlier.write('distance\tsplice_site_type\tref\talt\n')
+	t_inlier.write('distance\tsplice_site_type\tref\talt\n')
 	# Stream variant bed file
 	f = open(variant_bed_file)
 	for line in f:
@@ -201,7 +201,9 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 		individual_id = data[0]
 		chromosome_string = data[1]
 		var_pos = int(data[2])
-		cluster_id = data[6]
+		cluster_id = data[8]
+		ref_allele = data[6]
+		alt_allele = data[7]
 		# Ignore individuals not in individuals dictionary 
 		if individual_id not in individuals:
 			continue
@@ -212,12 +214,12 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 		if individual_id in cluster_struct[cluster_id]['outlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
 			distance, ss_type = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id])
-			t_outlier.write(str(distance) + '\t' + ss_type + '\n')
+			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + ref_allele + '\t' + alt_allele + '\n')
 		# Individaul is an inlier
 		if individual_id in cluster_struct[cluster_id]['inlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
 			distance, ss_type = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id])
-			t_inlier.write(str(distance) + '\t' + ss_type + '\n')
+			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + ref_allele + '\t' + alt_allele + '\n')
 	# CLose input and output file handles
 	f.close()
 	t_inlier.close()
@@ -336,8 +338,8 @@ def get_distance_from_variant_to_exon_annotation(cluster_struct, individuals, cl
 	# Open output file handles
 	t_outlier = open(outlier_positions_file, 'w')
 	t_inlier = open(inlier_positions_file, 'w')
-	t_outlier.write('distance\tsplice_site_type\n')
-	t_inlier.write('distance\tsplice_site_type\n')
+	t_outlier.write('distance\tsplice_site_type\tref\talt\n')
+	t_inlier.write('distance\tsplice_site_type\tref\talt\n')
 	# Stream variant bed file
 	f = open(variant_bed_file)
 	for line in f:
@@ -347,7 +349,9 @@ def get_distance_from_variant_to_exon_annotation(cluster_struct, individuals, cl
 		individual_id = data[0]
 		chromosome_string = data[1]
 		var_pos = int(data[2])
-		cluster_id = data[6]
+		cluster_id = data[8]
+		ref_allele = data[6]
+		alt_allele = data[7]
 		# Ignore individuals not in individuals dictionary 
 		if individual_id not in individuals:
 			continue
@@ -365,7 +369,7 @@ def get_distance_from_variant_to_exon_annotation(cluster_struct, individuals, cl
 			else:
 				distance = -1.0*abs(distance)
 			# Write to output file
-			t_outlier.write(str(distance) + '\t' + ss_type + '\n')
+			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + ref_allele + '\t' + alt_allele + '\n')
 		# Individaul is an inlier
 		if individual_id in cluster_struct[cluster_id]['inlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
@@ -377,7 +381,7 @@ def get_distance_from_variant_to_exon_annotation(cluster_struct, individuals, cl
 			else:
 				distance = -1.0*abs(distance)
 			# Write to output file
-			t_inlier.write(str(distance) + '\t' + ss_type + '\n')
+			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + ref_allele + '\t' + alt_allele + '\n')
 	# Close file handles
 	f.close()
 	t_outlier.close()

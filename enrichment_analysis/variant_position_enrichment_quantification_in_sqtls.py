@@ -149,11 +149,11 @@ def extract_significant_sqtl_distances(filtered_sqtl_file, pvalue_thresh, signif
 			clusters[cluster_id].append((pvalue, distance, ss_type))
 	f.close()
 	t = open(significant_output_file, 'w')
-	t.write('distance\tsplice_site_type\n')
+	t.write('distance\tsplice_site_type\tref\talt\n')
 	for cluster_id in clusters.keys():
 		sig_array = clusters[cluster_id]
 		sig_array.sort(key=lambda tup: tup[0])
-		t.write(str(sig_array[0][1]) + '\t' + sig_array[0][2] + '\n')
+		t.write(str(sig_array[0][1]) + '\t' + sig_array[0][2] + '\t' + ref_allele + '\t' + alt_allele + '\n')
 	t.close()
 
 def extract_background_sqtl_distances(filtered_sqtl_file, pvalue_thresh, significant_output_file, ensamble_to_strand_mapping):
@@ -191,11 +191,11 @@ def extract_background_sqtl_distances(filtered_sqtl_file, pvalue_thresh, signifi
 			clusters[cluster_id].append((pvalue, distance, ss_type))
 	f.close()
 	t = open(significant_output_file, 'w')
-	t.write('distance\tsplice_site_type\n')
+	t.write('distance\tsplice_site_type\tref\talt\n')
 	for cluster_id in clusters.keys():
 		sig_array = clusters[cluster_id]
 		rand_index = random.randint(0,len(sig_array) -1)
-		t.write(str(sig_array[rand_index][1]) + '\t' + sig_array[rand_index][2] + '\n')
+		t.write(str(sig_array[rand_index][1]) + '\t' + sig_array[rand_index][2] + '\t' + ref_allele + '\t' + alt_allele + '\n')
 	t.close()
 
 sqtl_file = sys.argv[1]

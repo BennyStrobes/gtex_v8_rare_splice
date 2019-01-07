@@ -47,15 +47,16 @@ tissue_type="Muscle_Skeletal"
 sqtl_file=$sqtl_dir$tissue_type".v8.sqtl_allpairs.txt"
 distance_window="10"
 pvalue_thresh=".00000000001"
-#python variant_position_enrichment_quantification_in_sqtls.py $sqtl_file $gencode_gene_annotation_file $variant_position_enrichment_dir $distance_window $pvalue_thresh
-
+if false; then
+python variant_position_enrichment_quantification_in_sqtls.py $sqtl_file $gencode_gene_annotation_file $variant_position_enrichment_dir $distance_window $pvalue_thresh
+fi
 
 
 
 ########################
 # Visualize results
 ########################
-#Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
+Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
 
 
 
