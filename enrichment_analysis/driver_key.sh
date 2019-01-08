@@ -29,6 +29,9 @@ european_ancestry_individual_list="/work-zfs/abattle4/bstrober/rare_variant/gtex
 # List of rare variants across all European ancestry individuals (Created by Nicole Ferraro. Downloaded from stroberb-420@scp.nygenome.org:/data/delivery/gtex-rare/data/all_rare_variants_noWindow_SNPs.txt on 12/5/18)
 variant_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/all_rare_variants_noWindow_SNPs.txt"
 
+# List of rare variants across all European ancestry individuals mapped to gene bodies (Created by Nicole Ferraro. Downloaded from stroberb-420@scp.nygenome.org:/data/delivery/gtex-rare/data/all_rare_variants_noWindow_SNPs.txt on 12/5/18)
+variant_bed_gene_mapped_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/all_rare_variants_SNPs_10kb_genebody.txt"
+
 # File containing all cluster_ids and their corresponding junction positions
 # Generated with "outlier_calling" (https://github.com/BennyStrobes/gtex_v8_rare_splice/tree/master/outlier_calling)
 cluster_info_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/clusters_filtered/cluster_info.txt"
@@ -62,6 +65,9 @@ sqtl_dir="/work-zfs/abattle4/lab_data/GTEx_v8/sqtl/GTEx_Analysis_v8_sQTL_all_ass
 # Downloaded on 1/7/19
 # It is in hg19 reference. Need to liftover!
 branchpoint_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/supp_gr.182899.114_Supplemental_DataS2.bed"
+
+# Directory containing liftover executable
+liftover_directory="/work-zfs/abattle4/bstrober/tools/liftOver_x86/"
 
 
 
@@ -111,7 +117,7 @@ visualize_branchpoint_enrichment_dir=$output_root"visualize_branchpoint_enrichme
 # We have variant calls ($variant_bed_file) for all European Ancestry individuals
 # We now map these variant calls to clusters if that variant is in a window (of a range of sizes) around a splice site in that cluster
 if false; then
-sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
+sh map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
 fi
 
 #################
@@ -140,6 +146,9 @@ fi
 #################
 # Part 5: Compute enrichments in branchpoints for outliers vs non-outliers
 # Then visualize results
-sh branchpoint_enrichment_shell.sh $variant_bed_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir
-
+variant_cluster_intron_mapped_file=$rare_variant_dir"variant_cluster_intron_body_100_bed.txt"
+variant_cluster_intron_mapped_no_concensus_file=$rare_variant_dir"variant_cluster_intron_body_100_no_consensus_bed.txt"
+if false; then
+sh branchpoint_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
+fi
 

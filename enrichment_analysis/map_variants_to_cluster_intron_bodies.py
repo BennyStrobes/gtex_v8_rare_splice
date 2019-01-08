@@ -31,6 +31,7 @@ def fill_in_chromosome(chrom, posi, cluster_id, distance):
 		chrom[pos] = remove_duplicates(chrom[pos], cluster_id)
 	return chrom
 
+
 # Fill in the object for the current chromosome
 # Keep track of which BP on the chromosome correspond to which cluster
 def make_chromosome(cluster_info_file, chrom_num, distance):
@@ -62,16 +63,17 @@ def make_chromosome(cluster_info_file, chrom_num, distance):
 			jxn_info = jxn.split(':')
 			start = int(jxn_info[1])
 			end = int(jxn_info[2])
-			# Mark on chromosome that the start splice site and distance window around it map to this cluster_id
-			chrom = fill_in_chromosome(chrom, start, cluster_id, distance)
-			# Mark on chromosome that the end splice site and distance window around it map to this cluster_id
-			chrom = fill_in_chromosome(chrom, end, cluster_id, distance)
+			if end < start:
+				pdb.set_trace()
+			for pos in range(start, min(start+distance, end+1)):
+				chrom[pos] = remove_duplicates(chrom[pos], cluster_id)
+			for pos in range(max(end-distance+1, start), end+1):
+				chrom[pos] = remove_duplicates(chrom[pos], cluster_id)
 	f.close()
 	return chrom
 
-
 # Stream variant bed file. For each variant on the current chromosome, try to map to a cluster
-def stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, t_filter, chrom_num):
+def stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, chrom_num):
 	chrom_string = 'chr' + str(chrom_num)
 	# Stream variant file
 	f = open(variant_bed_file)
@@ -93,35 +95,73 @@ def stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, t_filter, c
 		# Print one line for every variant-cluster pair
 		# If no clusters map, put one line and a NULL where cluster_id goes
 		for cluster_id in overlapping_clusters:
-			t.write(line + '\t' + cluster_id + '\n')
 			if cluster_id != 'NULL':
-				t_filter.write(line + '\t' + cluster_id + '\n')
+				t.write(line + '\t' + cluster_id + '\n')
 	f.close()
-	return t, t_filter
+	return t
 
+# Remove splice consensus region around splice sites
+def remove_ss_from_chromosome(cluster_info_file, chrom_num, cluster_chromosome, window_size):
+	chrom_string = 'chr' + str(chrom_num)
 
-##################################
-# Command Line ARGS
-##################################
+	# Stream cluster file
+	f = open(cluster_info_file)
+	head_count = 0  # For header
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		# Skip header
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		# Standard line
+		# Parse line
+		cluster_id = data[0]
+		jxns = data[1].split(',')
+		chromer = jxns[0].split(':')[0]
+		# Skip clusters not on this chromosome
+		if chromer != chrom_string:
+			continue
+		quick_error_check_to_make_sure_there_are_at_least_2_jxns(jxns)
+		# Loop through jxns for this cluster
+		for jxn in jxns:
+			# Parse jxn
+			jxn_info = jxn.split(':')
+			start = int(jxn_info[1])
+			end = int(jxn_info[2])
+			if end < start:
+				pdb.set_trace()
+			for pos in range(start, start+window_size+1):
+				cluster_chromosome[pos] = 'NULL'
+			for pos in range(end-window_size,end+1):
+				cluster_chromosome[pos] = 'NULL'
+	f.close()
+	return cluster_chromosome
+
 variant_bed_file = sys.argv[1]  # Input variant file
 variant_cluster_bed_file = sys.argv[2]  # Output variant file (will include info on mapping of variant to clusters)
-variant_cluster_only_bed_file = sys.argv[3]  # output variant file (same as above but filters out variants not mapped to a cluster)
+variant_cluster_no_consensus_bed_file = sys.argv[3]  # output variant file (same as above but filters out variants near splice sites)
 cluster_info_file = sys.argv[4]  # File containing info/location of each cluster
-distance = int(sys.argv[5])  # Distance window around splice site that we want to consider variants
+distance = int(sys.argv[5])
 
 
 # Open output file handle
 t = open(variant_cluster_bed_file, 'w')
-t_filter = open(variant_cluster_only_bed_file, 'w')
+t_filter = open(variant_cluster_no_consensus_bed_file, 'w')
 
 # Loop through autosomal chromsosomes
 for chrom_num in range(1,23):
+	print(chrom_num)
 	# Initialize object to keep track of which BP on the chromosome correspond to which cluster
 	cluster_chromosome = {}
 	# Fill in the object for the current chromosome
 	cluster_chromosome = make_chromosome(cluster_info_file, chrom_num, distance)
 	# Stream variant bed file. For each variant on the current chromosome, try to map to a cluster
-	t, t_filter = stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, t_filter, chrom_num)
+	t = stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, chrom_num)
+	# Remove splice consensus region around splice sites
+	cluster_chromosome_no_ss = remove_ss_from_chromosome(cluster_info_file, chrom_num, cluster_chromosome, 5)
+	# Stream variant bed file. For each variant on the current chromosome, try to map to a cluster
+	t_filter = stream_variant_bed_file(cluster_chromosome_no_ss, variant_bed_file, t_filter, chrom_num)
 
 #  Close file-handles
 t.close()
