@@ -69,6 +69,10 @@ branchpoint_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/
 # Directory containing liftover executable
 liftover_directory="/work-zfs/abattle4/bstrober/tools/liftOver_x86/"
 
+# Polypyrimidine tract binding protein (PTBP) bed file in hg18 coordinates
+# Downloaded from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE19323 on 1/8/19
+ptbp_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/GSE19323_ptb_peak_cluster.bed"
+
 
 
 
@@ -102,6 +106,13 @@ branchpoint_enrichment_dir=$output_root"branchpoint_enrichment/"
 
 # Directory containing visualizations for branchpoint enrichments
 visualize_branchpoint_enrichment_dir=$output_root"visualize_branchpoint_enrichment/"
+
+# Directory containing data for ptbp enrichments
+ptbp_enrichment_dir=$output_root"ptbp_enrichment/"
+
+# Directory containing visualizations for ptbp enrichments
+visualize_ptbp_enrichment_dir=$output_root"visualize_ptbp_enrichment/"
+
 
 
 
@@ -151,4 +162,22 @@ variant_cluster_intron_mapped_no_concensus_file=$rare_variant_dir"variant_cluste
 if false; then
 sh branchpoint_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
 fi
+
+#################
+# Part 6: Compute enrichments in branchpoints for outliers vs non-outliers
+# Then visualize results
+variant_cluster_intron_mapped_file=$rare_variant_dir"variant_cluster_intron_body_100_bed.txt"
+variant_cluster_intron_mapped_no_concensus_file=$rare_variant_dir"variant_cluster_intron_body_100_no_consensus_bed.txt"
+if false; then
+sh branchpoint_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
+fi
+
+#################
+# Part 7: Compute enrichments in PTBP peaks for outliers vs non-outliers
+# Then visualize results
+variant_cluster_intron_mapped_file=$rare_variant_dir"variant_cluster_intron_body_100_bed.txt"
+variant_cluster_intron_mapped_no_concensus_file=$rare_variant_dir"variant_cluster_intron_body_100_no_consensus_bed.txt"
+sh ptbp_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $ptbp_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $ptbp_enrichment_dir $visualize_ptbp_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
+
+
 

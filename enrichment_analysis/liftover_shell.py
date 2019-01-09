@@ -10,6 +10,8 @@ def run_liftover(input_file, output_file, missing_file, liftover_directory, dire
 		direction_word = 'hg38ToHg19'
 	elif direction == 'hg19_to_hg38':
 		direction_word = 'hg19ToHg38'
+	elif direction == 'hg18_to_hg38':
+		direction_word = 'hg18ToHg38'
 	else:
 		print('assumption errror:' + direction + ' is not a valid argument')
 		pdb.set_trace()
