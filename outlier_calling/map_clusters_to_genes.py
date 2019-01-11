@@ -30,42 +30,61 @@ def add_position_to_chromosome_object(chromosome, pos, gene_name):
         chromosome[pos] = chromosome[pos] + ',' + gene_name
     return chromosome
 
+def get_gene_name(stringer):
+    gene_name = 'nuller'
+    fields = stringer.split(';')
+    for field in fields:
+        field_info = field.split(' ')
+        if field_info[0] == 'gene_id':
+            gene_name = field_info[1].split('"')[1]
+    if gene_name == 'nuller':
+        print('get_gene_name assumption erroro')
+    if gene_name.startswith('ENSG') == False:
+        print('get_gene_name assumption erroro')
+    return gene_name
+
+
 #Create an array of lenth(chromosome) [in bp]. Value of an element corresponds to a list of genes that overlap that basepair. This is used for efficient searching.
 def make_chromosome_with_gene_names(chrom_num, gencode_hg19_gene_annotation_file, valid_genes):
     #initialize chromosome array
     chromosome = ['NULL']*259250621
     #loop through gencode file
-    f = gzip.open(gencode_hg19_gene_annotation_file)
+    counter = 0
+    f = open(gencode_hg19_gene_annotation_file)
     for line in f:
         line = line.rstrip()
-        data = line.split()
+        data = line.split('\t')
         if line.startswith('#'):  # ignore header lines
             continue
-        # Parse line
-        gene_info_arr = data[8].split(';')
-        hits = 0
-        for ele in gene_info_arr:
-            info = ele.split('=')
-            if info[0] == 'gene_id':
-                hits = hits + 1
-                gene_name = info[1]
-        if hits != 1:
-            print('fundamental assumption error!!')
+        # Error Checking
+        if len(data) != 9:
+            print('length error in gencode file')
             pdb.set_trace()
+        counter = counter + 1
+        #print(counter)
+        # Extract relevent fields
         line_chrom_num = data[0]
-        gene_part = data[2]  # gene,UTR,exon,etc
-        # Skip genes not in our valid gene set
-        if gene_name not in valid_genes:
-            continue
-        if line_chrom_num != 'chr' + chrom_num:  # limit to chromosome of interest
-            continue
-        if gene_part != 'gene':  # ignore other parts of the gene as 'gene' encomposes everything
-            continue
+        gene_part = data[2]
+        gene_name = get_gene_name(data[8])
         start = int(data[3])  # 5' gene start site (this is the min of all UTR,exons,etc)
         end = int(data[4])  # 3' gene end site (this is the max of all UTR,exons,etc)
+        # limit to chromosome of interest
+        if line_chrom_num != 'chr' + chrom_num:
+            continue
+        # Only consider lines for whole gene
+        if gene_part != 'gene':
+            continue
+        # ignore genes not in our list
+        if gene_name not in valid_genes:
+            continue
+        # Error checking
+        if end < start:
+            print('order error in gencode file')
+            pdb.set_trace()
         #Fill in chromosome object from chromosome[start:end+1] with the addition of this gene name
         chromosome = add_gene_to_chromosome_object(chromosome, start, end, gene_name)
         #NOTE: ENSAMBLE Id's never come up more than once when gene_part == 'gene'
+    f.close()
     return chromosome
 
 #Create an array of lenth(chromosome) [in bp]. Value of an element corresponds to a list of genes that overlap that basepair. This is used for efficient searching.
@@ -74,26 +93,22 @@ def make_chromosome_with_gene_names_with_exon(chrom_num, gencode_hg19_gene_annot
     chromosome = ['NULL']*259250621
     parts = {}
     #loop through gencode file
-    f = gzip.open(gencode_hg19_gene_annotation_file)
+    f = open(gencode_hg19_gene_annotation_file)
     for line in f:
         line = line.rstrip()
-        data = line.split()
+        data = line.split('\t')
         if line.startswith('#'):  # ignore header lines
             continue
-        # Parse line
-        gene_info_arr = data[8].split(';')
-        hits = 0
-        for ele in gene_info_arr:
-            info = ele.split('=')
-            if info[0] == 'gene_id':
-                hits = hits + 1
-                gene_name = info[1]
-        if hits != 1:
-            print('fundamental assumption error!!')
+        # Error Checking
+        if len(data) != 9:
+            print('length error in gencode file')
             pdb.set_trace()
+        # Extract relevent fields
         line_chrom_num = data[0]
-        gene_part = data[2]  # gene,UTR,exon,etc
-        parts[gene_part] = 1
+        gene_part = data[2]
+        gene_name = get_gene_name(data[8])
+        start = int(data[3])  # 5' gene start site (this is the min of all UTR,exons,etc)
+        end = int(data[4])  # 3' gene end site (this is the max of all UTR,exons,etc)
         # Skip genes not in our valid gene set
         if gene_name not in valid_genes:
             continue
@@ -103,6 +118,9 @@ def make_chromosome_with_gene_names_with_exon(chrom_num, gencode_hg19_gene_annot
             continue
         start = int(data[3])  # 5' gene start site (this is the min of all UTR,exons,etc)
         end = int(data[4])  # 3' gene end site (this is the max of all UTR,exons,etc)
+        # Ignore genes not in our list
+        if gene_name not in valid_genes:
+            continue
         #Fill in chromosome object from chromosome[start:end+1] with the addition of this gene name
         chromosome = add_position_to_chromosome_object(chromosome, start, gene_name)
         chromosome = add_position_to_chromosome_object(chromosome, end, gene_name)
@@ -304,27 +322,21 @@ def make_text_file_summarizing_exons(cluster_info_file, gencode_hg19_file, exon_
     t = open(exon_file, 'w')
     t.write('chr\tstart\tend\tstrand\tgene_name\n')
 
-    # Stream gencode file
-    #loop through gencode file
-    f = gzip.open(gencode_hg19_file)
+    f = open(gencode_hg19_file)
     for line in f:
         line = line.rstrip()
-        data = line.split()
+        data = line.split('\t')
         if line.startswith('#'):  # ignore header lines
             continue
-        # Parse line
-        gene_info_arr = data[8].split(';')
-        hits = 0
-        for ele in gene_info_arr:
-            info = ele.split('=')
-            if info[0] == 'gene_id':
-                hits = hits + 1
-                gene_name = info[1]
-        if hits != 1:
-            print('fundamental assumption error!!')
+        # Error Checking
+        if len(data) != 9:
+            print('length error in gencode file')
             pdb.set_trace()
+        # Extract relevent fields
         line_chrom_num = data[0]
-        gene_part = data[2]  # gene,UTR,exon,etc
+        gene_part = data[2]
+        gene_name = get_gene_name(data[8])
+        strand = data[6]
         # Skip genes not in our valid gene set
         if gene_name not in ensamble_ids:
             continue
