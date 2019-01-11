@@ -5,6 +5,7 @@ import pdb
 import pystan
 import pickle
 import time
+from scipy.stats import rankdata
 
 
 ###########################################################
@@ -148,9 +149,8 @@ def run_dm_outlier_analysis(X, cov_mat, DM_GLM):
 	#########################################################
 	#Take num_samples for the fitted DM. For each draw, compute mahalanobis distance
 	num_reads = 20000  # Number of reads per sample
-	num_samples = 1000000  # Number of samples
-	sample_mahalanobis_distances = generate_background_mahalanobis_distances(alpha, num_samples, num_reads)
-
+	num_background_samples = 1000000
+	sample_mahalanobis_distances = generate_background_mahalanobis_distances(alpha, num_background_samples, num_reads)
 
 	#########################################################
 	# Compute pvalues for observed samples based on emperical distribution
@@ -164,12 +164,9 @@ def run_dm_outlier_analysis(X, cov_mat, DM_GLM):
 		pvalues.append(pvalue)
 	# Convert to numpy array
 	pvalues = np.asarray(pvalues)
+
+
 	return mahalanobis_distances, pvalues, alpha
-
-
-
-
-
 
 
 

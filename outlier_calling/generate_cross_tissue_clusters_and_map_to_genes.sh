@@ -17,9 +17,8 @@ gene_list="$5"
 if false; then
 python generate_cross_tissue_clusters.py $tissue_names_file $filtered_cluster_dir
 fi
-
-python map_clusters_to_genes.py $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $gene_list
-
 if false; then
-Rscript visualize_clusters.R $tissue_names_file $filtered_cluster_dir $cluster_visualization_dir
+python map_clusters_to_genes.py $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $gene_list
 fi
+
+Rscript visualize_clusters.R $tissue_names_file $filtered_cluster_dir $cluster_visualization_dir

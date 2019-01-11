@@ -139,6 +139,7 @@ def create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_
 
 	# Add Covariate Matrix to cluster_jxn_data_structure
 	cluster_jxn_data_structure = add_covariates_to_cluster_jxn_data_structure(cluster_jxn_data_structure, covariate_method)
+
 	return cluster_jxn_data_structure, samples
 
 # For parallelization purposes
@@ -179,10 +180,12 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 	# Pystan optimizizer
 	#DM_GLM = pystan.StanModel(file = "dm_glm_multi_conc.stan")
 	DM_GLM = pickle.load(open('/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/outlier_calling/dm_glm_multi_conc.pkl', 'rb'))
-
 	#Initialize output files
 	t_MD = open(output_root + '_md.txt','w')  # Filehandle for matrix of mahalanobis distances
 	t_pvalue = open(output_root + '_emperical_pvalue.txt', 'w')  # Filehandle for matrix of pvalues
+
+
+
 	# Write headers for output files
 	t_MD.write('CLUSTER_ID\t' + '\t'.join(all_samples) + '\n')
 	t_pvalue.write('CLUSTER_ID\t' + '\t'.join(all_samples) + '\n')
@@ -190,23 +193,11 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 	start_time = time.time()
 	county = 0 
 	total = 0
-	# Loop through cluster_id
+	# Loop through clusters
 	for counter, cluster_id in enumerate(sorted(cluster_jxn_data_structure.keys())):
 		# Skip cluster_ids not in this parallelization run
 		if counter < start_number or counter > end_number:
 			continue
-		####################################################################
-		# Timing/Debugging related stuff
-		####################################################################
-		curr_time = time.time()
-		diff = curr_time-start_time
-		start_time = curr_time
-		time_min = diff/60.0
-		print(time_min)
-		print('##################')
-		print('START ' + cluster_id)
-
-
 		####################################################################
 		# Actual Analysis
 		####################################################################
@@ -223,8 +214,6 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		#   3. alpha: vector of length num_jxns which defines the fitted dirichlet multinomial distribution
 		try:
 			mahalanobis_distances, pvalues, alpha = dm_glm.run_dm_outlier_analysis(X, cov_mat, DM_GLM)
-
-
 			####################################################################
 			# Print results to output file
 			####################################################################
@@ -234,12 +223,8 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 			t_pvalue = outlier_calling_print_helper(pvalues, cluster_samples, all_samples, t_pvalue, cluster_id)
 		except:
 			print('miss: ' + cluster_id)
-	print(county)
-	print(total)
 	t_MD.close()
 	t_pvalue.close()
-
-
 
 
 ########################
@@ -260,10 +245,40 @@ job_number = int(sys.argv[6])
 total_jobs = int(sys.argv[7])
 
 
+
+
 # Extract junction data and place in compact data structure
 # Keys are cluster_ids and values are jxn_counts
 cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method)
 
+
+
+#For parallelization purposes
+start_number, end_number = parallelization_start_and_end(len(cluster_jxn_data_structure), job_number, total_jobs)
+
+# Call splicing outliers for each cluster
+# Also write to output
+call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, start_number, end_number)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################
+# OLD SCRIPTS
+# NO LONGER CURRENTLY USED
+#########################################
 
 ########################################
 # To skip running above line
@@ -278,10 +293,3 @@ cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(ti
 #cluster_jxn_data_structure = pickle.load(open(output_root + 'cluster_data_struct.pkl','rb'))
 #all_samples = pickle.load(open(output_root + 'all_samples.pkl','rb'))
 ########################################
-
-#For parallelization purposes
-start_number, end_number = parallelization_start_and_end(len(cluster_jxn_data_structure), job_number, total_jobs)
-
-# Call splicing outliers for each cluster
-# Also write to output
-call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, start_number, end_number)

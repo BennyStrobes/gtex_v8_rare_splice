@@ -113,9 +113,11 @@ fi
 ######## 1. Generate clusters that are consistent across tissues (ie Cluster 1 in tissue 1 corresponds to the same set of junctions in all other tissues)
 ######## 2. Map Clusters to genes
 ######## 3. Visualize clusters
-sh generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir $gene_list
+if false; then
+sbatch generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir $gene_list
+fi
 
-
+tissue_names_file2="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtex_v8_tissues_subset.txt"
 
 
 #################
@@ -125,7 +127,6 @@ total_jobs="10"
 # Whether to include covariates in GLM
 covariate_method="none"
 
-if false; then
 while read tissue_type; do
 
 	for job_number in $(seq 0 `expr $total_jobs - "1"`); do
@@ -133,11 +134,9 @@ while read tissue_type; do
 
 		output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
 		sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
-
 	done
 
-done<$tissue_names_file
-fi
+done<$tissue_names_file2
 
 
 
