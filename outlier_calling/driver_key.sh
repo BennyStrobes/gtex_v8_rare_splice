@@ -117,8 +117,6 @@ if false; then
 sbatch generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir $gene_list
 fi
 
-tissue_names_file2="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtex_v8_tissues_subset.txt"
-
 
 #################
 # Part 3: Call outliers in each tissue
@@ -126,7 +124,7 @@ tissue_names_file2="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/in
 total_jobs="10"
 # Whether to include covariates in GLM
 covariate_method="none"
-
+if false; then
 while read tissue_type; do
 
 	for job_number in $(seq 0 `expr $total_jobs - "1"`); do
@@ -136,9 +134,8 @@ while read tissue_type; do
 		sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
 	done
 
-done<$tissue_names_file2
-
-
+done<$tissue_names_file
+fi
 
 
 
@@ -146,8 +143,9 @@ done<$tissue_names_file2
 
 
 #################
-# Part 4: Merge outlier calls (across parallelization runs) and visualize outlier calls (in each tissue seperately)
-if false; then
-sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list
-fi
+# Part 4: Merge outlier calls (across parallelization runs)
+# get gene level pvalues (accounting for the number of clusters we are taking the minimum over)
+# visualize outlier calls (in each tissue seperately)
+sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list $filtered_cluster_dir
+
 
