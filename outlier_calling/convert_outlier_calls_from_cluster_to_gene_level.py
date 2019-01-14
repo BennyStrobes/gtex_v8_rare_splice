@@ -96,11 +96,19 @@ def correct_pvalues(uncorrected_pvalues, num_clusters):
 
 # For each gene, correct the gene level pvalues (accounting for the number of clusters we are taking the minimum over)
 # Then print to output file
-def correct_gene_level_pvalues_and_print_to_output_file(gene_level_outlier_file, gene_based_data_structure, sample_names):
+def correct_gene_level_pvalues_and_print_to_output_file(gene_level_outlier_file, gene_level_uncorrected_outlier_file, gene_level_comparison_outlier_file, gene_based_data_structure, sample_names):
 	# Open output file handle
 	t = open(gene_level_outlier_file, 'w')
 	# Print header
 	t.write('GENE_ID\t' + '\t'.join(sample_names) + '\n')
+	# Open output file handle for uncorrected pvalues
+	t2 = open(gene_level_uncorrected_outlier_file, 'w')
+	# Print header 
+	t2.write('GENE_ID\t' + '\t'.join(sample_names) + '\n')
+	# Open output file handle comparing corrected and uncorrected pvalues
+	t3 = open(gene_level_comparison_outlier_file,'w')
+	# print header
+	t3.write('corrected_pvalue\tuncorrected_pvalue\tnumber_of_clusters\n')
 	# Loop through genes
 	for gene in gene_based_data_structure.keys():
 		# Extract information from gene based data structure
@@ -110,8 +118,15 @@ def correct_gene_level_pvalues_and_print_to_output_file(gene_level_outlier_file,
 		corrected_pvalues = correct_pvalues(uncorrected_pvalues, num_clusters)
 		# Print to output file
 		t.write(gene + '\t' + '\t'.join(corrected_pvalues.astype(str)) + '\n')
+		t2.write(gene + '\t' + '\t'.join(uncorrected_pvalues.astype(str)) + '\n')
+		# print to comparison file
+		for i, corrected_pvalue in enumerate(corrected_pvalues):
+			uncorrected_pvalue = uncorrected_pvalues[i]
+			t3.write(str(corrected_pvalue) + '\t' + str(uncorrected_pvalue) + '\t' + str(num_clusters) + '\n')
 	# Close output file
 	t.close()
+	t2.close()
+	t3.close()
 
 
 ###########################
@@ -128,8 +143,11 @@ cluster_level_outlier_file = output_root + 'merged_emperical_pvalue.txt'
 #  Output file containing oultier calls at the gene level (for a specific tissue)
 gene_level_outlier_file = output_root + 'merged_emperical_pvalue_gene_level.txt'
 
+#  Output file containing oultier calls at the gene level (for a specific tissue) without correcting for number of clusters we are taking minimum over
+gene_level_uncorrected_outlier_file = output_root + 'merged_emperical_pvalue_uncorrected_gene_level.txt'
 
-
+#  Output file containing oultier calls at the gene level (for a specific tissue) with and without correcting for number of clusters we are taking minimum over
+gene_level_comparison_outlier_file = output_root + 'gene_level_method_comparison.txt'
 
 
 # Get mapping from clusterID to array of genes mapped to that cluster
@@ -145,6 +163,6 @@ gene_based_data_structure, sample_names = get_gene_based_pvalue_data_structure(c
 
 # For each gene, correct the gene level pvalues (accounting for the number of clusters we are taking the minimum over)
 # Then print to output file
-correct_gene_level_pvalues_and_print_to_output_file(gene_level_outlier_file, gene_based_data_structure, sample_names)
+correct_gene_level_pvalues_and_print_to_output_file(gene_level_outlier_file, gene_level_uncorrected_outlier_file, gene_level_comparison_outlier_file, gene_based_data_structure, sample_names)
 
 

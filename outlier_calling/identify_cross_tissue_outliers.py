@@ -63,13 +63,13 @@ def update_multi_tissue_outliers_for_one_tissue(tissue_splicing_outlier_file, mu
 
 
 # Create object that maps from [cluster_id][donor_id] to a vector of pvalues (each element corresponding to one tissue)
-def create_multi_tissue_outlier_object(tissue_names, splicing_outlier_dir, covariate_method):
+def create_multi_tissue_outlier_object(tissue_names, splicing_outlier_dir, covariate_method, suffix):
 	# Initialize object
 	multi_tissue_outliers = {}
 	# Fill in multi_tissue_outliers for each tissue in series
 	for tissue in tissue_names:
 		# outlier file for this tissue
-		tissue_splicing_outlier_file = splicing_outlier_dir + tissue + '_covariate_method_' + covariate_method + '_merged_emperical_pvalue.txt'
+		tissue_splicing_outlier_file = splicing_outlier_dir + tissue + '_covariate_method_' + covariate_method + '_merged_' + suffix + '.txt'
 		# Fill in multi_tissue_outliers for this tissue
 		multi_tissue_outliers = update_multi_tissue_outliers_for_one_tissue(tissue_splicing_outlier_file, multi_tissue_outliers)
 	return multi_tissue_outliers
@@ -161,7 +161,9 @@ def filter_individuals_of_outlier_file(outlier_input_file, outlier_output_file, 
 
 
 # Extract dictionary list of individuals that are "good" (to keep) samples
-def extract_non_global_outlier_individuals(individual_to_number_outliers_output_file, num_global_outlier_clusters):
+def extract_non_global_outlier_individuals(individual_to_number_outliers_output_file):
+	counts = np.loadtxt(individual_to_number_outliers_output_file,dtype=str,delimiter='\t')[1:,1].astype(float)
+	max_number_global_outliers = np.percentile(counts,75) + 3.0*(np.percentile(counts,75) - np.percentile(counts,25))
 	# Initialize list
 	individuals_to_keep = {}
 	# For header
@@ -178,7 +180,7 @@ def extract_non_global_outlier_individuals(individual_to_number_outliers_output_
 		# Standard line
 		num_outliers = int(data[1])
 		individual = data[0]
-		if num_outliers < num_global_outlier_clusters:
+		if num_outliers <= max_number_global_outliers:
 			individuals_to_keep[individual] = 1
 	f.close()
 	return individuals_to_keep
@@ -194,8 +196,8 @@ covariate_method = sys.argv[3]
 min_number_of_expressed_tissues = int(sys.argv[4])
 # File containing list of individuals of european ancestry
 european_ancestry_individual_list = sys.argv[5]
-# A donor is called a "global outlier" if it is a median(pvalue) outlier in at least $num_global_outlier_clusters clusters
-num_global_outlier_clusters = int(sys.argv[6])
+# Suffix at end of outlier files (either 'emperical_pvalue' or 'emperical_pvalue_gene_level')
+suffix = sys.argv[6]
 
 
 # Extract vector of tissue names
@@ -209,21 +211,21 @@ ea_individuals = extract_dictionary_list_of_european_ancestry_individuals(europe
 
 
 # Create object that maps from [cluster_id][donor_id] to a vector of pvalues (each element corresponding to one tissue)
-multi_tissue_outliers = create_multi_tissue_outlier_object(tissue_names, splicing_outlier_dir, covariate_method)
+multi_tissue_outliers = create_multi_tissue_outlier_object(tissue_names, splicing_outlier_dir, covariate_method, suffix)
 
 # Print median(pvalue) outlier file
-cross_tissue_outlier_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_emperical_pvalue.txt'
+cross_tissue_outlier_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_' + suffix + '.txt'
 print_cross_tissue_outlier_file(all_individuals, multi_tissue_outliers, min_number_of_expressed_tissues, cross_tissue_outlier_file)
 
 # Extract dictionary list of individuals that are "good" (to keep; non-global outliers) samples
 individual_to_number_outliers_output_file = splicing_outlier_dir + 'number_of_multi_tissue_outliers.txt'
-individuals_non_global_outliers = extract_non_global_outlier_individuals(individual_to_number_outliers_output_file, num_global_outlier_clusters)
+individuals_non_global_outliers = extract_non_global_outlier_individuals(individual_to_number_outliers_output_file)
 
 # Filter individuals (columns) in outlier file
-cross_tissue_outlier_no_global_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_emperical_pvalue.txt'
+cross_tissue_outlier_no_global_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_' + suffix + '.txt'
 filter_individuals_of_outlier_file(cross_tissue_outlier_file, cross_tissue_outlier_no_global_file, individuals_non_global_outliers)
 
-cross_tissue_outlier_no_global_no_ea_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue.txt'
+cross_tissue_outlier_no_global_no_ea_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_ea_only_' + suffix + '.txt'
 filter_individuals_of_outlier_file(cross_tissue_outlier_no_global_file, cross_tissue_outlier_no_global_no_ea_file, ea_individuals)
 
 

@@ -126,14 +126,11 @@ total_jobs="10"
 covariate_method="none"
 if false; then
 while read tissue_type; do
-
 	for job_number in $(seq 0 `expr $total_jobs - "1"`); do
 		tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
-
 		output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
 		sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
 	done
-
 done<$tissue_names_file
 fi
 
@@ -146,6 +143,7 @@ fi
 # Part 4: Merge outlier calls (across parallelization runs)
 # get gene level pvalues (accounting for the number of clusters we are taking the minimum over)
 # visualize outlier calls (in each tissue seperately)
+if false; then
 sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list $filtered_cluster_dir
-
+fi
 

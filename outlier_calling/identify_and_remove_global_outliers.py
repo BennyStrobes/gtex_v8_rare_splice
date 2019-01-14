@@ -56,7 +56,7 @@ def create_multi_tissue_outlier_object(tissue_names, splicing_outlier_dir, covar
 	# Fill in multi_tissue_outliers for each tissue in series
 	for tissue in tissue_names:
 		# outlier file for this tissue
-		tissue_splicing_outlier_file = splicing_outlier_dir + tissue + '_covariate_method_' + covariate_method + '_merged_emperical_pvalue.txt'
+		tissue_splicing_outlier_file = splicing_outlier_dir + tissue + '_covariate_method_' + covariate_method + '_merged_emperical_pvalue_gene_level.txt'
 		# Fill in multi_tissue_outliers for this tissue
 		multi_tissue_outliers = update_multi_tissue_outliers_for_one_tissue(tissue_splicing_outlier_file, multi_tissue_outliers)
 	return multi_tissue_outliers
@@ -140,7 +140,9 @@ def print_individual_to_number_outliers_european_only(individual_to_number_outli
 	t.close()
 
 # Extract dictionary list of individuals that are "good" (to keep) samples
-def extract_non_global_outlier_individuals(individual_to_number_outliers_output_file, num_global_outlier_clusters):
+def extract_non_global_outlier_individuals(individual_to_number_outliers_output_file):
+	counts = np.loadtxt(individual_to_number_outliers_output_file,dtype=str,delimiter='\t')[1:,1].astype(float)
+	max_number_global_outliers = np.percentile(counts,75) + 3.0*(np.percentile(counts,75) - np.percentile(counts,25))
 	# Initialize list
 	individuals_to_keep = {}
 	# For header
@@ -157,7 +159,7 @@ def extract_non_global_outlier_individuals(individual_to_number_outliers_output_
 		# Standard line
 		num_outliers = int(data[1])
 		individual = data[0]
-		if num_outliers < num_global_outlier_clusters:
+		if num_outliers <= max_number_global_outliers:
 			individuals_to_keep[individual] = 1
 	f.close()
 	return individuals_to_keep
@@ -194,26 +196,26 @@ def filter_individuals_of_outlier_file(outlier_input_file, outlier_output_file, 
 	t.close()
 
 # For each tissue specific outlier file, remove individuals that are global outliers
-def remove_global_outliers_from_tissue_specific_outlier_calls(individual_to_number_outliers_output_file, tissue_names, num_global_outlier_clusters, covariate_method, splicing_outlier_dir):
+def remove_global_outliers_from_tissue_specific_outlier_calls(individual_to_number_outliers_output_file, tissue_names, covariate_method, splicing_outlier_dir, suffix):
 	# Extract dictionary list of individuals that are "good" (to keep) samples
-	individuals_to_keep = extract_non_global_outlier_individuals(individual_to_number_outliers_output_file, num_global_outlier_clusters)
+	individuals_to_keep = extract_non_global_outlier_individuals(individual_to_number_outliers_output_file)
 	# Loop through tissues
 	for tissue_name in tissue_names:
 		# Splicing outlier input file
-		outlier_input_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_merged_emperical_pvalue.txt'
+		outlier_input_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_merged_' + suffix + '.txt'
 		# Filtered splicing outlier output file
-		outlier_output_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_no_global_outliers_merged_emperical_pvalue.txt'
+		outlier_output_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_no_global_outliers_merged_' + suffix + '.txt'
 		# Filter individuals (columns) in outlier file
 		filter_individuals_of_outlier_file(outlier_input_file, outlier_output_file, individuals_to_keep)
 
 # For each tissue specific outlier file, remove individuals that are not european ancestry
-def remove_non_european_ancestry_individuals_from_tissue_specific_outlier_calls(ea_individuals, tissue_names, num_global_outlier_clusters, covariate_method, splicing_outlier_dir):
+def remove_non_european_ancestry_individuals_from_tissue_specific_outlier_calls(ea_individuals, tissue_names, covariate_method, splicing_outlier_dir, suffix):
 	# Loop through tissues
 	for tissue_name in tissue_names:
 		# Splicing outlier input file
-		outlier_input_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_no_global_outliers_merged_emperical_pvalue.txt'
+		outlier_input_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_no_global_outliers_merged_' + suffix + '.txt'
 		# Filtered splicing outlier output file
-		outlier_output_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_no_global_outliers_ea_only_merged_emperical_pvalue.txt'
+		outlier_output_file = splicing_outlier_dir + tissue_name + '_covariate_method_' + covariate_method + '_no_global_outliers_ea_only_merged_' + suffix + '.txt'
 		# Filter individuals (columns) in outlier file
 		filter_individuals_of_outlier_file(outlier_input_file, outlier_output_file, ea_individuals)
 
@@ -225,18 +227,16 @@ splicing_outlier_dir = sys.argv[2]
 covariate_method = sys.argv[3]
 # To be eligible to be a "global outlier", (individual, cluster) pair must be expressed in at least $min_number_of_expressed_tissues
 min_number_of_expressed_tissues = int(sys.argv[4])
-# A donor is called a "global outlier" if it is a median(pvalue) outlier in at least $num_global_outlier_clusters clusters
-num_global_outlier_clusters = int(sys.argv[5])
 # Anything less than p=$pvalue_threshold is considered an outlier
-pvalue_threshold = float(sys.argv[6])
+pvalue_threshold = float(sys.argv[5])
 # File containing list of individuals of european ancestry
-european_ancestry_individual_list = sys.argv[7]
+european_ancestry_individual_list = sys.argv[6]
 
 
 # Extract vector of tissue names
 tissue_names = extract_tissue_names(tissue_names_file)
 
-# Create object that maps from [cluster_id][donor_id] to a vector of pvalues (each element corresponding to one tissue)
+# Create object that maps from [gene_id][donor_id] to a vector of pvalues (each element corresponding to one tissue)
 multi_tissue_outliers = create_multi_tissue_outlier_object(tissue_names, splicing_outlier_dir, covariate_method)
 
 # Create object containing mapping from individual to number of global_outliers
@@ -253,8 +253,14 @@ ea_individuals = extract_dictionary_list_of_european_ancestry_individuals(europe
 individual_to_number_outliers_ea_only_output_file = splicing_outlier_dir + 'number_of_multi_tissue_outliers_ea_only.txt'
 print_individual_to_number_outliers_european_only(individual_to_number_outliers_output_file, individual_to_number_outliers_ea_only_output_file, ea_individuals)
 
-# For each tissue specific outlier file, remove individuals that are global outliers
-remove_global_outliers_from_tissue_specific_outlier_calls(individual_to_number_outliers_output_file, tissue_names, num_global_outlier_clusters, covariate_method, splicing_outlier_dir)
+# For each tissue specific outlier file, remove individuals that are global outliers (for cluster level outlier file)
+remove_global_outliers_from_tissue_specific_outlier_calls(individual_to_number_outliers_output_file, tissue_names, covariate_method, splicing_outlier_dir, 'emperical_pvalue')
 
-# For each tissue specific outlier file, remove individuals that are not european ancestry
-remove_non_european_ancestry_individuals_from_tissue_specific_outlier_calls(ea_individuals, tissue_names, num_global_outlier_clusters, covariate_method, splicing_outlier_dir)
+# For each tissue specific outlier file, remove individuals that are not european ancestry (for cluster level outlier file)
+remove_non_european_ancestry_individuals_from_tissue_specific_outlier_calls(ea_individuals, tissue_names, covariate_method, splicing_outlier_dir, 'emperical_pvalue')
+
+# For each tissue specific outlier file, remove individuals that are global outliers (for gene level outlier file)
+remove_global_outliers_from_tissue_specific_outlier_calls(individual_to_number_outliers_output_file, tissue_names, covariate_method, splicing_outlier_dir, 'emperical_pvalue_gene_level')
+
+# For each tissue specific outlier file, remove individuals that are not european ancestry (for gene level outlier file)
+remove_non_european_ancestry_individuals_from_tissue_specific_outlier_calls(ea_individuals, tissue_names, covariate_method, splicing_outlier_dir, 'emperical_pvalue_gene_level')

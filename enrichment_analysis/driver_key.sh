@@ -127,9 +127,8 @@ visualize_ptbp_enrichment_dir=$output_root"visualize_ptbp_enrichment/"
 # Part 1: Map variants to clusters
 # We have variant calls ($variant_bed_file) for all European Ancestry individuals
 # We now map these variant calls to clusters if that variant is in a window (of a range of sizes) around a splice site in that cluster
-if false; then
-sh map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
-fi
+sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
+
 
 #################
 # Part 2: Compute enrichment of rare variants within spliding outlier calls
@@ -177,7 +176,8 @@ fi
 # Then visualize results
 variant_cluster_intron_mapped_file=$rare_variant_dir"variant_cluster_intron_body_100_bed.txt"
 variant_cluster_intron_mapped_no_concensus_file=$rare_variant_dir"variant_cluster_intron_body_100_no_consensus_bed.txt"
+if false; then
 sh ptbp_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $ptbp_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $ptbp_enrichment_dir $visualize_ptbp_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
-
+fi
 
 
