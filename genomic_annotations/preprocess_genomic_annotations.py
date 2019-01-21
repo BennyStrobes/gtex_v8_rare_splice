@@ -2,7 +2,6 @@ import numpy as np
 import os
 import sys
 import pdb
-import pysam
 
 
 # Get dictionary list of rare varants
@@ -515,40 +514,23 @@ raw_genomic_annotation_file = sys.argv[1]
 variant_bed_file = sys.argv[2]
 rare_variant_to_gene_file = sys.argv[3]
 genomic_annotation_dir = sys.argv[4]
-cadd_file = sys.argv[5]
-cadd_anno_file = sys.argv[6]
+
 
 # Create mapping from genomic position to ensamble ids
-#position_to_ensambles = get_mapping_from_position_to_ensamble_id(rare_variant_to_gene_file)
+position_to_ensambles = get_mapping_from_position_to_ensamble_id(rare_variant_to_gene_file)
 
 
 # Get dictionary list of rare varants
 ##############################################
-#rare_variants = get_dictionary_list_of_rare_variants(variant_bed_file, position_to_ensambles)
+rare_variants = get_dictionary_list_of_rare_variants(variant_bed_file, position_to_ensambles)
 
 # STEP 1
 # Filtered lines in genomic annotation file to only include (variant, individual)
 # NOTE: Every variant-gene-individual from rare_variants is present in the file
 filtered_genomic_annotation_file = genomic_annotation_dir + 'filtered_raw_genomic_annotations.txt'
-#filter_raw_genomic_annotation_file(raw_genomic_annotation_file, filtered_genomic_annotation_file, rare_variants)
+filter_raw_genomic_annotation_file(raw_genomic_annotation_file, filtered_genomic_annotation_file, rare_variants)
 
 # STEP 2
 # Compress lines from transcript level to gene level
 gene_level_genomic_annotation_file = genomic_annotation_dir + 'filtered_raw_gene_level_genomic_annotations.txt'
-#compress_annotations_from_transcript_level_to_gene_level(filtered_genomic_annotation_file, gene_level_genomic_annotation_file)
-
-# Step 2a
-# Add annotations to genomic file
-gene_level_genomic_annotation_add_anno_file = genomic_annotation_dir + 'filtered_raw_gene_level_genomic_added_annotations.txt'
-#add_annotations(gene_level_genomic_annotation_file, gene_level_genomic_annotation_add_anno_file, cadd_file, cadd_anno_file)
-
-# STEP 3
-# Make genomic annotations real valued
-# Many of the genomic annotations are categorical. Convert these categorical variables to sets of binary variables.
-gene_level_real_valued_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_genomic_annotations.txt'
-# make_real_valued_genomic_annotations(gene_level_genomic_annotation_file, gene_level_real_valued_genomic_annotation_file)
-
-# STEP 4
-# Compress multiple variants onto same gene
-gene_level_real_valued_variant_compressed_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_variant_compressed_genomic_annotations.txt'
-#compress_multiple_variants_onto_same_gene(gene_level_real_valued_genomic_annotation_file, gene_level_real_valued_variant_compressed_genomic_annotation_file)
+compress_annotations_from_transcript_level_to_gene_level(filtered_genomic_annotation_file, gene_level_genomic_annotation_file)

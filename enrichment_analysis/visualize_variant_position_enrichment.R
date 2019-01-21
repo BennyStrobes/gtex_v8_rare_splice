@@ -23,25 +23,45 @@ extract_data_no_splice_site_type <- function(distance_object, distance_window) {
 extract_odds_ratio_data <- function(outlier_distances, inlier_distances, distance_window) {
 	dist_to_ss <- c()
 	odds_ratios <- c()
+	upper_bounds <- c()
+	lower_bounds <- c()
 	for (distance_iter in -distance_window:distance_window) {
 		rv_outlier <- sum(outlier_distances[,1] == distance_iter)
 		rv_inlier <- sum(inlier_distances[,1] == distance_iter)
 		no_rv_outlier <- sum(outlier_distances[,1] != distance_iter)
 		no_rv_inlier <- sum(inlier_distances[,1] != distance_iter)
-		odds_ratio <- (rv_outlier/rv_inlier)/(no_rv_outlier/no_rv_inlier)
+		# odds_ratio_old <- (rv_outlier/rv_inlier)/(no_rv_outlier/no_rv_inlier)
+		a <- rv_outlier
+		b <- rv_outlier + no_rv_outlier
+		c <- rv_inlier
+		d <- rv_inlier + no_rv_inlier
+		orat <- (a/b)/(c/d)
+
+		log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
+		#upper_bound <- exp(log_orat + log_bounds)
+		#lower_bound <- exp(log_orat - log_bounds) 
+		upper_bound <- orat*exp(log_bounds)
+		lower_bound <- orat*exp(-log_bounds)
+		if (orat == 0) {
+			upper_bound = 0
+			lower_bound = 0
+		}
 
 		# Add data to array
-		odds_ratios <- c(odds_ratios, odds_ratio)
+		odds_ratios <- c(odds_ratios, orat)
 		dist_to_ss <- c(dist_to_ss, distance_iter)
+		upper_bounds <- c(upper_bounds, upper_bound)
+		lower_bounds <- c(lower_bounds, lower_bound)
 	}
-	rv_outlier <- sum(outlier_distances[,1] == distance_window)
-	rv_inlier <- sum(inlier_distances[,1] == distance_window)
-	no_rv_outlier <- sum(outlier_distances[,1] != distance_window)
-	no_rv_inlier <- sum(inlier_distances[,1] != distance_window)
-	odds_ratio <- (rv_outlier/rv_inlier)/(no_rv_outlier/no_rv_inlier)
-	odds_ratios <- c(odds_ratios, odds_ratio)
-	dist_to_ss <- c(dist_to_ss, distance_window + 1)
-	df <- data.frame(odds_ratio=odds_ratios, dist_to_ss=dist_to_ss-.5)
+	df <- data.frame(odds_ratio=odds_ratios, dist_to_ss=dist_to_ss, lower_bounds=lower_bounds, upper_bounds=upper_bounds)
+	#rv_outlier <- sum(outlier_distances[,1] == distance_window)
+	#rv_inlier <- sum(inlier_distances[,1] == distance_window)
+	#no_rv_outlier <- sum(outlier_distances[,1] != distance_window)
+	#no_rv_inlier <- sum(inlier_distances[,1] != distance_window)
+	#odds_ratio <- (rv_outlier/rv_inlier)/(no_rv_outlier/no_rv_inlier)
+	#odds_ratios <- c(odds_ratios, odds_ratio)
+	#dist_to_ss <- c(dist_to_ss, distance_window + 1)
+	#df <- data.frame(odds_ratio=odds_ratios, dist_to_ss=dist_to_ss-.5)
 	return(df)
 
 }
@@ -145,33 +165,35 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type <- function(distance_
 	acceptor_df <- extract_odds_ratio_data(outlier_acceptor_distances, inlier_acceptor_distances, distance_window)
 
 
-	num_rows <- distance_window*2 + 2
 
 	#Combine outliers and non-outliers into a compact data frame
 	odds_ratio <- c(donor_df$odds_ratio, acceptor_df$odds_ratio)
 	dist_to_ss <- c(donor_df$dist_to_ss, acceptor_df$dist_to_ss)
-	ss_type <- c(rep("donor",num_rows), rep("acceptor", num_rows))
+	ss_type <- c(rep("donor",length(donor_df$dist_to_ss)), rep("acceptor", length(acceptor_df$dist_to_ss)))
+	lower_bounds <- c(donor_df$lower_bounds, acceptor_df$lower_bounds)
+	upper_bounds <- c(donor_df$upper_bounds, acceptor_df$upper_bounds)
 
-	df <- data.frame(odds_ratio=odds_ratio, dist_to_ss=dist_to_ss, ss_type=factor(ss_type, levels=c("donor","acceptor")))
+	df <- data.frame(odds_ratio=odds_ratio, dist_to_ss=dist_to_ss, lower_bound=lower_bounds, upper_bound=upper_bounds, ss_type=factor(ss_type, levels=c("donor","acceptor")))
 
-    #p <- ggplot(melted, aes(x=X, y=value, color=CellLineCluster)) + geom_line() + facet_wrap(~ L, ncol=10) 
-    #if (ci){
-    #    p <- p + geom_ribbon(data=data, aes(ymin=lower,ymax=upper, fill=CellLineCluster),alpha=0.3, colour=NA)
-    #}
-    #p <- p + labs(x="Day",y = "Expression",fill="",color="") + theme(legend.position = "bottom") + scale_fill_manual(values=c("dodgerblue3","chartreuse4"))+ scale_color_manual(values=c("dodgerblue3","chartreuse4"))
-    #p <- p + theme(text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)) 
-    #return(p)
+    error_bar_plot <- ggplot() + geom_errorbar(data=df, mapping=aes(x=dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="darkorchid") +
+					geom_point(data=df, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					facet_wrap( ~ ss_type,nrow=2,scales = "free") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(text = element_text(size=11),axis.text=element_text(size=10), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11))
 
-	density_plot <- ggplot(df, aes(x=dist_to_ss,y=odds_ratio)) + geom_step(size=1.5,color="darkorchid") + 
-		facet_wrap( ~ ss_type) +
-		labs(x = "Distance from splice site (BP)", y = "Odds ratio", title=title) +
-		theme(text = element_text(size=11),axis.text=element_text(size=10), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11)) +
-		theme(legend.position="bottom") +
-		geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
-		geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
-		geom_hline(yintercept = 1, size=.00001,linetype="dashed")
+	#density_plot <- ggplot(df, aes(x=dist_to_ss,y=odds_ratio)) + geom_step(size=1.5,color="darkorchid") + 
+	#	facet_wrap( ~ ss_type) +
+	#	labs(x = "Distance from splice site (BP)", y = "Odds ratio", title=title) +
+	#	theme(text = element_text(size=11),axis.text=element_text(size=10), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11)) +
+	#	theme(legend.position="bottom") +
+	#	geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+	#	geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+	#	geom_hline(yintercept = 1, size=.00001,linetype="dashed")
 	
-	ggsave(density_plot, file=output_file,width = 17,height=11,units="cm")
+	ggsave(error_bar_plot, file=output_file,width = 17,height=14,units="cm")
 }
 
 

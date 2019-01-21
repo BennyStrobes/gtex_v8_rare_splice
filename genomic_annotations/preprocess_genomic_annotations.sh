@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=4:00:00
+#SBATCH --time=10:00:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 
@@ -14,4 +14,4 @@ cadd_anno_file="$6"
 
 
 
-python process_genomic_annotations.py $raw_genomic_annotation_file $variant_bed_file $rare_variant_to_gene_file $genomic_annotation_dir $cadd_file $cadd_anno_file
+python preprocess_genomic_annotations.py $raw_genomic_annotation_file $variant_bed_file $rare_variant_to_gene_file $genomic_annotation_dir

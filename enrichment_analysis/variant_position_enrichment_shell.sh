@@ -40,16 +40,7 @@ for distance in "${distances[@]}"; do
 done
 fi
 
-########################
-# Compare distances between variants and splice sites for sQTLs vs background
-########################
-tissue_type="Muscle_Skeletal"
-sqtl_file=$sqtl_dir$tissue_type".v8.sqtl_allpairs.txt"
-distance_window="10"
-pvalue_thresh=".00000000001"
-if false; then
-python variant_position_enrichment_quantification_in_sqtls.py $sqtl_file $gencode_gene_annotation_file $variant_position_enrichment_dir $distance_window $pvalue_thresh
-fi
+
 
 
 
@@ -59,5 +50,33 @@ fi
 Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################
+# OLD RETIRED SCRIPTS!
+# Compare distances between variants and splice sites for sQTLs vs background
+########################
+tissue_type="Muscle_Skeletal"
+sqtl_file=$sqtl_dir$tissue_type".v8.sqtl_allpairs.txt"
+distance_window="10"
+pvalue_thresh=".00000000001"
+if false; then
+python variant_position_enrichment_quantification_in_sqtls.py $sqtl_file $gencode_gene_annotation_file $variant_position_enrichment_dir $distance_window $pvalue_thresh
+fi
 
 
