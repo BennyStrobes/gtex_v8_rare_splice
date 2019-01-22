@@ -312,6 +312,13 @@ def make_real_valued_genomic_annotations(input_file, output_file):
 	no_change[7] = 1
 	no_change[8] = 1
 	no_change[33] = 1
+	no_change[38] = 1
+	no_change[39] = 1
+	no_change[40] = 1
+	no_change[41] = 1
+	no_change[42] = 1
+	no_change[43] = 1
+
 
 	#########################
 	# Create dictionary containing columns that need to be converted from categorical into binaries
@@ -357,7 +364,7 @@ def make_real_valued_genomic_annotations(input_file, output_file):
 		data = line.split()
 		if head_count == 0:
 			head_count = head_count + 1
-			t.write('SubjectID\tGeneName\tvariant_chromosome\tvariant_position')
+			t.write('SubjectID\tGeneName\tvariant_chromosome\tvariant_position\tvariant_id')
 			for i,ele in enumerate(data):
 				if i in to_be_removed:
 					continue
@@ -371,7 +378,16 @@ def make_real_valued_genomic_annotations(input_file, output_file):
 			t.write('\n')
 			continue
 		# Id field
-		t.write(data[35] + '\t' + data[0] + '\t' + data[36] + '\t' + data[5])
+		rv_allele = data[4]
+		alt = data[3]
+		ref = data[2]
+		num_rv = data[38]
+		if rv_allele == alt:
+			major_allele = ref 
+		else:
+			major_allele = alt
+		variant_id = data[36] + '_' + data[5] + '_' + major_allele + '_' + rv_allele + '_' + num_rv
+		t.write(data[35] + '\t' + data[0] + '\t' + data[36] + '\t' + data[5] + '\t' + variant_id)
 		for i, ele in enumerate(data):
 			if i in to_be_removed:
 				continue
@@ -402,12 +418,14 @@ def compress_feature_vec_of_multiple_variants_for_the_same_gene(vec1, vec2):
 	part1 = np.minimum(vec1[:2],vec2[:2])
 	part2 = np.maximum(vec1[2:47], vec2[2:47])
 	part3 = np.asarray([np.minimum(vec1[47],vec2[47])])
-	return np.concatenate((part1,part2,part3))
+	part4 = np.asarray([vec1[48] + vec2[48]])
+	part5 = np.maximum(vec1[49:], vec2[49:])
+	return np.concatenate((part1,part2,part3, part4,part5))
 
 
 # STEP 4
 # Compress multiple variants onto same gene
-def compress_multiple_variants_onto_same_gene(input_file, output_file):
+def compress_multiple_variants_onto_same_gene(input_file, output_file, variants_mapped_to_gene_file):
 	# Most annotations we take maximum over.
 	# The following we take the minimum over:
 	# 1. distTSS
@@ -415,6 +433,7 @@ def compress_multiple_variants_onto_same_gene(input_file, output_file):
 	# 3. af
 	# Make dictionary where keys are (individual, gene) pairs and values are vectors corresponding to their features
 	mapping = {}
+	variant_mapping = {}
 	# Stream input file handle
 	# Used to get header
 	head_count = 0
@@ -424,13 +443,14 @@ def compress_multiple_variants_onto_same_gene(input_file, output_file):
 		data = line.split('\t')
 		if head_count == 0:
 			head_count = head_count + 1
-			header_features = data[4:]
+			header_features = data[5:]
 			continue
 		# Extract relevent fields from line
 		indi_id = data[0].split('_')[0] + '-' + data[0].split('_')[1]
 		ensamble_id = data[1]
 		pair_name = indi_id + '_' + ensamble_id
-		feature_vec = np.asarray(data[4:]).astype(float)
+		variant_id = data[4]
+		feature_vec = np.asarray(data[5:]).astype(float)
 		# Make distances absolute value
 		feature_vec[0] = np.abs(feature_vec[0])
 		feature_vec[1] = np.abs(feature_vec[1])
@@ -439,6 +459,9 @@ def compress_multiple_variants_onto_same_gene(input_file, output_file):
 			mapping[pair_name] = feature_vec
 		else:
 			mapping[pair_name] = compress_feature_vec_of_multiple_variants_for_the_same_gene(feature_vec, mapping[pair_name])
+		if pair_name not in variant_mapping:
+			variant_mapping[pair_name] = []
+		variant_mapping[pair_name].append(variant_id)
 	f.close()
 	# Open output file
 	t = open(output_file, 'w')
@@ -451,7 +474,15 @@ def compress_multiple_variants_onto_same_gene(input_file, output_file):
 		feature_vec = mapping[pair_name].astype(str)
 		t.write('\t'.join(feature_vec) + '\n')
 	t.close()
-
+	t = open(variants_mapped_to_gene_file, 'w')
+	t.write('SubjectID\tGeneName\tvariants\n')
+	for pair_name in variant_mapping.keys():
+		indi_id = pair_name.split('_')[0]
+		ensamble_id = pair_name.split('_')[1]
+		t.write(indi_id + '\t' + ensamble_id + '\t')
+		variant_vec = np.unique(variant_mapping[pair_name]).astype(str)
+		t.write(','.join(variant_vec) + '\n')
+	t.close()
 
 def get_cadd_score(chrom_num, pos, major_allele, rv_allele, cadd_score_tabix):
 	# Binary variable on whether our Rare variant is scored by cadd (initialized to False)
@@ -509,11 +540,196 @@ def add_annotations(gene_level_genomic_annotation_file, gene_level_genomic_annot
 		count = count + 1
 		print(count)
 
+# Create mapping from cluster id to junctions
+def extract_mapping_from_cluster_id_to_junctions(cluster_info_file):
+	# Initialize mapping
+	mapping = {}
+	# Used to skip header
+	head_count = 0
+	# Stream cluster_info_file
+	f = open(cluster_info_file)
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		# Skip header
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		# Extract relevent info
+		cluster_id = data[0]
+		jxn_string = data[1]
+		chromosome = jxn_string.split(',')[0].split(':')[0]
+		jxn_array = jxn_string.split(',')
+		# Add info to mapping
+		if cluster_id in mapping:
+			print('assumption error')
+		mapping[cluster_id] = {}
+		mapping[cluster_id]['chromosome'] = chromosome
+		mapping[cluster_id]['start_splice_sites'] = []
+		mapping[cluster_id]['end_splice_sites'] = []
+		# Add splice sites to mapping
+		for jxn in jxn_array:
+			jxn_info = jxn.split(':')
+			start_pos = int(jxn_info[1])
+			end_pos = int(jxn_info[2])
+			if end_pos <= start_pos:
+				print('assumptioner eroror')
+				pdb.set_trace()
+			mapping[cluster_id]['start_splice_sites'].append(start_pos)
+			mapping[cluster_id]['end_splice_sites'].append(end_pos)
+	f.close()
+	return mapping
+
+# Create mapping from cluster id to strand
+def get_cluster_to_strand_mapping(cluster_info_file, exon_file):
+	gene_to_strand = {}
+	cluster_to_strand = {}
+	f = open(exon_file)
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		ensamble_id = data[4]
+		strand = data[3]
+		gene_to_strand[ensamble_id] = strand
+	f.close()
+	head_count = 0
+	f = open(cluster_info_file)
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		cluster_id = data[0]
+		ensamble_ids = data[2].split(',')
+		for ensamble_id in ensamble_ids:
+			cluster_to_strand[cluster_id] = gene_to_strand[ensamble_id]
+	f.close()
+	return cluster_to_strand
+
+def get_gene_to_clusters_mapping(cluster_info_file):
+	# Used to skip header
+	head_count = 0
+	# Initialize mapping 
+	mapping = {}
+	# Stream cluster info file
+	f = open(cluster_info_file)
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		# Skip header
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		# Extract relevent fields
+		gene_array = data[2].split(',')
+		cluster_id = data[0]
+		# For each gene associated to this cluster
+		for gene in gene_array:
+			# Add gene to mapping if not already there
+			if gene not in mapping:
+				mapping[gene] = []
+			# Add cluster to gene's array
+			mapping[gene].append(cluster_id)
+	f.close()
+	# Mapping from gene to unique set of clusters
+	for gene_id in mapping.keys():
+		mapping[gene_id] = np.unique(mapping[gene_id])
+	return mapping
+
+def get_cluster_level_ss_feature_vector(cluster_mapping, var_pos, chrom_num, strand):
+	donor_intron = 0
+	donor_exon = 0
+	acceptor_intron = 0
+	acceptor_exon = 0
+	window = 0
+	for start_splice_site in cluster_mapping['start_splice_sites']:
+		distance = start_splice_site - var_pos
+		# Check if its a donor ss
+		if strand == '+': # Donor ss
+			if distance < 0 and distance > -6: # Intron
+				donor_intron = 1
+				window = 1
+			elif distance >= 0 and distance < 5: # Exon
+				donor_exon = 1
+				window = 1
+		elif strand == '-': # Acceptor ss
+			if distance < 0 and distance > -6: # Intron
+				acceptor_intron = 1
+				window = 1
+			elif distance >= 0 and distance < 5: # Exon
+				acceptor_exon = 1
+				window = 1
+	for end_splice_site in cluster_mapping['end_splice_sites']:
+		distance = var_pos - end_splice_site
+		if strand == '-': # Donor ss
+			if distance < 0 and distance > -6: # Intron
+				donor_intron = 1
+				window = 1
+			elif distance >= 0 and distance < 5: # Exon
+				donor_exon = 1
+				window = 1
+		elif strand == '+': # Acceptor ss
+			if distance < 0 and distance > -6: # Intron
+				acceptor_intron = 1
+				window = 1
+			elif distance >= 0 and distance < 5: # Exon
+				acceptor_exon = 1
+				window = 1
+	return np.asarray([donor_intron, donor_exon, acceptor_intron, acceptor_exon, window])
+
+# Add observed splice site information
+def add_observed_ss_genomic_annotations(input_file, output_file,exon_file, cluster_info_file):
+	# Create mapping from cluster id to junctions
+	cluster_mapping = extract_mapping_from_cluster_id_to_junctions(cluster_info_file)
+	# Create mapping from cluster id to strand
+	cluster_to_strand_mapping = get_cluster_to_strand_mapping(cluster_info_file, exon_file)
+	# Create mapping from gene to clusters
+	gene_to_clusters_mapping = get_gene_to_clusters_mapping(cluster_info_file)
+	# Open input and output filehandles
+	f = open(input_file)
+	t = open(output_file, 'w')
+	# Used to skip header
+	count = 0
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write(line + '\tobserved_intron_donor_ss\tobserved_exon_donor_ss\tobserved_intron_acceptor_ss\tobserved_exon_acceptor_ss\tobserved_ss\n')
+			continue
+		# Extract relevent fields
+		chrom_num = data[36]
+		ensamble_id = data[0] 
+		position = int(data[5])
+		# Use mapping to extract list of clusters associated with this gene
+		if ensamble_id in gene_to_clusters_mapping:  # Jxn data for gene
+			clusters = gene_to_clusters_mapping[ensamble_id]
+			# Initialize ss annotation vec for this gene
+			ss_gene_level_vec = np.asarray([0,0,0,0,0])
+			for cluster in clusters: 
+				# Extract splice site feature vector for this cluster
+				ss_vec = get_cluster_level_ss_feature_vector(cluster_mapping[cluster], position, chrom_num, cluster_to_strand_mapping[cluster])
+				# Take maximum across clusters (Does the observed ss occur in ANY cluster for that gene)
+				ss_gene_level_vec = np.maximum(ss_vec, ss_gene_level_vec)
+		else:  # No jxn data for gene
+			ss_gene_level_vec = np.asarray([0,0,0,0,0])
+		t.write(line + '\t' + '\t'.join(ss_gene_level_vec.astype(str)) + '\n')
+	f.close()
+	t.close()
+
 
 raw_genomic_annotation_file = sys.argv[1]
 variant_bed_file = sys.argv[2]
 rare_variant_to_gene_file = sys.argv[3]
 genomic_annotation_dir = sys.argv[4]
+exon_file = sys.argv[5]
+cluster_info_file = sys.argv[6]
 
 
 # Create mapping from genomic position to ensamble ids
@@ -534,3 +750,20 @@ filter_raw_genomic_annotation_file(raw_genomic_annotation_file, filtered_genomic
 # Compress lines from transcript level to gene level
 gene_level_genomic_annotation_file = genomic_annotation_dir + 'filtered_raw_gene_level_genomic_annotations.txt'
 compress_annotations_from_transcript_level_to_gene_level(filtered_genomic_annotation_file, gene_level_genomic_annotation_file)
+
+# STEP 3
+# Add observed splice site information
+gene_level_genomic_annotation_and_ss_file = genomic_annotation_dir + 'filtered_raw_gene_level_and_ss_genomic_annotations.txt'
+add_observed_ss_genomic_annotations(gene_level_genomic_annotation_file, gene_level_genomic_annotation_and_ss_file,exon_file, cluster_info_file)
+
+# STEP 4
+# Make genomic annotations real valued
+# Many of the genomic annotations are categorical. Convert these categorical variables to sets of binary variables.
+gene_level_real_valued_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_genomic_annotations.txt'
+make_real_valued_genomic_annotations(gene_level_genomic_annotation_and_ss_file, gene_level_real_valued_genomic_annotation_file)
+
+# STEP 5
+# Compress multiple variants onto same gene
+gene_level_real_valued_variant_compressed_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_variant_compressed_genomic_annotations.txt'
+variants_mapped_to_gene_file = genomic_annotation_dir + 'variants_compressed_onto_genes.txt'
+compress_multiple_variants_onto_same_gene(gene_level_real_valued_genomic_annotation_file, gene_level_real_valued_variant_compressed_genomic_annotation_file, variants_mapped_to_gene_file)
