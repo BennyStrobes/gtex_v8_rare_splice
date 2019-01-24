@@ -68,3 +68,7 @@ fi
 if false; then
 sbatch river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
+
+
+sh watershed_run.sh $unsupervised_learning_input_dir $watershed_run_dir
+
