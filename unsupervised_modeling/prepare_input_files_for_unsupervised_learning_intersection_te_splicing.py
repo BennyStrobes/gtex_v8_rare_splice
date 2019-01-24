@@ -455,6 +455,45 @@ def remove_no_variance_features(input_file):
 	f.close()
 	t.close()
 
+def merge_two_files(input_file1, input_file2, output_file):
+	# Loop through input file1
+	# Keep track of feature vectors as well as pvalue from outlier status
+	file_1_feature_vectors = []
+	file_1_pvalues = []
+	f = open(input_file1)
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		pvalue = data[-2]
+		feature_vector = '\t'.join(data[0:-2])
+		file_1_pvalues.append(pvalue)
+		file_1_feature_vectors.append(feature_vector)
+	f.close()
+	t = open(output_file,'w')
+	f = open(input_file2)
+	head_count = 0
+	counter = -1
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write('\t'.join(data[0:-2]) + '\tsplicing_pvalue\ttotal_expression_pvalue\t' + data[-1] + '\n')
+			continue
+		te_pvalue = data[-2]
+		feature_vector = '\t'.join(data[0:-2])
+		counter = counter + 1
+		if feature_vector != file_1_feature_vectors[counter]:
+			print('assumption errror')
+			pdb.set_trace()
+		t.write(feature_vector + '\t' + file_1_pvalues[counter] + '\t' + te_pvalue + '\t' + data[-1] + '\n')
+	f.close()
+	t.close()
+
 
 
 genomic_annotation_file = sys.argv[1]
@@ -498,8 +537,9 @@ print_outlier_output_file(splicing_outliers, genomic_annotation_file, splicing_o
 # Print outliers
 total_expression_output_file = unsupervised_learning_input_dir + 'total_expression_outliers_' + str(pvalue) + '_genes_intersection_between_te_splicing.txt'
 print_outlier_output_file(total_expression_outliers, genomic_annotation_file, total_expression_output_file, gene_individual_to_variant_mapping_file)
-
-
+# Merge two outlier files
+merged_output_file = unsupervised_learning_input_dir + 'merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_splicing_features_filter_N2_pairs.txt'
+merge_two_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
 # Print outliers
 splicing_output_file = unsupervised_learning_input_dir + 'fully_observed_splicing_outliers_' + str(pvalue) + '_genes_intersection_between_te_splicing.txt'
@@ -507,6 +547,9 @@ print_outlier_output_file_no_nan(splicing_outliers, total_expression_outliers, g
 # Print outliers
 total_expression_output_file = unsupervised_learning_input_dir + 'fully_observed_total_expression_outliers_' + str(pvalue) + '_genes_intersection_between_te_splicing.txt'
 print_outlier_output_file_no_nan(total_expression_outliers, splicing_outliers, genomic_annotation_file, total_expression_output_file, gene_individual_to_variant_mapping_file)
+# Merge two outlier files
+merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_splicing_features_filter_N2_pairs.txt'
+merge_two_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
 
 

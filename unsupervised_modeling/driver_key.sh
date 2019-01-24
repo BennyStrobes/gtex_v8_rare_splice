@@ -52,9 +52,19 @@ unsupervised_learning_input_dir=$output_root"unsupervised_learning_input/"
 # Directory containing results from single outlier type RIVER runs
 river_run_dir=$output_root"river/"
 
+# Directory containing results from watershed analysis
+watershed_run_dir=$output_root"watershed_run/"
+
+
+
+
+###############################################
+# Scripts
+###############################################
 if false; then
 sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
 fi
 
-threshy="0.01"
-sbatch river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir $threshy
+if false; then
+sbatch river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
+fi
