@@ -24,17 +24,19 @@ variant_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/inpu
 total_expression_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/gtexV8.outlier.controls.v8ciseQTLs.globalOutliers.removed.medz.txt"
 
 # Allele specific expression outlier file
-ase_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/multi_tissue_ad_outliers.tsv"
+ase_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/median_DOT_scores.tsv"
 
 # Splicing outlier file
 splicing_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/splicing_outlier_calls/cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue_gene_level.txt"
 
-# File containing CADD scores (also containing $cadd_file".tbi")
-cadd_file="/work-zfs/abattle4/lab_data/genomic_annotation_data/hg38/whole_genome_SNVs.tsv.gz"
+# Directory containing processed genomic annotations
+genomic_annotation_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/genomic_annotations/"
 
-# File containing CADD annotations (also containing $cadd_anno_file".tbi")
-cadd_anno_file="/work-zfs/abattle4/lab_data/genomic_annotation_data/hg38/whole_genome_SNVs_inclAnno.tsv.gz"
+# File containing genomic annotations
+genomic_annotation_file=$genomic_annotation_dir"filtered_real_valued_gene_level_variant_compressed_genomic_annotations.txt"
 
+# File containing mapping from (gene, individual) to rare variants mapped within 10KB of the gene
+gene_individual_to_variant_mapping_file=$genomic_annotation_dir"variants_compressed_onto_genes.txt"
 
 #############################################################
 #Used Directories (directories need to be created and empty before starting)
@@ -43,23 +45,16 @@ cadd_anno_file="/work-zfs/abattle4/lab_data/genomic_annotation_data/hg38/whole_g
 # Root directories that all other directories will be placed in 
 output_root="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/"
 
-# Directory containing processed genomic annotations
-genomic_annotation_dir=$output_root"genomic_annotation/"
 
 # Directory containing unsupervised learning input files
 unsupervised_learning_input_dir=$output_root"unsupervised_learning_input/"
 
-
-
-
+# Directory containing results from single outlier type RIVER runs
+river_run_dir=$output_root"river/"
 
 if false; then
-sh process_genomic_annotations.sh $raw_genomic_annotation_file $variant_bed_file $rare_variant_to_gene_file $genomic_annotation_dir $cadd_file $cadd_anno_file
+sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
 fi
 
-
-
-genomic_annotation_file=$genomic_annotation_dir"filtered_real_valued_gene_level_variant_compressed_genomic_annotations.txt"
-if false; then
-sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir
-fi
+threshy="0.01"
+sbatch river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir $threshy
