@@ -79,7 +79,7 @@ NumericMatrix extract_all_binary_combinations_ignoring_two_row(int n, int column
 	}
 }
 
-double un_normalized_crf_weight(NumericMatrix all_binary_combinations_matrix, int combination_number, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num) {
+double un_normalized_crf_weight(NumericMatrix all_binary_combinations_matrix, int combination_number, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
 	// Initialize weight
 	double weight = 0;
 	for (int dimension=0; dimension < number_of_dimensions; dimension++) {
@@ -88,27 +88,30 @@ double un_normalized_crf_weight(NumericMatrix all_binary_combinations_matrix, in
 		for (int d = 0; d < feat.ncol(); d++) {
 			weight += all_binary_combinations_matrix(combination_number,dimension)*feat(sample_num,d)*theta(d,dimension);
 		}
+		int dimension_counter = 0;
 		for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
 			if (dimension != dimension2) {
-				weight += all_binary_combinations_matrix(combination_number,dimension)*all_binary_combinations_matrix(combination_number,dimension2)*theta_pair(dimension, dimension2);
-
+				weight += all_binary_combinations_matrix(combination_number,dimension)*all_binary_combinations_matrix(combination_number,dimension2)*theta_pair(0, dimension_counter);
+				dimension_counter += 1;
 			}
 		}
-		if (all_binary_combinations_matrix(combination_number, dimension) == 1) {
-			weight += log(phi_outlier(dimension, discrete_outliers(sample_num, dimension) - 1));
-		} else {
-			weight += log(phi_inlier(dimension, discrete_outliers(sample_num, dimension) - 1));
+		if (posterior_bool == true) {
+			if (all_binary_combinations_matrix(combination_number, dimension) == 1) {
+				weight += log(phi_outlier(dimension, discrete_outliers(sample_num, dimension) - 1));
+			} else {
+				weight += log(phi_inlier(dimension, discrete_outliers(sample_num, dimension) - 1));
+			}
 		}
 	}
 	return weight;
 }
 
-double exact_normalization_constant(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num) {
+double exact_normalization_constant(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
 	NumericMatrix all_binary_combinations_matrix = extract_all_binary_combinations(number_of_dimensions);
 	double val = 0;
 
 	for (int combination_number = 0; combination_number < all_binary_combinations_matrix.nrow(); combination_number++) {
-		double un_normalized_wight = un_normalized_crf_weight(all_binary_combinations_matrix, combination_number, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num);
+		double un_normalized_wight = un_normalized_crf_weight(all_binary_combinations_matrix, combination_number, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
 		val += exp(un_normalized_wight);
 	}
 
@@ -124,33 +127,148 @@ double exact_normalization_constant(NumericMatrix feat, NumericMatrix discrete_o
 	return log(val);
 }
 
-double exact_probability(double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int combination_number,NumericMatrix all_binary_combinations_ignoring_one_row) {
-	double prob = exp(un_normalized_crf_weight(all_binary_combinations_ignoring_one_row, combination_number, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num) - normalization_constant);
+double exact_probability(double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int combination_number,NumericMatrix all_binary_combinations_ignoring_one_row, bool posterior_bool) {
+	double prob = exp(un_normalized_crf_weight(all_binary_combinations_ignoring_one_row, combination_number, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool) - normalization_constant);
 	return prob;
 }
 
-double exact_marginal_probability(double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int dimension) {
+double exact_marginal_probability(double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int dimension, bool posterior_bool) {
 	NumericMatrix all_binary_combinations_ignoring_one_row = extract_all_binary_combinations_ignoring_one_row(number_of_dimensions, dimension);
 	double marginal_prob = 0;
 	for (int combination_number = 0; combination_number < all_binary_combinations_ignoring_one_row.nrow(); combination_number++) {
-		marginal_prob += exact_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, combination_number, all_binary_combinations_ignoring_one_row);
+		marginal_prob += exact_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, combination_number, all_binary_combinations_ignoring_one_row, posterior_bool);
 	}
 	return marginal_prob;
 }
 
+
+double exact_observed_sample_likelihood(double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num) {
+	NumericMatrix all_binary_combinations_matrix = extract_all_binary_combinations(number_of_dimensions);
+	double prob = 0;
+	for (int combination_number = 0; combination_number < all_binary_combinations_matrix.nrow(); combination_number++) {
+		double combination_prob = exact_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, combination_number, all_binary_combinations_matrix, false);
+		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
+			if (all_binary_combinations_matrix(combination_number, dimension) == 1) {
+				combination_prob = combination_prob*phi_outlier(dimension, discrete_outliers(sample_num, dimension) - 1);
+			} else {
+				combination_prob = combination_prob*phi_inlier(dimension, discrete_outliers(sample_num, dimension) - 1);
+			}
+		}
+		prob += combination_prob;
+	}
+	return prob;
+}
+
+
+double exact_marginal_pairwise_probability(double normalization_constant, int dimension1, int dimension2, int dimension_counter, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
+// exact_marginal_pairwise_posterior_prob <- function(dimension1, dimension2, normalization_constant, feat_vec, discrete_outliers_vec, theta_singleton, theta_pair, theta, phi, number_of_dimensions) {
+//	marginal_binary_combinations_matrix <- extract_marginal_pairwise_binary_combinations(number_of_dimensions, dimension1, dimension2)
+//	marginal_prob <- 0
+//	for (combination_number in 1:nrow(marginal_binary_combinations_matrix)) { 
+//		zs <- marginal_binary_combinations_matrix[combination_number,]
+//		prob <- exact_posterior_prob(zs, normalization_constant, feat_vec, discrete_outliers_vec, theta_singleton, theta_pair, theta, phi, number_of_dimensions)
+//		marginal_prob <- marginal_prob + prob
+//	}
+//	return(as.numeric(marginal_prob))
+	double marginal_prob = 0;
+	NumericMatrix marginal_binary_combinations_matrix = extract_all_binary_combinations_ignoring_two_row(number_of_dimensions, dimension1, dimension2);
+	for (int combination_number = 0; combination_number < marginal_binary_combinations_matrix.nrow(); combination_number++) {
+		marginal_prob += exact_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, combination_number, marginal_binary_combinations_matrix, posterior_bool);
+	}
+
+	return marginal_prob;
+}
+
 // [[Rcpp::export]]
-NumericMatrix update_marginal_probabilities_exact_inference_cpp(NumericMatrix probabilities, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions) {
+List update_marginal_probabilities_exact_inference_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int number_of_pairs, bool posterior_bool) {
 	// Rcpp::Rcout << feat(1,1) << std::endl;  
+	// Initialize output matrices
+	NumericMatrix probabilities(feat.nrow(), number_of_dimensions);
+	NumericMatrix probabilities_pairwise(feat.nrow(), number_of_pairs);
+
 	// Loop through samples
 	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
 		// Compute normalization constant for this sample
 		// normalization_constant <- exact_posterior_normalization_constant(feat[n,], discrete_outliers[n,], model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi, model_params$number_of_dimensions)
-		double normalization_constant = exact_normalization_constant(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num);
+		double normalization_constant = exact_normalization_constant(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
 		// Loop through dimensions
 		int dimension = 0;
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
-			probabilities(sample_num, dimension) = exact_marginal_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension);
+			probabilities(sample_num, dimension) = exact_marginal_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, posterior_bool);
+			int dimension_counter = 0;
+			for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
+				if (dimension != dimension2) {
+					probabilities_pairwise(sample_num, dimension_counter) = exact_marginal_pairwise_probability(normalization_constant, dimension, dimension2, dimension_counter, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
+					dimension_counter += 1;
+				}
+			}
 		}
 	}
-	return probabilities;
+	List ret;
+	ret["probability"] = probabilities;
+	ret["probability_pairwise"] = probabilities_pairwise;
+	return ret;
 }
+
+// [[Rcpp::export]]
+double compute_exact_observed_data_log_likelihood_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int number_of_pairs) {
+	// Initialize log_likelihood
+	double log_likelihood = 0;
+	// Loop through samples
+	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
+		// Compute normalization constant for this sample
+		// normalization_constant <- exact_posterior_normalization_constant(feat[n,], discrete_outliers[n,], model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi, model_params$number_of_dimensions)
+		double normalization_constant = exact_normalization_constant(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, false);
+		// Compute observed data likelihood for this sample
+		double observed_sample_likelihood = exact_observed_sample_likelihood(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num);
+		// Add log of this observed data likelihood to a variable log_likelihood
+		log_likelihood += log(observed_sample_likelihood);
+	}
+	return log_likelihood;
+}
+
+// [[Rcpp::export]]
+double compute_crf_likelihood_exact_inference_cpp(NumericMatrix posterior, NumericMatrix posterior_pairwise, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, double lambda, double lambda_pair, double lambda_singleton) {
+	// Rcpp::Rcout << feat(1,1) << std::endl;  
+	// Initialize output likelihood
+	double log_likelihood = 0;
+	// Loop through samples
+	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
+		// Compute normalization constant for this sample
+		double normalization_constant = exact_normalization_constant(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, false);
+		log_likelihood = log_likelihood - normalization_constant;
+		// Loop through dimensions
+		int dimension = 0;
+		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
+			log_likelihood += theta_singleton(dimension)*posterior(sample_num, dimension);
+			for (int d = 0; d < feat.ncol(); d++) {
+				log_likelihood += theta(d, dimension)*feat(sample_num, d)*posterior(sample_num, dimension);
+			}
+			int dimension_counter = 0;
+			for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
+				if (dimension != dimension2) {
+					log_likelihood += theta_pair(0, dimension_counter)*posterior_pairwise(sample_num, dimension_counter);
+					dimension_counter += 1;
+				}
+			}
+		}
+	}
+	log_likelihood = log_likelihood/feat.nrow();
+
+	// Add L2 penalties
+	for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
+		log_likelihood = log_likelihood - lambda_singleton*(theta_singleton(dimension)*theta_singleton(dimension));
+		int dimension_counter = 0;
+		for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
+			if (dimension != dimension2) {
+				log_likelihood = log_likelihood - lambda_pair*(theta_pair(0,dimension_counter)*theta_pair(0, dimension_counter));
+				dimension_counter += 1;
+			}
+		}
+		for (int d = 0; d < feat.ncol(); d++) {
+			log_likelihood = log_likelihood - lambda*(theta(d,dimension)*theta(d,dimension));
+		}
+	}
+	return log_likelihood;
+}
+

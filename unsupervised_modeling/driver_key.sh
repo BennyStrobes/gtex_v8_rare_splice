@@ -61,14 +61,13 @@ watershed_run_dir=$output_root"watershed_run/"
 ###############################################
 # Scripts
 ###############################################
-if false; then
 sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
+
+
+if false; then
+sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
 if false; then
-sbatch river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
-fi
-
-
 sh watershed_run.sh $unsupervised_learning_input_dir $watershed_run_dir
-
+fi

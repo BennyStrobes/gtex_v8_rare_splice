@@ -37,13 +37,12 @@ def get_splicing_and_ase_individuals(splicing_outlier_file):
 # Extract dictionary list of individuals used in all three methods
 def get_list_of_individuals_used_in_all_methods(total_expression_outlier_file, ase_outlier_file, splicing_outlier_file):
 	total_expression_individuals = get_total_expression_individuals(total_expression_outlier_file)
-	#ase_individuals = get_splicing_and_ase_individuals(ase_outlier_file)
+	ase_individuals = get_splicing_and_ase_individuals(ase_outlier_file)
 	splicing_individuals = get_splicing_and_ase_individuals(splicing_outlier_file)
 	# Take union of the above three dictionaries
 	union_individuals = {}
 	for indi in splicing_individuals.keys():
-		#if indi in ase_individuals and indi in total_expression_individuals:
-		if indi in total_expression_individuals:
+		if indi in ase_individuals and indi in total_expression_individuals:
 			union_individuals[indi] = 1
 	return union_individuals
 
@@ -93,12 +92,11 @@ def get_splicing_genes(splicing_outlier_file):
 # Extract dictionary list of genes used in all three methods
 def get_list_of_genes_used_in_all_methods(total_expression_outlier_file, ase_outlier_file, splicing_outlier_file):
 	splicing_genes = get_splicing_genes(splicing_outlier_file)
-	#ase_genes = get_ase_genes(ase_outlier_file)
+	ase_genes = get_ase_genes(ase_outlier_file)
 	total_expression_genes = get_total_expression_genes(total_expression_outlier_file)
 	union_genes = {}
 	for gene in splicing_genes.keys():
-		#if gene in ase_genes and gene in total_expression_genes:
-		if gene in total_expression_genes:
+		if gene in ase_genes and gene in total_expression_genes:
 			union_genes[gene] = 1
 	return union_genes
 
@@ -224,10 +222,10 @@ def union_of_three_dictionaries(dicti1, dicti2):
 	return union
 
 
-def intersection_of_three_dictionaries(dicti1, dicti2):
+def intersection_of_three_dictionaries(dicti1, dicti2, dicti3):
 	intersection = {}
 	for key  in dicti1.keys():
-		if key in dicti2:
+		if key in dicti2 and key in dicti3:
 			intersection[key] = 1
 	return intersection
 
@@ -260,7 +258,7 @@ def get_splicing_outliers(genes, individuals, splicing_outlier_file):
 		if ensamble not in genes:
 			continue
 		# get pvalue vector
-		pvalues = np.asarray(data[1:]).astype(float)
+		pvalues = np.asarray(convert_na_to_nan(data[1:])).astype(float)
 		# Remove columns not in individuals
 		pvalues_filtered = pvalues[good_columns]
 		# Add to global pvalue_array
@@ -510,7 +508,7 @@ individuals = get_list_of_individuals_used_in_all_methods(total_expression_outli
 genes = get_list_of_genes_used_in_all_methods(total_expression_outlier_file, ase_outlier_file, splicing_outlier_file)
 
 
-
+ase_outlier_genes = get_splicing_outlier_info(individuals, genes, pvalue, ase_outlier_file)
 # For splicing outliers extract list of genes for which we have at least one outlier sample and extract pvalue threshold that gives us num_outlier_samples
 splicing_outlier_genes = get_splicing_outlier_info(individuals, genes, pvalue, splicing_outlier_file)
 # For total expression outliers extract list of genes for which we have at least one outlier sample and extract zscore threshold that gives us num_outlier_samples
@@ -518,12 +516,20 @@ total_expression_outlier_genes = get_total_expression_outlier_info(individuals, 
 
 
 # Take union of outlier genes from each of three methods
-outlier_genes = intersection_of_three_dictionaries(splicing_outlier_genes, total_expression_outlier_genes)
+outlier_genes = intersection_of_three_dictionaries(splicing_outlier_genes, total_expression_outlier_genes, ase_outlier_genes)
 
+print(len(splicing_outlier_genes))
+print(len(total_expression_outlier_genes))
+print(len(ase_outlier_genes))
+print(len(outlier_genes))
 
 # Extract dictionary of (sample, gene) pairs for each class that are valid. Value of dictionary is 1 if outlier and 0 if inlier
 splicing_outliers = get_splicing_outliers(outlier_genes, individuals, splicing_outlier_file)
 total_expression_outliers = get_total_expression_outliers(outlier_genes, individuals, total_expression_outlier_file)
+ase_outliers = get_splicing_outliers(outlier_genes, individuals, ase_outlier_file)
+
+pdb.set_trace()
+
 
 
 

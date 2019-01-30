@@ -15,7 +15,7 @@ river_run_dir="$2"
 #############################################
 # Comparison between TE and splicing
 #############################################
-gene_thresh=".01"
+gene_thresh="0.01"
 pvalue_thresholds=( ".1" ".05" ".01" ".005" ".001")
 
 for pvalue_threshold in "${pvalue_thresholds[@]}"; do
@@ -34,9 +34,8 @@ for pvalue_threshold in "${pvalue_thresholds[@]}"; do
 	Rscript evaRIVER_copy.R $pvalue_threshold $input_file $stem $river_run_dir
 done
 
-gene_thresh=".05"
+gene_thresh="0.05"
 pvalue_thresholds=( ".1" ".05" ".01" ".005" ".001")
-
 for pvalue_threshold in "${pvalue_thresholds[@]}"; do
 	echo $pvalue_threshold
 	## TOTAL EXPRESSION

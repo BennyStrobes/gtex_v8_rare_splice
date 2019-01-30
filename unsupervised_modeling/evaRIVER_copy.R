@@ -380,6 +380,16 @@ plot_roc <- function(evaROC, pvalue_threshold, figure_file_name) {
   dev.off()
 }
 
+f
+
+plot_single_roc <- function(roc_object, pvalue_threshold, figure_file_name) {
+  df <- data.frame(x=1 - roc_object$specificities, y=roc_object$sensitivities)
+  plotter <- ggplot(data=df, aes(x=x, y=y)) + geom_line()+ geom_point() +
+  labs(x="False positive rate", y="True positive rate")
+  ggsave(figure_file_name, plotter)
+}
+
+
 
 plot_betas <- function(beta, pvalue_threshold, beta_figure_file_name) {
 	sorted_beta <- sort(abs(beta), decreasing = TRUE)
@@ -473,7 +483,6 @@ if (verbose) {
 postprobTest <- predict(logisticCV, FeatTest, s="lambda.min", type="response")
 
 
-
 ## Train RIVER on training data
 emModel <- integratedEM(FeatTrng, OutTrng, logisticCV$lambda.min,
           logisticCV$glmnet.fit, pseudoc,
@@ -517,3 +526,4 @@ plot_roc(evaROC, pvalue_threshold,roc_figure_file_name)
 
 beta_figure_file_name <- paste0(river_run_dir, stem, "_pvalue_thresh_", pvalue_threshold, "_beta_barplot.pdf")
 plot_betas(emModel$beta, pvalue_threshold, beta_figure_file_name)
+
