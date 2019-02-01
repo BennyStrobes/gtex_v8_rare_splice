@@ -22,11 +22,11 @@ def remove_duplicates(old_string, add_on):
 
 
 # Mark on chromosome that the posi splice site and distance window around it map to this cluster_id
-def fill_in_chromosome(chrom, posi, cluster_id, distance):
-	new_start = posi - distance
+def fill_in_chromosome(chrom, posi, cluster_id, leftward_distance, rightward_distance):
+	new_start = posi - leftward_distance
 	if new_start < 0:
 		new_start = 0
-	new_end = posi + distance
+	new_end = posi + rightward_distance
 	for pos in range(new_start, new_end + 1):
 		chrom[pos] = remove_duplicates(chrom[pos], cluster_id)
 	return chrom
@@ -52,6 +52,7 @@ def make_chromosome(cluster_info_file, chrom_num, distance):
 		cluster_id = data[0]
 		jxns = data[1].split(',')
 		chromer = jxns[0].split(':')[0]
+		ensamble_id = data[2]
 		# Skip clusters not on this chromosome
 		if chromer != chrom_string:
 			continue
@@ -62,10 +63,13 @@ def make_chromosome(cluster_info_file, chrom_num, distance):
 			jxn_info = jxn.split(':')
 			start = int(jxn_info[1])
 			end = int(jxn_info[2])
+			if end < start:
+				print('assumption error')
+				pdb.set_trace()
 			# Mark on chromosome that the start splice site and distance window around it map to this cluster_id
-			chrom = fill_in_chromosome(chrom, start, cluster_id, distance)
+			chrom = fill_in_chromosome(chrom, start, cluster_id, distance-1, distance)
 			# Mark on chromosome that the end splice site and distance window around it map to this cluster_id
-			chrom = fill_in_chromosome(chrom, end, cluster_id, distance)
+			chrom = fill_in_chromosome(chrom, end, cluster_id, distance, distance-1)
 	f.close()
 	return chrom
 
@@ -99,6 +103,26 @@ def stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, t_filter, c
 	f.close()
 	return t, t_filter
 
+def create_mapping_from_ensamble_id_to_strand(exon_file):
+	f = open(exon_file)
+	mapping = {}
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		gene_id = data[4]
+		strand = data[3]
+		if gene_id not in mapping:
+			mapping[gene_id] = strand
+		else:
+			if mapping[gene_id] != strand:
+				print('assumption errror')
+				pdb.set_trace()
+	f.close()
+	return mapping
 
 ##################################
 # Command Line ARGS
@@ -108,6 +132,8 @@ variant_cluster_bed_file = sys.argv[2]  # Output variant file (will include info
 variant_cluster_only_bed_file = sys.argv[3]  # output variant file (same as above but filters out variants not mapped to a cluster)
 cluster_info_file = sys.argv[4]  # File containing info/location of each cluster
 distance = int(sys.argv[5])  # Distance window around splice site that we want to consider variants
+
+
 
 
 # Open output file handle

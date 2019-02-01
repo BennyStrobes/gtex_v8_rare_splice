@@ -102,11 +102,6 @@ branchpoint_enrichment_dir=$output_root"branchpoint_enrichment/"
 # Directory containing visualizations for branchpoint enrichments
 visualize_branchpoint_enrichment_dir=$output_root"visualize_branchpoint_enrichment/"
 
-# Directory containing data for ptbp enrichments
-ptbp_enrichment_dir=$output_root"ptbp_enrichment/"
-
-# Directory containing visualizations for ptbp enrichments
-visualize_ptbp_enrichment_dir=$output_root"visualize_ptbp_enrichment/"
 
 
 
@@ -132,9 +127,8 @@ fi
 #    1. For each of the tissues, independently
 #    2. For cross tissue outliers (median pvalue)
 # Then visualize enrichments
-if false; then
-sbatch variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file
-fi
+sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file
+
 
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers

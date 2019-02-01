@@ -35,12 +35,6 @@ for distance_window in "${distances[@]}"; do
 
 		echo "Distance window="$distance_window" pvalue_threshold="$pvalue_threshold
 		
-		# Run Tissue by tissue enrichment of rare variants within outlier calls (before filtering individuals that were "global outliers")
-		variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance_window".txt"
-		output_root=$variant_enrichment_dir"tbt_variant_outlier_include_global_outlier_enrichment_pvalue_"$pvalue_threshold"_distance_"$distance_window"_version_"$enrichment_version
-		python variant_enrichment_quantification.py $variant_bed_file $output_root $splicing_outlier_dir $splicing_outlier_include_global_outliers_suffix"_merged" $european_ancestry_individual_list $tissue_names_file $enrichment_version $pvalue_threshold
-
-		
 		# Run Tissue by tissue enrichment of rare variants within outlier calls (after filtering individuals that were "global outliers")
 		variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance_window".txt"
 		output_root=$variant_enrichment_dir"tbt_variant_outlier_enrichment_pvalue_"$pvalue_threshold"_distance_"$distance_window"_version_"$enrichment_version
