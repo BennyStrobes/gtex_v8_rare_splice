@@ -24,7 +24,7 @@ variant_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/inpu
 total_expression_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/gtexV8.outlier.controls.v8ciseQTLs.globalOutliers.removed.medz.txt"
 
 # Allele specific expression outlier file
-ase_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/median_DOT_scores.tsv"
+ase_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/median_uncorrected_DOT_scores.tsv"
 
 # Splicing outlier file
 splicing_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/splicing_outlier_calls/cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue_gene_level.txt"
@@ -61,13 +61,13 @@ watershed_run_dir=$output_root"watershed_run/"
 ###############################################
 # Scripts
 ###############################################
-sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
-
+if false; then
+sbatch prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
+fi
 
 if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
-if false; then
-sh watershed_run.sh $unsupervised_learning_input_dir $watershed_run_dir
-fi
+sh watershed_run.sh $unsupervised_learning_input_dir $watershed_run_dir 
+

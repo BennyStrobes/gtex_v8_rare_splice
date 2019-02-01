@@ -55,11 +55,6 @@ exon_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_cal
 # Directory containing filtered junction read counts
 filtered_cluster_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/clusters_filtered/"
 
-# Directory containing sQTL results in each of the GTEx tissues using Leafcutter
-# Princy downloaded this from the exchange on 12/20/18
-# Each file name is formatted as $tissue_name".v8.sqtl_allpairs.txt"
-sqtl_dir="/work-zfs/abattle4/lab_data/GTEx_v8/sqtl/GTEx_Analysis_v8_sQTL_all_associations/"
-
 # File containing high-confidence human branchpoints according to https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4315302/
 # Their analysis was done in K562 cells
 # Downloaded on 1/7/19

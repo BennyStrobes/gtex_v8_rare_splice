@@ -10,10 +10,29 @@ library(sigmoid)
 library(Rcpp)
 library(numDeriv)
 library(lbfgs)
+library(grid)
 sourceCpp("crf_exact_updates.cpp")
 
 
-
+get_discretized_outliers <- function(outlier_pvalues) {
+	# initialize output
+	outliers_discretized <- matrix(0,dim(outlier_pvalues)[1], dim(outlier_pvalues)[2])
+	for (dimension in 1:ncol(outlier_pvalues)) {
+		# Check if it is total expression
+		if (as.character(colnames(outlier_pvalues)[dimension]) == "total_expression_pvalue") {
+			under_expression = outlier_pvalues[,dimension] < 0
+			log_pvalues = -log10(abs(outlier_pvalues[,dimension]) + 1e-6)
+			log_pvalues[under_expression] = log_pvalues[under_expression]*-1
+			discretized <- cut(log_pvalues,breaks=c(-6.01,-4,-2,-1,1,2,4,6.01))
+		} else {
+			log_pvalues = -log10(abs(outlier_pvalues[,dimension]) + 1e-6)
+			discretized <- cut(log_pvalues, 7)
+		}
+		outliers_discretized[,dimension] = as.numeric(discretized)
+	}
+	colnames(outliers_discretized) = colnames(outlier_pvalues)
+	return(outliers_discretized)
+}
 
 
 
@@ -27,12 +46,14 @@ load_data <- function(input_file, number_of_dimensions, pvalue_threshold) {
 	outlier_pvalues <- raw_data[,(ncol(raw_data)-number_of_dimensions):(ncol(raw_data)-1)]
 	# sample name as SubjectID:GeneName
 	rownames(outlier_pvalues) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
+	# Convert outlier status into binary random variables
+	outliers_binary <- ifelse(abs(outlier_pvalues)<=pvalue_threshold,1,0)
 	# Convert outlier status into discretized random variables
-	outliers_discrete <- ifelse(outlier_pvalues<=pvalue_threshold,2,1)
+	outliers_discrete <- get_discretized_outliers(outlier_pvalues)
 	# Extract array of N2 pairs
 	N2_pairs=factor(raw_data[,"N2pair"], levels=unique(raw_data[,"N2pair"]))
 	# Put all data into compact data structure
-	data_input <- list(feat=as.matrix(feat), outlier_pvalues=as.matrix(outlier_pvalues),outliers_discrete=as.matrix(outliers_discrete), N2_pairs=N2_pairs)
+	data_input <- list(feat=as.matrix(feat), outlier_pvalues=as.matrix(outlier_pvalues),outliers_binary=as.matrix(outliers_binary),outliers_discrete=outliers_discrete, N2_pairs=N2_pairs)
 	return(data_input)
 }
 
@@ -40,12 +61,41 @@ load_data <- function(input_file, number_of_dimensions, pvalue_threshold) {
 initialize_phi<- function(num_bins,dim) {
   phi_outlier <- matrix(1,dim,num_bins)
   phi_inlier <- matrix(1,dim,num_bins)
-  phi_inlier[,1] = .7
-  phi_inlier[,2] = .3
-
+  phi_inlier[,1] = .4
+  phi_inlier[,2] = .1
+  phi_inlier[,3] = .1
+  phi_inlier[,4] = .1
+  phi_inlier[,5] = .1
+  phi_inlier[,6] = .1
+  phi_inlier[,7] = .1
 
   phi_outlier[,1] = .05
-  phi_outlier[,2] = .95
+  phi_outlier[,2] = .05
+  phi_outlier[,3] = .1
+  phi_outlier[,4] = .1
+  phi_outlier[,5] = .2
+  phi_outlier[,6] = .2
+  phi_outlier[,7] = .3
+
+  ####################
+  # Total expression
+  ####################
+  phi_inlier[2,1] = .1
+  phi_inlier[2,2] = .1
+  phi_inlier[2,3] = .1
+  phi_inlier[2,4] = .4
+  phi_inlier[2,5] = .1
+  phi_inlier[2,6] = .1
+  phi_inlier[2,7] = .1
+
+  phi_outlier[2,1] = .25
+  phi_outlier[2,2] = .1
+  phi_outlier[2,3] = .1
+  phi_outlier[2,4] = .1
+  phi_outlier[2,5] = .1
+  phi_outlier[2,6] = .1
+  phi_outlier[2,7] = .25
+
 
   phi_init <- list(inlier_component = phi_inlier, outlier_component = phi_outlier)
   return(phi_init)
@@ -313,7 +363,7 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 	for (dimension in 1:model_params$number_of_dimensions) {
 		model_params$theta[,dimension] <- lbfgs_output$par[(model_params$number_of_dimensions + 1 + ncol(feat)*(dimension-1)):(model_params$number_of_dimensions + ncol(feat)*(dimension))]
 	}
-	model_params$theta_pair[1,] <- lbfgs_output$par[(model_params$number_of_dimensions + (model_params$number_of_dimensions*ncol(feat)) + 1):length(lbfgs_output$par)]
+ 	model_params$theta_pair[1,] <- lbfgs_output$par[(model_params$number_of_dimensions + (model_params$number_of_dimensions*ncol(feat)) + 1):length(lbfgs_output$par)]
 
 	# Calculate gradient of crf likelihood (fxn formatted to be used in LBFGS)
 	#calc_grad <- compute_exact_crf_gradient_for_lbfgs(gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton)
@@ -326,7 +376,7 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 
 # Compute MAP estimates of the coefficients defined by P(outlier_status| FR)
 map_phi <- function(discrete_outliers, model_params) {
-	num_bins = 2
+	num_bins = 7
 	# Initialize output matrices
 	phi_outlier <- matrix(1,model_params$number_of_dimensions, num_bins)	
 	phi_inlier <- matrix(1,model_params$number_of_dimensions, num_bins)
@@ -348,12 +398,12 @@ map_phi <- function(discrete_outliers, model_params) {
 	return(model_params)
 }
 
-integratedEM <- function(feat, discrete_outliers, phi_init, beta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables) {
+integratedEM <- function(feat, discrete_outliers, phi_init, beta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, output_root) {
 	model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, beta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables)
 
 
 
-	saveRDS(model_params, "/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/unsupervised_modeling/model_params.rds")
+	#saveRDS(model_params, "/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/unsupervised_modeling/model_params.rds")
 	saveRDS(feat, "/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/unsupervised_modeling/feat.rds")
 	saveRDS(discrete_outliers, "/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/unsupervised_modeling/discrete_outiers.rds")
 
@@ -378,7 +428,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, beta_init, pseudoc, 
 		print(model_params$phi)
 		print(paste0("ITERATION ", iter))
 		print(paste0("observed data log likelihood: ", observed_data_log_likelihood))
-		saveRDS(model_params, paste0("/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/temp/model_params_independent_", iter,".rds"))
+		saveRDS(model_params, paste0(output_root, "_model_params_iteration_",iter,".rds"))
 		#  Keep track of previous iteration's parameters in order to check for convergence
 		phi_old <- model_params$phi
 		beta_old <- model_params$beta
@@ -396,128 +446,73 @@ integratedEM <- function(feat, discrete_outliers, phi_init, beta_init, pseudoc, 
 }
 
 
+make_posterior_predictions_object_exact_inference <- function(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier_component, phi_outlier_component, number_of_dimensions) {
+	prediction_output <- compute_all_exact_posterior_predictions_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier_component, phi_outlier_component, number_of_dimensions)
+	predictions_list <- list()
+	for (num_sample in 1:nrow(feat)) {
+		sample_list <- list()
+		for (combination_number in 1:nrow(prediction_output$combination)) {
+			sample_list[[paste(prediction_output$combination[combination_number,]+1,collapse=" ")]] = prediction_output$probability[num_sample, combination_number]
+		}
+		predictions_list[[num_sample]] = sample_list
+	}
+	return(predictions_list)
 
-integratedEM_old <- function(Feat, Out, lambda_ideal,
-                         phi_init, beta_init, num_bins, costs,pseudoc, mixture_component_init,
-                         verbose, lambda, lambda_theta_singleton,lambda_theta_pair){
-  #  temporarily reduce number of tissues for algorith development purposes
-  #Feat <- cbind(matrix(1,dim(Feat)[1],1),Feat)
-  # Out <- Out[,1:3]
-  #beta_init <- append(1,beta_init,after=1)
-  # phi_init$outlier_component <- phi_init$outlier_component[1:3,]
-  # phi_init$inlier_component <- phi_init$inlier_component[1:3,]
-
-  # row.has.na <- apply(Out, 1, function(x){any(is.na(x))})
-  # Out <- Out[!row.has.na,]
-  # Feat <- Feat[!row.has.na,]
-  ###############
-
-  model_params <- temp_initialization(Feat, Out, phi_init, beta_init, lambda, lambda_theta_singleton,lambda_theta_pair,mixture_component_init)
-
-
-  steps <- 1
-  maxIter <- 1000  
-  converged <- 0
-  for (iter in 1:maxIter) {
-    if (verbose) {
-      cat(' *** STREAM: EM step ',steps,'\n',sep="")
-    }
-
-    ## E-step:
-    ## Compute expected posterior probabilities
-    ##           given current parameters and data
-    model_params <- getFuncRvFeat(Feat, model_params)
-    model_params <- getFuncRvPosteriors(Out, model_params)
-    expected_data_log_like <- compute_expected_complete_log_likelihood(Feat, Out, model_params)
-    cat('    Current expected data log probability after E step: ', expected_data_log_like,'\n',sep='')
-    if (verbose) {
-      cat('E-step: complete', '\n',sep='')
-    }
-    ## M-step:
-
-    #  Keep track of previous iteration's parameters in order to check for convergence
-    phi_old <- model_params$phi
-    beta_old <- model_params$beta
-    theta_singleton_old <- model_params$theta_singleton
-    theta_pair_old <- model_params$theta_pair
-
-    # Maximum Likelihood Estimate (really Map...) of Phi
-    model_params <- mle_phi(Out, model_params, pseudoc, num_bins)
-
-    # Maximum Likelihood estimate (really MAP...) of Beta and Theta
-    model_params <- mle_beta(model_params, Feat)
-
-
-    # Compute observed log probability
-
-
-    print(head(model_params$posterior))
-    print(head(model_params$theta_pair))
-    print(model_params$theta_singleton)
-    print(model_params$beta)
-    print(model_params$phi)
-
-
-    # Print convergence info
-    if (verbose) {
-      cat('     M-step: norm(phi_inlier difference) = ',
-          round(norm(matrix(model_params$phi$inlier_component)-matrix(phi_old$inlier_component)),4),
-          ', norm(phi_outlier difference) = ',
-          round(norm(matrix(model_params$phi$outlier_component)-matrix(phi_old$outlier_component)),4),
-          ', norm(beta difference) = ',
-          round(norm(matrix(model_params$beta)-matrix(beta_old)),4),
-          ', norm(theta singleton difference) = ',
-          round(norm(matrix(model_params$theta_singleton)-matrix(theta_singleton_old)),4),
-          ', norm(theta pairs difference) = ',
-          round(norm(matrix(model_params$theta_pair)-matrix(theta_pair_old)),4),
-          " *** \n\n", sep="")
-    }
-
-    expected_data_log_like <- compute_expected_complete_log_likelihood(Feat, Out, model_params)
-    cat('    Current expected data log probability after M step: ', expected_data_log_like,'\n',sep='')
-
-    ## Check convergence
-    if ((norm(matrix(model_params$beta) - matrix(beta_old)) < 5e-2) &
-        (norm(model_params$phi$inlier_component - phi_old$inlier_component) < 5e-2) &
-        (norm(model_params$phi$outlier_component - phi_old$outlier_component) < 1.6) &
-        (norm(matrix(model_params$theta_singleton) - matrix(theta_singleton_old)) < 5e-2) &
-        (norm(matrix(model_params$theta_pair) - matrix(theta_pair_old)) < .08)
-        ) {
-      converged <- 1
-      break
-    }
-    steps <- steps + 1
-  }
-
-  if (converged == 1) {
-    cat(" ::: EM iteration is terminated since it converges within a
-        predefined tolerance (0.001) ::: \n\n\n",sep="")
-  } else if ((converged == 0) && (iter == maxIter)) {
-    cat(" ::: EM iteration is terminated since it reaches a
-        predefined maximum value (1000) ::: \n\n\n",sep="")
-  }
-
-  median_observed_posterior <- calculate_median_observed_posterior(Out, model_params$posterior)
-  median_posterior <- apply(model_params$posterior,1,median)
-  list(model_params=model_params,
-      posteriors=median_observed_posterior)
 }
 
+compute_output_probabilities <- function(discrete_outliers_test2, predictions_object) {
+	pvalues <- c()
+	for (sample_num in 1:nrow(discrete_outliers_test2)) {
+		if (sum(discrete_outliers_test2[sample_num,] == numeric(ncol(discrete_outliers_test2)) + 1) != ncol(discrete_outliers_test2)) {
+			prob <- predictions_object[[sample_num]][[paste(discrete_outliers_test2[sample_num,], collapse=" ")]]
+			pvalues <- c(pvalues,prob)
+		}
+	}
+	return(pvalues)
+}
+
+compute_accuracy <- function(discrete_outliers_test2, predictions_object) {
+	correct_count = 0
+	total_count = 0
+	for (sample_num in 1:nrow(discrete_outliers_test2)) {
+		gold_standard <- paste(discrete_outliers_test2[sample_num,], collapse=" ")
+		max_value = -1
+		for (combo_num in 1:length(predictions_object[[sample_num]])) {
+			val = predictions_object[[sample_num]][[combo_num]]
+			if (val > max_value) {
+				max_value = val
+				name = labels(predictions_object[[sample_num]][combo_num])
+			}
+			if (name == gold_standard) {
+				correct_count = correct_count + 1
+			}
+			total_count = total_count + 1
+		}
+	}
+	return(correct_count/total_count)
+}
 
 
 roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables) {
 	# Load in all data (training and test)
 	feat_all <- data_input$feat
 	discrete_outliers_all <- data_input$outliers_discrete
+	binary_outliers_all <- data_input$outliers_binary
 	N2_pairs <- data_input$N2_pairs
 
 	# Extract training data
 	feat_train <- feat_all[is.na(N2_pairs),]
 	discrete_outliers_train <- discrete_outliers_all[is.na(N2_pairs),]
+	binary_outliers_train <-  binary_outliers_all[is.na(N2_pairs),]
 	# Extract Test data
   	feat_test <- rbind(feat_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], feat_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
   	discrete_outliers_test1 <- rbind(discrete_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], discrete_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
   	discrete_outliers_test2 <- rbind(discrete_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),], discrete_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),])
+  	binary_outliers_test1 <- rbind(binary_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], binary_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
+  	binary_outliers_test2 <- rbind(binary_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),], binary_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),])
+
+  	real_valued_outliers_test1 <- -log10(abs(rbind(data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])) + 1e-7)
+
 
 	## Standardize Features
 	mean_feat <- apply(feat_all, 2, mean)
@@ -526,7 +521,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
  	feat_train <- scale(feat_train, center=mean_feat, scale=sd_feat)
  	feat_test <- scale(feat_test, center=mean_feat, scale=sd_feat)
 
- 	# Initialize beta
+ 	# Initialize betas
  	num_features <- dim(feat_all)[2] + 1  # Plus 1 comes from the intercept
  	beta_init <- matrix(0, num_features, number_of_dimensions)
  	# Initialize matrix keeping track of GAM posterior probabilities in test data
@@ -535,7 +530,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
  	# Loop through outlier types
  	for (dimension in 1:number_of_dimensions) {
  		# Training binary outlier status for dimension #dimension
- 		outlier_status <- discrete_outliers_train[,dimension] - 1 # Minus 1 beause currently on {1,2} scale
+ 		outlier_status <- binary_outliers_train[,dimension] 
  		# Train GAM for this outlier type
  		logisticCV <- cv.glmnet(feat_train, as.vector(outlier_status), lambda=costs, family="binomial", alpha=0, nfolds=10)
 		# Get beta intercept corresponding to the lambda (l2 penalty) that does best in n-fold cross-validation
@@ -561,36 +556,142 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
   	lambda_pair <- 0
   	# lambda <- logisticCV$lambda.min
   	lambda <- 0
-  	# emModel <- integratedEM(feat_train, discrete_outliers_train, phi_init, beta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables)
+  	#emModel <- integratedEM(feat_train, discrete_outliers_train, phi_init, beta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, output_root)
+	#saveRDS(emModel, paste0(output_root, "_model_params.rds"))
+	emModel <- readRDS(paste0(output_root, "_model_params.rds"))
 
-  	# Get posteriors on test data
+
+ 	# Get posteriors on test data
   	posterior_info_test <- update_marginal_probabilities_exact_inference_cpp(feat_test, discrete_outliers_test1, emModel$theta_singleton, emModel$theta_pair, emModel$theta, emModel$phi$inlier_component, emModel$phi$outlier_component, emModel$number_of_dimensions, choose(emModel$number_of_dimensions, 2), TRUE)
   	posterior_prob_test <- posterior_info_test$probability
   	posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise
 
-  	  	# Get posteriors on test data
-  	posterior_info_test_ind <- update_marginal_probabilities_exact_inference_cpp(feat_test, discrete_outliers_test1, emModel_ind$theta_singleton, emModel_ind$theta_pair, emModel_ind$theta, emModel_ind$phi$inlier_component, emModel_ind$phi$outlier_component, emModel_ind$number_of_dimensions, choose(emModel_ind$number_of_dimensions, 2), TRUE)
-  	posterior_prob_test_ind <- posterior_info_test_ind$probability
-  	posterior_pairwise_prob_test_ind <- posterior_info_test_ind$probability_pairwise
 
+  	roc_object_across_dimensions <- list()
+  	# Loop through dimensions
+  	for (dimension in 1:number_of_dimensions) {
+  		# Name of dimension
+  		dimension_name <- strsplit(colnames(data_input$outliers_binary)[dimension],"_pval")[[1]][1]
+  		# Pseudo gold standard
+  		test_outlier_status <- binary_outliers_test2[,dimension]
+  		# river predictions
+  		roc_obj <- roc(test_outlier_status, posterior_prob_test[,dimension])
+  		# Predictions with only RNA
+  		rna_only_roc_obj <- roc(test_outlier_status, real_valued_outliers_test1[,dimension])
+  		# predictions with only genomic annotations
+  		gam_roc_obj <- roc(test_outlier_status, gam_posteriors[,dimension])
+
+		evaROC <-	
+		 list(watershed_sens=roc_obj$sensitivities,
+              watershed_spec=roc_obj$specificities,
+         	  watershed_auc=roc_obj$auc[1],
+         	  GAM_sens=gam_roc_obj$sensitivities,
+              GAM_spec=gam_roc_obj$specificities,
+              GAM_auc=gam_roc_obj$auc[1],
+              rna_only_sens=rna_only_roc_obj$sensitivities,
+              rna_only_spec=rna_only_roc_obj$specificities,
+              rna_only_auc=rna_only_roc_obj$auc[1])
+
+
+		 roc_object_across_dimensions[[dimension]] <- list(name=dimension_name, evaROC=evaROC)
+
+  	}
+
+  	#predictions_object <- make_posterior_predictions_object_exact_inference(feat_test, discrete_outliers_test1, emModel$theta_singleton, emModel$theta_pair, emModel$theta, emModel$phi$inlier_component, emModel$phi$outlier_component, emModel$number_of_dimensions)
+  	#predictions_object_ind <- make_posterior_predictions_object_exact_inference(feat_test, discrete_outliers_test1, emModel_ind$theta_singleton, emModel_ind$theta_pair, emModel_ind$theta, emModel_ind$phi$inlier_component, emModel_ind$phi$outlier_component, emModel_ind$number_of_dimensions)
+
+  	#output_probabilities <- compute_output_probabilities(discrete_outliers_test2, predictions_object)
+  	#output_probabilities_ind <- compute_output_probabilities(discrete_outliers_test2, predictions_object_ind)
+
+  	#accuracy <- compute_accuracy(discrete_outliers_test2, predictions_object)
+  	#accuracy_ind <- compute_accuracy(discrete_outliers_test2, predictions_object_ind)
+
+  	# Get posteriors on test data
+  	#posterior_info_test <- update_marginal_probabilities_exact_inference_cpp(feat_test, discrete_outliers_test1, emModel$theta_singleton, emModel$theta_pair, emModel$theta, emModel$phi$inlier_component, emModel$phi$outlier_component, emModel$number_of_dimensions, choose(emModel$number_of_dimensions, 2), TRUE)
+  	#posterior_prob_test <- posterior_info_test$probability
+  	#posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise
+
+	# Get posteriors on test data
+  	#posterior_info_test_ind <- update_marginal_probabilities_exact_inference_cpp(feat_test, discrete_outliers_test1, emModel_ind$theta_singleton, emModel_ind$theta_pair, emModel_ind$theta, emModel_ind$phi$inlier_component, emModel_ind$phi$outlier_component, emModel_ind$number_of_dimensions, choose(emModel_ind$number_of_dimensions, 2), TRUE)
+  	#posterior_prob_test_ind <- posterior_info_test_ind$probability
+  	#posterior_pairwise_prob_test_ind <- posterior_info_test_ind$probability_pairwise
+
+ 	# Get posteriors on test data
+  	#posterior_info_test <- update_marginal_probabilities_exact_inference_cpp(feat_test, discrete_outliers_test1, emModel$theta_singleton, emModel$theta_pair, emModel$theta, emModel$phi$inlier_component, emModel$phi$outlier_component, emModel$number_of_dimensions, choose(emModel$number_of_dimensions, 2), TRUE)
+  	#posterior_prob_test <- posterior_info_test$probability
+  	#posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise
+
+  	#for (dimension in 1:number_of_dimensions) {
+  	#	test_outlier_status <- binary_outliers_test2[,dimension]
+  	#	roc_obj <- roc(test_outlier_status, posterior_prob_test[,dimension])
+  	#	print(colnames(data_input$outliers_binary)[dimension])
+  	#	print(roc_obj$auc)
+  	#	rna_only_roc_obj <- roc(test_outlier_status, real_valued_outliers_test1[,dimension])
+  	#	print(rna_only_roc_obj$auc)
+  	#}
 
   	# Loop through dimensions
-  	dimension <- 1
-  	test_outlier_status <- discrete_outliers_test2[,dimension] - 1
-  	splice_roc <- roc(test_outlier_status, posterior_prob_test[,dimension])
-  	splice_roc_ind <- roc(test_outlier_status, posterior_prob_test_ind[,dimension])
+  	#dimension <- 1
+  	#test_outlier_status <- binary_outliers_test2[,dimension]
+  	#splice_roc <- roc(test_outlier_status, posterior_prob_test[,dimension])
+  	#splice_roc_ind <- roc(test_outlier_status, posterior_prob_test_ind[,dimension])
 
-  	  	# Loop through dimensions
-  	dimension <- 2
-  	test_outlier_status <- discrete_outliers_test2[,dimension] - 1
-  	te_roc <- roc(test_outlier_status, posterior_prob_test[,dimension])
-  	te_roc_ind <- roc(test_outlier_status, posterior_prob_test_ind[,dimension])
+  	 # Loop through dimensions
+  	#dimension <- 2
+  	#test_outlier_status <- binary_outliers_test2[,dimension] - 1
+  	#te_roc <- roc(test_outlier_status, posterior_prob_test[,dimension])
+  	#te_roc_ind <- roc(test_outlier_status, posterior_prob_test_ind[,dimension])
+  	return(roc_object_across_dimensions)
 
 }
 
 
+# x is 1-specificity (false positive rate)
+# y is sensitivity  (true positive rate)
+plot_roc_comparison_curve <- function(roc_object, roc_object_ind, number_of_dimensions, output_file) {
+	tpr <- c()
+	fpr <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed
+		tpr <- c(tpr, dimension_roc_object$evaROC$watershed_sens)
+		fpr <- c(fpr, 1-dimension_roc_object$evaROC$watershed_spec)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_sens)))
+		prediction_type <- c(prediction_type, rep("watershed", length(dimension_roc_object$evaROC$watershed_sens)))
+		# independent
+		tpr <- c(tpr, dimension_roc_object_ind$evaROC$watershed_sens)
+		fpr <- c(fpr, 1-dimension_roc_object_ind$evaROC$watershed_spec)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object_ind$evaROC$watershed_sens)))
+		prediction_type <- c(prediction_type, rep("river", length(dimension_roc_object_ind$evaROC$watershed_sens)))
+		# rna only
+		tpr <- c(tpr, dimension_roc_object$evaROC$rna_only_sens)
+		fpr <- c(fpr, 1-dimension_roc_object$evaROC$rna_only_spec)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$rna_only_sens)))
+		prediction_type <- c(prediction_type, rep("rna only", length(dimension_roc_object$evaROC$rna_only_sens)))
+		# GAM
+		tpr <- c(tpr, dimension_roc_object$evaROC$GAM_sens)
+		fpr <- c(fpr, 1-dimension_roc_object$evaROC$GAM_spec)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$GAM_sens)))
+		prediction_type <- c(prediction_type, rep("GAM", length(dimension_roc_object$evaROC$GAM_sens)))
+	}
+	df <- data.frame(tpr=tpr, fpr=fpr, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type))
+  
 
+  	plotter <- ggplot(data=df, aes(x=fpr, y=tpr, colour=prediction_type)) + geom_line() + facet_wrap( ~ outlier_type, ncol=3) +
+  				geom_abline(slope=1) +
+                labs(x="False positive rate", y="True positive rate", colour="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=10),axis.text=element_text(size=9), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=9), legend.title = element_text(size=10))
 
+	ggsave(plotter, file=output_file,width = 26,height=11,units="cm")
+}
 
 
 
@@ -610,23 +711,27 @@ stem <- args[3]  # Used in output files as a unique identifier for this run
 watershed_run_dir <- args[4]  # Output directory
 number_of_dimensions <- as.numeric(args[5])  # Dimensionality of space
 inference_method <- args[6]  # Currently only open is "exact"
-independent_variables <- as.character(args[7])  # either "true" or "false"
 
 #####################
 # Parameters
 #####################
-#output_root <- paste0(watershed_run_dir, stem)
-#pseudoc=50
-#pseudoc=0
-#costs=c(100, 10, 1, .1, .01, 1e-3, 1e-4)
-#phi_init <- initialize_phi(2, number_of_dimensions) 
+pseudoc=20
+costs=c(100, 10, 1, .1, .01, 1e-3, 1e-4)
+phi_init <- initialize_phi(7, number_of_dimensions) 
 
 
 # Load in data
-#data_input <- load_data(input_file, number_of_dimensions, pvalue_threshold)
+data_input <- load_data(input_file, number_of_dimensions, pvalue_threshold)
+
+independent_variables = "false"
+output_root <- paste0(watershed_run_dir, stem, "_independent_", independent_variables)
+roc_object <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
+
+independent_variables = "true"
+output_root <- paste0(watershed_run_dir, stem, "_independent_", independent_variables)
+roc_object_ind <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
 
 
-#roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
-
-#roc_analysis_driver(input_file, ZscoreThrd, output_root, dimensions, phi_init, num_bins, costs, verbose, pseudoc,lambda,lambda_theta_singleton,lambda_theta_pair)
+output_file <- paste0(watershed_run_dir, stem, "_comparison_roc.pdf")
+plot_roc_comparison_curve(roc_object, roc_object_ind, number_of_dimensions, output_file)
 

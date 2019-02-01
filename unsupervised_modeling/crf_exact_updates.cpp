@@ -82,13 +82,13 @@ NumericMatrix extract_all_binary_combinations_ignoring_two_row(int n, int column
 double un_normalized_crf_weight(NumericMatrix all_binary_combinations_matrix, int combination_number, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
 	// Initialize weight
 	double weight = 0;
+	int dimension_counter = 0;
 	for (int dimension=0; dimension < number_of_dimensions; dimension++) {
 		weight += all_binary_combinations_matrix(combination_number, dimension)*theta_singleton(dimension);
 		// Loop through features
 		for (int d = 0; d < feat.ncol(); d++) {
 			weight += all_binary_combinations_matrix(combination_number,dimension)*feat(sample_num,d)*theta(d,dimension);
 		}
-		int dimension_counter = 0;
 		for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
 			if (dimension != dimension2) {
 				weight += all_binary_combinations_matrix(combination_number,dimension)*all_binary_combinations_matrix(combination_number,dimension2)*theta_pair(0, dimension_counter);
@@ -193,9 +193,9 @@ List update_marginal_probabilities_exact_inference_cpp(NumericMatrix feat, Numer
 		double normalization_constant = exact_normalization_constant(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
 		// Loop through dimensions
 		int dimension = 0;
+		int dimension_counter = 0;
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
 			probabilities(sample_num, dimension) = exact_marginal_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, posterior_bool);
-			int dimension_counter = 0;
 			for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
 				if (dimension != dimension2) {
 					probabilities_pairwise(sample_num, dimension_counter) = exact_marginal_pairwise_probability(normalization_constant, dimension, dimension2, dimension_counter, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
@@ -207,6 +207,27 @@ List update_marginal_probabilities_exact_inference_cpp(NumericMatrix feat, Numer
 	List ret;
 	ret["probability"] = probabilities;
 	ret["probability_pairwise"] = probabilities_pairwise;
+	return ret;
+}
+
+// [[Rcpp::export]]
+List compute_all_exact_posterior_predictions_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions) {
+	// All output combinations
+	NumericMatrix combo_mat = extract_all_binary_combinations(number_of_dimensions);
+	// Initialize output matrices
+	NumericMatrix probabilities(feat.nrow(), combo_mat.nrow());
+	// Loop through samples
+	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
+		// Compute normalization constant for this sample
+		double normalization_constant = exact_normalization_constant(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, true);
+		// Loop through all possible states
+		for (int combo_num = 0; combo_num < combo_mat.nrow(); combo_num++) {
+			probabilities(sample_num, combo_num) = exact_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, combo_num, combo_mat, true);
+		}
+	}
+	List ret;
+	ret["probability"] = probabilities;
+	ret["combination"] = combo_mat;
 	return ret;
 }
 
@@ -239,12 +260,12 @@ double compute_crf_likelihood_exact_inference_cpp(NumericMatrix posterior, Numer
 		log_likelihood = log_likelihood - normalization_constant;
 		// Loop through dimensions
 		int dimension = 0;
+		int dimension_counter = 0;
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
 			log_likelihood += theta_singleton(dimension)*posterior(sample_num, dimension);
 			for (int d = 0; d < feat.ncol(); d++) {
 				log_likelihood += theta(d, dimension)*feat(sample_num, d)*posterior(sample_num, dimension);
 			}
-			int dimension_counter = 0;
 			for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
 				if (dimension != dimension2) {
 					log_likelihood += theta_pair(0, dimension_counter)*posterior_pairwise(sample_num, dimension_counter);
@@ -256,9 +277,9 @@ double compute_crf_likelihood_exact_inference_cpp(NumericMatrix posterior, Numer
 	log_likelihood = log_likelihood/feat.nrow();
 
 	// Add L2 penalties
+	int dimension_counter = 0;
 	for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
 		log_likelihood = log_likelihood - lambda_singleton*(theta_singleton(dimension)*theta_singleton(dimension));
-		int dimension_counter = 0;
 		for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
 			if (dimension != dimension2) {
 				log_likelihood = log_likelihood - lambda_pair*(theta_pair(0,dimension_counter)*theta_pair(0, dimension_counter));

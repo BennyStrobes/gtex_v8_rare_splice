@@ -287,9 +287,11 @@ def get_total_expression_outliers(genes, individuals, total_expression_outlier_f
 			continue
 		if ensamble_id not in genes:
 			continue
-		zscore = abs(float(data[4]))
+		zscore = float(data[4])
+		pvalue = scipy.stats.norm.sf(abs(zscore))*2
 		sample_name = indi_id + '_' + ensamble_id
-		pvalue = scipy.stats.norm.sf(zscore)*2
+		if zscore < 0:
+			pvalue = pvalue*-1
 		outlier_dicti[sample_name] = pvalue
 	f.close()
 	for indi in individuals.keys():
