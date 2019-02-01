@@ -30,14 +30,3 @@ done
 
 
 
-
-
-
-distances=( "100" )
-
-for distance in "${distances[@]}"
-do
-	variant_cluster_bed_file=$rare_variant_dir"variant_cluster_intron_body_"$distance"_bed.txt"
-	variant_cluster_no_consensus_bed_file=$rare_variant_dir"variant_cluster_intron_body_"$distance"_no_consensus_bed.txt"
-	python map_variants_to_cluster_intron_bodies.py $variant_bed_file $variant_cluster_bed_file $variant_cluster_no_consensus_bed_file $cluster_info_file $distance
-done
