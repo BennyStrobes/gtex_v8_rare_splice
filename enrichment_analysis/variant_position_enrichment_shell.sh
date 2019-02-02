@@ -25,16 +25,11 @@ exon_file="$9"
 
 # Range of pvalues
 pvalue_thresholds=( ".000001" ".00001" ".0001" ".001")
-
-
 distance="1000"
-pvalue_threshold=".000001"
-python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file
 
 
-
-if false; then
 # Loop through pvalue thresholds
+if false; then
 for pvalue_threshold in "${pvalue_thresholds[@]}"; do
 	echo $distance"_"$pvalue_threshold
 	python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file

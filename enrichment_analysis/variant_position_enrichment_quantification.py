@@ -120,7 +120,7 @@ def extract_mapping_from_cluster_id_to_junctions(cluster_info_file):
 	return mapping
 
 # Compute distance from variant to nearest junction (positive values correspond to exons)
-def get_distance_to_nearest_splice_site(cluster_mapping, var_pos, chromosome_string, strand):
+def get_distance_to_nearest_splice_site(cluster_mapping, var_pos, chromosome_string, strand, annotated_splice_sites):
 	# Quick error checking
 	if cluster_mapping['chromosome'] != chromosome_string:
 		print('chromosome mismatch error!')
@@ -128,6 +128,7 @@ def get_distance_to_nearest_splice_site(cluster_mapping, var_pos, chromosome_str
 	# Initialize min distance to really high number (bigger than any distance possible in genomics)
 	min_distance = 10000000000000000
 	ss_type = 'null'  # Corresponding to donor or acceptor
+	ss_annotated = 'null'  # corresponding to annotated or novel
 	# Loop through start_splice_sites
 	for start_splice_site in cluster_mapping['start_splice_sites']:
 		distance = start_splice_site - var_pos
@@ -140,6 +141,10 @@ def get_distance_to_nearest_splice_site(cluster_mapping, var_pos, chromosome_str
 			else:
 				print('strand assumption error')
 				pdb.set_trace()
+			if chromosome_string + '_' + str(start_splice_site) in annotated_splice_sites:
+				ss_annotated = 'annotated'
+			else:
+				ss_annotated = 'novel'
 	# Loop through end splice sites
 	for end_splice_site in cluster_mapping['end_splice_sites']:
 		distance = var_pos - end_splice_site
@@ -152,11 +157,17 @@ def get_distance_to_nearest_splice_site(cluster_mapping, var_pos, chromosome_str
 			else:
 				print('strand assumption error')
 				pdb.set_trace()
+			if chromosome_string + '_' + str(end_splice_site) in annotated_splice_sites:
+				ss_annotated = 'annotated'
+			else:
+				ss_annotated = 'novel'
 	if ss_type == 'null':
 		print('strand assumption error!')
 		pdb.set_trace()
-
-	return min_distance, ss_type
+	if ss_annotated == 'null':
+		print('ss annotation assumption error')
+		pdb.set_trace()
+	return min_distance, ss_type, ss_annotated
 
 # Create mapping from cluster id to strand
 def get_cluster_to_strand_mapping(cluster_info_file, exon_file):
@@ -189,17 +200,40 @@ def get_cluster_to_strand_mapping(cluster_info_file, exon_file):
 	f.close()
 	return cluster_to_strand
 
+# Create dictionary of annotated splice sites
+# Where keys are "chr"$chrom_num"_"#splice_sites
+def get_dictionary_of_annotated_splice_sites(exon_file):
+	# initialize dictionary
+	ss = {}
+	# used to skip header
+	head_count = 0
+	# stream exon file
+	f = open(exon_file)
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		ss[data[0] + '_' + data[1]] = 1
+		ss[data[0] + '_' + data[2]] = 1
+	return ss
+
+
 # Print distance to splice site for outliers and non-outliers based on observed exon-exon junctions
 def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individuals, cluster_info_file, inlier_positions_file, outlier_positions_file, variant_bed_file, exon_file):
 	# Create mapping from cluster id to junctions
 	cluster_mapping = extract_mapping_from_cluster_id_to_junctions(cluster_info_file)
 	# Create mapping from cluster id to strand
 	cluster_to_strand_mapping = get_cluster_to_strand_mapping(cluster_info_file, exon_file)
+	# Create dictionary of annotated splice sites
+	# Where keys are "chr"$chrom_num"_"#splice_sites
+	annotated_splice_sites = get_dictionary_of_annotated_splice_sites(exon_file)
 	# Open output file handles
 	t_outlier = open(outlier_positions_file, 'w')
 	t_inlier = open(inlier_positions_file, 'w')
-	t_outlier.write('distance\tsplice_site_type\tmajor_allele\tvariant_allele\n')
-	t_inlier.write('distance\tsplice_site_type\tmajor_allele\tvariant_allele\n')
+	t_outlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\n')
+	t_inlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\n')
 	# Stream variant bed file
 	used = {}
 	f = open(variant_bed_file)
@@ -241,13 +275,13 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 		# Individual is an outlier
 		if individual_id in cluster_struct[cluster_id]['outlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
-			distance, ss_type = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id])
-			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + major_allele + '\t' + variant_allele + '\n')
+			distance, ss_type, ss_annotated = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
+			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\n')
 		# Individaul is an inlier
 		if individual_id in cluster_struct[cluster_id]['inlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
-			distance, ss_type = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id])
-			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + major_allele + '\t' + variant_allele + '\n')
+			distance, ss_type, ss_annotated = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
+			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\n')
 	# CLose input and output file handles
 	f.close()
 	t_inlier.close()
@@ -366,6 +400,7 @@ cluster_info_file = sys.argv[7]  # File containing mapping from clusters to both
 pvalue_threshold = float(sys.argv[8])  # threshold for outlier calling
 distance = sys.argv[9]  # Window size around splice sites that we consider rare variants for enrichment
 exon_file = sys.argv[10]
+
 
 # Outlier file for multi-tissue outliers
 splicing_outlier_file = splicing_outlier_dir + 'cross_tissue' + splicing_outlier_suffix + '_emperical_pvalue.txt'

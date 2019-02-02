@@ -131,15 +131,15 @@ fi
 #    1. For each of the tissues, independently
 #    2. For cross tissue outliers (median pvalue)
 # Then visualize enrichments
+if false; then
 sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file
-
+fi
 
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
 # Then visualize results
-if false; then
 sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file
-fi
+
 
 #################
 # Part 4: Visualize cluster distributions for outliers compared to non-outliers
