@@ -16,7 +16,6 @@ european_ancestry_individual_list="$6"
 gencode_gene_annotation_file="$7"
 cluster_info_file="$8"
 exon_file="$9"
-sqtl_dir="${10}"
 
 
 
@@ -24,19 +23,21 @@ sqtl_dir="${10}"
 # Compare distances between variants and splice sites for outliers vs non-outliers
 ########################
 
-# Range of Distances
-distances=( "10" "20" "100" )
 # Range of pvalues
 pvalue_thresholds=( ".000001" ".00001" ".0001" ".001")
 
-# Loop through distances
+
+distance="1000"
+pvalue_threshold=".000001"
+python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file
+
+
+
 if false; then
-for distance in "${distances[@]}"; do
 # Loop through pvalue thresholds
-	for pvalue_threshold in "${pvalue_thresholds[@]}"; do
-		echo $distance"_"$pvalue_threshold
-		python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file
-	done
+for pvalue_threshold in "${pvalue_thresholds[@]}"; do
+	echo $distance"_"$pvalue_threshold
+	python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file
 done
 fi
 
@@ -47,36 +48,15 @@ fi
 ########################
 # Visualize results
 ########################
-Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-########################
-# OLD RETIRED SCRIPTS!
-# Compare distances between variants and splice sites for sQTLs vs background
-########################
-tissue_type="Muscle_Skeletal"
-sqtl_file=$sqtl_dir$tissue_type".v8.sqtl_allpairs.txt"
-distance_window="10"
-pvalue_thresh=".00000000001"
 if false; then
-python variant_position_enrichment_quantification_in_sqtls.py $sqtl_file $gencode_gene_annotation_file $variant_position_enrichment_dir $distance_window $pvalue_thresh
+Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
 fi
+
+
+
+
+
+
+
 
 

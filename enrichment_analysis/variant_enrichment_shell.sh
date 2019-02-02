@@ -25,9 +25,9 @@ enrichment_version="all"
 ##################################
 
 # Range of Distances
-distances=( "4" "6" "8" "10" "100" "1000")
+distances=( "2" "4" "6" "8" "10" "100" "1000")
 # Range of pvalue thresholds
-pvalue_thresholds=( ".000001" ".00001" ".0001" ".001" )
+pvalue_thresholds=( ".000001" ".00001" ".0001" )
 # Loop through distances
 for distance_window in "${distances[@]}"; do
 	# Loop through range of pvalue thresholds
@@ -38,7 +38,7 @@ for distance_window in "${distances[@]}"; do
 		# Run Tissue by tissue enrichment of rare variants within outlier calls (after filtering individuals that were "global outliers")
 		variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance_window".txt"
 		output_root=$variant_enrichment_dir"tbt_variant_outlier_enrichment_pvalue_"$pvalue_threshold"_distance_"$distance_window"_version_"$enrichment_version
-		python variant_enrichment_quantification.py $variant_bed_file $output_root $splicing_outlier_dir $splicing_outlier_suffix"_merged" $european_ancestry_individual_list $tissue_names_file $enrichment_version $pvalue_threshold
+		python variant_tbt_enrichment_quantification.py $variant_bed_file $output_root $splicing_outlier_dir $splicing_outlier_suffix"_merged" $european_ancestry_individual_list $tissue_names_file $enrichment_version $pvalue_threshold
 
 	done
 done
@@ -50,11 +50,10 @@ done
 ##################################
 # Cross Tissue variant outlier enrichment
 ##################################
-
-distances=( "4" "6" "8" "10" "100" "1000")
+previous_distance="2"
+distances=( "2" "4" "6" "8" "10" "100" "1000")
 # Loop through distances
 for distance_window in "${distances[@]}"; do
-
 	echo "Multi-tissue distance="$distance_window
 
 	# Run cross tissue enrichment using this sized window
@@ -62,8 +61,15 @@ for distance_window in "${distances[@]}"; do
 	variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance_window".txt"
 	output_root=$variant_enrichment_dir"cross_tissue_variant_outlier_enrichment_distance_"$distance_window"_version_"$enrichment_version
 	python variant_cross_tissue_enrichment_quantification.py $variant_bed_file $output_root $splicing_outlier_file $european_ancestry_individual_list $enrichment_version
-done
 
+	# Run cross tissue enrichment using this sized window
+	splicing_outlier_file=$splicing_outlier_dir"cross_tissue"$splicing_outlier_suffix"_emperical_pvalue.txt"
+	variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance_window".txt"
+	previous_variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$previous_distance".txt"
+	output_root=$variant_enrichment_dir"cross_tissue_variant_outlier_enrichment_mutually_exclusive_distance_"$distance_window"_version_"$enrichment_version
+	python variant_cross_tissue_mutually_exclusive_distance_enrichment_quantification.py $variant_bed_file $previous_variant_bed_file $output_root $splicing_outlier_file $european_ancestry_individual_list $enrichment_version
+	previous_distance=$distance_window
+done
 
 
 

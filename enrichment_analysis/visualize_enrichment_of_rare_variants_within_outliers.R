@@ -44,14 +44,16 @@ tbt_variant_outlier_enrichment_errorbar_plot <- function(tissue_by_tissue_enrich
 		upper_bounds <- c(upper_bounds, upper_bound)
 	}
 
+	tissue_names <- gsub("_", " ", tissue_names)
 	# Add information to data frame
 	df <- data.frame(tissue_names=factor(tissue_names), odds_ratios=odds_ratios, lower_bounds=lower_bounds, upper_bounds=upper_bounds)
 	error_bar_plot <- ggplot() + geom_errorbar(data=df, mapping=aes(x=tissue_names,ymin=lower_bounds, ymax=upper_bounds), colour=color_vector) +
 					geom_point(data=df, mapping=aes(x=tissue_names, y=odds_ratios), colour=color_vector) +
 					labs(x = "Tissue", y = "Enrichment", title=title) +
-					theme(text = element_text(size=10),axis.text=element_text(size=9), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=9), legend.title = element_text(size=10), axis.text.x = element_text(angle = 90, hjust = 1, vjust=.5)) 
+					geom_hline(yintercept=1) + 
+					theme(plot.title = element_text(hjust = 0.5),text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11), axis.text.x = element_text(angle = 90, hjust = 1, vjust=.5)) 
 
-	ggsave(error_bar_plot, file=output_file,width = 20,height=12.5,units="cm")
+	ggsave(error_bar_plot, file=output_file,width = 20,height=17,units="cm")
 
 }
 
@@ -78,8 +80,8 @@ get_color_vector <- function(tissue_colors, tissue_names) {
 	return(colors)
 }
 
-cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrichment_dir, output_file, version) {
-	distances <- c("4", "6", "8", "10", "100", "1000")
+cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrichment_dir, output_file, version, stem) {
+	distances <- c("2", "4", "6", "8", "10", "100")
 
 	# Initialize vectors
 	pvalues <- c()
@@ -91,7 +93,7 @@ cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrich
 	# Loop through distances (one enrichment file for each distance)
 	for (distance_iter in 1:length(distances)) {
 		distance <- distances[distance_iter]
-		file_name <- paste0(variant_enrichment_dir, "cross_tissue_variant_outlier_enrichment_distance_", distance, "_version_", version, ".txt")
+		file_name <- paste0(variant_enrichment_dir, stem, "distance_", distance, "_version_", version, ".txt")
 		enrichments <- read.table(file_name, header=FALSE)
 		num_pvalues <- dim(enrichments)[1]
 		pvalue_string <- c()
@@ -126,8 +128,9 @@ cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrich
 	dodge <- position_dodge(width=0.9)
 	error_bar_plot <- ggplot() + geom_errorbar(data=df, mapping=aes(x=distance,ymin=lower_bounds, ymax=upper_bounds, colour=pvalues), position=dodge) +
 					geom_point(data=df, mapping=aes(x=distance, y=odds_ratios, colour=pvalues), position=dodge) +
-					labs(x = "Distance", y = "Enrichment", colour="p-value") +
-					theme(text = element_text(size=10),axis.text=element_text(size=9), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=9), legend.title = element_text(size=10)) 
+					labs(x = "Base pair window around splice site", y = "Enrichment", colour="p-value", title= "Cross tissue splicing outliers") +
+					geom_hline(yintercept=1) + 
+					theme(plot.title = element_text(hjust = 0.5),text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11)) 
 
 	ggsave(error_bar_plot, file=output_file,width = 19,height=10.5,units="cm")
 
@@ -160,10 +163,13 @@ version <- "all"
 
 tissue_by_tissue_enrichment_file <- paste0(variant_enrichment_dir, "tbt_variant_outlier_enrichment_pvalue_", pvalue_threshold, "_distance_", distance, "_version_",version,".txt")
 output_file <- paste0(visualize_variant_enrichment_dir, "tbt_variant_outlier_enrichment_pvalue_", pvalue_threshold, "_distance_", distance, "_version_",version, "_errorbar.pdf")
-title <- paste0("distance=",distance, " / pvalue=", pvalue_threshold)
+title <- paste0("Splicing outliers (p <= ", as.character(as.numeric(pvalue_threshold)),")")
 tbt_variant_outlier_enrichment_errorbar_plot(tissue_by_tissue_enrichment_file, output_file, title, color_vector)
 
+stem <- "cross_tissue_variant_outlier_enrichment_"
+output_file <- paste0(visualize_variant_enrichment_dir, stem, "version_", version,"_errorbar.pdf")
+cross_tissue_variant_outlier_enrichment_errorbar_plot(variant_enrichment_dir, output_file, version, stem)
 
-output_file <- paste0(visualize_variant_enrichment_dir, "cross_tissue_variant_outlier_enrichment_version_",version,"_errorbar.pdf")
-cross_tissue_variant_outlier_enrichment_errorbar_plot(variant_enrichment_dir, output_file, version)
-
+stem <- "cross_tissue_variant_outlier_enrichment_mutually_exclusive_"
+output_file <- paste0(visualize_variant_enrichment_dir, stem, "version_", version,"_errorbar.pdf")
+cross_tissue_variant_outlier_enrichment_errorbar_plot(variant_enrichment_dir, output_file, version, stem)

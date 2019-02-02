@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=8:00:00
+#SBATCH --time=3:00:00
 #SBATCH --mem=10GB
 #SBATCH --partition=shared
 #SBATCH --nodes=1
@@ -10,11 +10,14 @@
 variant_bed_file="$1"
 cluster_info_file="$2"
 rare_variant_dir="$3"
+raw_genomic_annotation_file="$4"
+
+
 
 
 
 # Range of Distances
-distances=( "4" "6" "8" "10" "20" "100" "1000")
+distances=( "2" "4" "6" "8" "10" "20" "100" "1000")
 
 
 # Loop through distances

@@ -15,6 +15,10 @@ tissue_names_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/inp
 # File containing mapping from GTEx v8 tissue names to tissue colors
 tissue_colors_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtex_colors.txt"
 
+# File containing genomic annotations describing rare variants
+# Downloaded from stroberb-420@scp.nygenome.org:/data/delivery/gtex-rare/data/gtex_v8_vep88_loftee_cadd_gnomad.tsv.gz on 1/9/19
+raw_genomic_annotation_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/gtex_v8_rare_indivgeno_vep88_loftee_cadd_gnomad.tsv"
+
 # Gencode Gene annotation file
 # Downloaded from https://www.gencodegenes.org/human/release_26.html on 11/26/18
 gencode_gene_annotation_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gencode.v26.annotation.gff3.gz"
@@ -27,7 +31,7 @@ individual_list="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input
 european_ancestry_individual_list="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/european_ancestry_individuals.txt"
 
 # List of rare variants across all European ancestry individuals (Created by Nicole Ferraro. Downloaded from stroberb-420@scp.nygenome.org:/data/delivery/gtex-rare/data/all_rare_variants_noWindow_SNPs.txt on 12/5/18)
-variant_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/all_rare_variants_noWindow_SNPs.txt"
+variant_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/all_rare_variants_noWindow_SNPs_refalt.txt"
 
 # List of rare variants across all European ancestry individuals mapped to gene bodies (Created by Nicole Ferraro. Downloaded from stroberb-420@scp.nygenome.org:/data/delivery/gtex-rare/data/all_rare_variants_noWindow_SNPs.txt on 12/5/18)
 variant_bed_gene_mapped_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/all_rare_variants_SNPs_10kb_genebody.txt"
@@ -118,7 +122,7 @@ visualize_branchpoint_enrichment_dir=$output_root"visualize_branchpoint_enrichme
 # We have variant calls ($variant_bed_file) for all European Ancestry individuals
 # We now map these variant calls to clusters if that variant is in a window (of a range of sizes) around a splice site in that cluster
 if false; then
-sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
+sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir $raw_genomic_annotation_file
 fi
 
 #################
@@ -134,7 +138,7 @@ sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splici
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
 # Then visualize results
 if false; then
-sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $sqtl_dir
+sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file
 fi
 
 #################

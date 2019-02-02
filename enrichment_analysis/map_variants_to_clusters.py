@@ -77,12 +77,17 @@ def make_chromosome(cluster_info_file, chrom_num, distance):
 # Stream variant bed file. For each variant on the current chromosome, try to map to a cluster
 def stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, t_filter, chrom_num):
 	chrom_string = 'chr' + str(chrom_num)
+	# used to skip header
+	head_count = 0
 	# Stream variant file
 	f = open(variant_bed_file)
 	for line in f:
 		line = line.rstrip()
 		data = line.split()
-		line_chrom_num = data[1]
+		# Skip header
+		if head_count == 0:
+			head_count = head_count + 1
+		line_chrom_num = data[0]
 		# Throw out variants not on current chromosome
 		if line_chrom_num != chrom_string:
 			continue
@@ -91,7 +96,7 @@ def stream_variant_bed_file(cluster_chromosome, variant_bed_file, t, t_filter, c
 		if maf >= .01:
 			print('maf assumption error!')
 			continue
-		var_pos = int(data[2])  # Position of variant
+		var_pos = int(data[1])  # Position of variant
 		# Get list of cluster_ids that overlap the variant position
 		overlapping_clusters = cluster_chromosome[var_pos].split(',')
 		# Print one line for every variant-cluster pair

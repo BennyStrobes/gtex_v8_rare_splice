@@ -54,6 +54,7 @@ def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_ver
 		cluster_struct[cluster_id] = {}
 		cluster_struct[cluster_id]['outlier_individuals'] = {}
 		cluster_struct[cluster_id]['rv_individuals'] = {}
+		cluster_struct[cluster_id]['inlier_individuals'] = {}
 		cluster_struct[cluster_id]['num_observed_samples'] = len(np.where(np.asarray(data[1:]) != 'NaN')[0])
 
 		# Don't limit to most extreme outlier / cluster. Just take everyone that passes a threshold
@@ -63,6 +64,8 @@ def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_ver
 				indi = position_to_indi[position]
 				if indi in individuals and pvalue < pvalue_threshold and np.isnan(pvalue) == False:
 					cluster_struct[cluster_id]['outlier_individuals'][indi] = 1
+				elif indi in individuals and pvalue >= pvalue_threshold and np.isnan(pvalue) == False:
+					cluster_struct[cluster_id]['inlier_individuals'][indi] = 1
 	f.close()
 	return cluster_struct
 
@@ -74,8 +77,8 @@ def extract_rare_variants(variant_bed_file, cluster_struct, individuals):
 		line = line.rstrip()
 		data = line.split()
 		# Extract relevent fields
-		indi = data[0]
-		cluster_id = data[8]
+		indi = data[3]
+		cluster_id = data[10]
 		# Add RV
 		# Don't have RNA-seq for this individual
 		if indi not in individuals:
@@ -101,6 +104,7 @@ def enrichment_analysis(namer, cluster_struct, output_handle):
 		rv_indi = cluster_struct[cluster_id]['rv_individuals']
 		# dictionary containing all individuals that have a RV for this cluster
 		outlier_indi = cluster_struct[cluster_id]['outlier_individuals']
+		inlier_indi = cluster_struct[cluster_id]['inlier_individuals']
 
 		num_samp = cluster_struct[cluster_id]['num_observed_samples']
 
@@ -115,11 +119,10 @@ def enrichment_analysis(namer, cluster_struct, output_handle):
 				count_rv = count_rv + 1
 				a = a + 1
 			b = b + 1
-		num_non_outliers = num_samp - count
-		temp_c = len(rv_indi) - count_rv
-		temp_d =num_non_outliers
-		c = c + temp_c
-		d = d + temp_d
+		for indi_i in inlier_indi.keys():
+			d = d + 1
+			if indi_i in rv_indi:
+				c = c + 1
 	# Compute odds ratios
 	num_frac = float(a)/float(b)
 	den_frac = float(c)/float(d)
