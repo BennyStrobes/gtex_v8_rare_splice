@@ -43,9 +43,8 @@ fi
 ########################
 # Visualize results
 ########################
-if false; then
 Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
-fi
+
 
 
 

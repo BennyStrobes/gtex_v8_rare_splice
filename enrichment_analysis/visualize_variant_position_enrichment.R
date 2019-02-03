@@ -62,25 +62,20 @@ extract_odds_ratio_data <- function(outlier_distances, inlier_distances, distanc
 
 
 
-make_variant_allele_odds_ratio_plot <- function(distance, inlier_distance_file, outlier_distance_file, output_file) {
+make_variant_allele_odds_ratio_plot <- function(distance, inlier_distance_file, outlier_distance_file, output_file, ss_type, position,title) {
 	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
 	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
 
-
-	ss_type="acceptor"
-	position=-2
+	print(paste0(ss_type, " ", position))
 
 	position_outlier_distances <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance == position,]
 	position_inlier_distances <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance == position,]
 
-	print(position_inlier_distances)
 	alleles <- c("A", "C", "T", "G")
 
 	variant_types <- c()
-	odds_ratios <- c()
-	upper_bounds <- c()
-	lower_bounds <- c()
-
+	outlier_status <- c()
+	counts <- c()
 	# Loop through all possible variants
 	for (iter1 in 1:length(alleles)) {
 		for (iter2 in 1:length(alleles)) {
@@ -89,31 +84,40 @@ make_variant_allele_odds_ratio_plot <- function(distance, inlier_distance_file, 
 			if (major_allele != variant_allele) {
 				variant_type <- paste0(major_allele, "->",variant_allele)
 				a <- sum(position_outlier_distances$major_allele == major_allele & position_outlier_distances$variant_allele == variant_allele) 
-				b <- dim(position_outlier_distances)[1] 
 				c <- sum(position_inlier_distances$major_allele == major_allele & position_inlier_distances$variant_allele == variant_allele) 
-				d <- dim(position_inlier_distances)[1]
-				orat <- (a/b)/(c/d)
-				print(variant_type)
-				print(a)
-				print(b)
-				print(c)
-				print(d)
 
-				log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
-				upper_bound <- orat*exp(log_bounds)
-				lower_bound <- orat*exp(-log_bounds)
-
+				# Add outliers
 				variant_types <- c(variant_types, variant_type)
-				odds_ratios <- c(odds_ratios, orat)
-				lower_bounds <- c(lower_bounds, lower_bound)
-				upper_bounds <- c(upper_bounds, upper_bound)
+				outlier_status <- c(outlier_status, "outlier")
+				counts <- c(counts, a)
+				# Add inliers
+				variant_types <- c(variant_types, variant_type)
+				outlier_status <- c(outlier_status, "inlier")
+				counts <- c(counts, c)
+
 			}
 
 		}
 	}
 
-	df <- data.frame(variant_types=factor(variant_types), odds_ratios=odds_ratios, lower_bounds=lower_bounds, upper_bounds=upper_bounds)
-	print(df)
+	df <- data.frame(variant_types=factor(variant_types), outlier_status = factor(outlier_status), counts=counts)
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	outlier_counts <- dim(position_outlier_distances)[1] 
+	inlier_counts <- dim(position_inlier_distances)[1]
+	
+
+	plotter <- ggplot(df,aes(x=outlier_status, y=counts, fill=variant_types)) + 
+    	geom_bar(stat="identity", position="fill") +
+    	labs(x="",y="proportion",fill="", title=paste0(title,"\n")) + 
+    	scale_fill_manual(values=c("dodgerblue4", "dodgerblue3", "deepskyblue2", "palegreen4", "palegreen3", "palegreen1","violetred4", "violetred3","violetred1", "goldenrod4", "goldenrod3", "goldenrod1")) + 
+    	theme(text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=12), legend.title = element_text(size=11)) 
+
+    	#y,x
+    plotter <- ggdraw(plotter) + draw_label(as.character(inlier_counts), x=.31,y=.85) + draw_label(as.character(outlier_counts), x=.61,y=.85)
+
+	ggsave(plotter, file=output_file,width = 15,height=10,units="cm")
+
 }
 
 
@@ -172,15 +176,6 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type <- function(distance_
 
 
 	error_bar_plot <- plot_grid(donor_plot,acceptor_plot, ncol=1)
-    #error_bar_plot <- ggplot() + geom_errorbar(data=df, mapping=aes(x=dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="darkorchid") +
-	#				geom_point(data=df, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
-	#				facet_wrap( ~ ss_type,nrow=2,scales = "free") +
-	#				labs(x = "Distance from splice site (BP)", y = "Enrichment") +
-	#				geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
-	#				geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
-	#				geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
-	#				theme(text = element_text(size=11),axis.text=element_text(size=10), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11))
-
 
 
 
@@ -214,8 +209,36 @@ version <- "observed_splice_site"
 pvalue_threshold <- "1e-05"
 outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
 inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
-output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_variant_alleles_odds_ratio_plot.pdf")
-# make_variant_allele_odds_ratio_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, output_file)
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_variant_alleles_proportion_d+1_plot.pdf")
+ss_type <- "donor"
+position <- -1
+make_variant_allele_odds_ratio_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, output_file, ss_type, position, "D+1 (Consensus=G)")
+
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_variant_alleles_proportion_d+2_plot.pdf")
+ss_type <- "donor"
+position <- -2
+make_variant_allele_odds_ratio_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, output_file, ss_type, position, "D+2 (Consensus=T)")
+
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_variant_alleles_proportion_a-1_plot.pdf")
+ss_type <- "acceptor"
+position <- -1
+make_variant_allele_odds_ratio_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, output_file, ss_type, position, "A-1 (Consensus=G)")
+
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_variant_alleles_proportion_a-2_plot.pdf")
+ss_type <- "acceptor"
+position <- -2
+make_variant_allele_odds_ratio_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, output_file, ss_type, position, "A-2 (Consensus=A)")
+
+
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_variant_alleles_proportion_a+1_plot.pdf")
+ss_type <- "acceptor"
+position <- 0
+make_variant_allele_odds_ratio_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, output_file, ss_type, position, "A+1 (Consensus=G)")
+
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_variant_alleles_proportion_d-1_plot.pdf")
+ss_type <- "donor"
+position <- 0
+make_variant_allele_odds_ratio_plot(as.numeric(distance), inlier_distance_file, outlier_distance_file, output_file, ss_type, position, "D-1 (Consensus=G)")
 
 
 #######################

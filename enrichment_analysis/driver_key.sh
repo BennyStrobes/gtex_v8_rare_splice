@@ -133,7 +133,7 @@ fi
 
 # Part 1b: Map variants to jxns
 # We have variant calls ($variant_bed_file) for all European Ancestry individuals
-# We now map these variant calls to jxns if that variant is in a window (of a range of sizes) around a splice site in that cluster
+# We now map these variant calls to jxns if that variant is in a window (of a range of sizes) around a junction (this is used for heuristic outlier analysis)
 if false; then
 sh map_variants_to_junctions.sh $variant_bed_file $heuristic_outlier_dir $heuristic_outlier_suffix $tissue_names_file $rare_variant_dir
 fi
@@ -144,9 +144,11 @@ fi
 # Do this enrichments:
 #    1. For each of the tissues, independently
 #    2. For cross tissue outliers (median pvalue)
+# Compute enrichments of rare variants within heuristic outilers
 # Then visualize enrichments
+if false; then
 sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file $heuristic_outlier_dir $heuristic_outlier_suffix
-
+fi
 
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers

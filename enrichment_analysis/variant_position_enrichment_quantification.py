@@ -219,6 +219,13 @@ def get_dictionary_of_annotated_splice_sites(exon_file):
 		ss[data[0] + '_' + data[2]] = 1
 	return ss
 
+def correct_alleles_for_strand(strand, major_allele, variant_allele):
+	if strand == '-':
+		converter = {'A':'T', 'T':'A','G':'C','C':'G'}
+		return converter[major_allele], converter[variant_allele]
+	else:
+		return major_allele, variant_allele
+
 
 # Print distance to splice site for outliers and non-outliers based on observed exon-exon junctions
 def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individuals, cluster_info_file, inlier_positions_file, outlier_positions_file, variant_bed_file, exon_file):
@@ -272,6 +279,7 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 		# Ignore variants mapped to clusters that we don't have outlier information for
 		if cluster_id not in cluster_struct:
 			continue
+		major_allele, variant_allele = correct_alleles_for_strand(cluster_to_strand_mapping[cluster_id], major_allele, variant_allele)
 		# Individual is an outlier
 		if individual_id in cluster_struct[cluster_id]['outlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
