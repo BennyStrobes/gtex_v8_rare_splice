@@ -134,7 +134,8 @@ def call_outliers_jxn_level(junction_object,input_file,outlier_calling_file_jxn_
 			#has more than 5% read support from annotated junctions and has more than 2 read support
 			if normalized_counts[max_index] > .05 and counts[max_index] >= 2:
 				pvalues[max_index] = 0
-		t.write(data[0] + '\t' + '\t'.join(pvalues.astype(str)) + '\n')
+		jxn_id = line_chrom_num + ':' + start + ':' + end
+		t.write(jxn_id + '\t' + '\t'.join(pvalues.astype(str)) + '\n')
 	t.close()
 	f.close()
 

@@ -150,11 +150,11 @@ fi
 
 #################
 # Part 5: Make outlier calls in each tissue using heuristic approach from Cummings et. al
-if false; then
+
 while read tissue_type; do
 	echo $tissue_type
 	tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
 	output_root=$heuristic_outlier_dir$tissue_type"_heuristic_approach_"
 	sh call_heuristic_outliers.sh $tissue_type $tissue_specific_junction_file $output_root $gencode_gene_annotation_file $gene_list
 done<$tissue_names_file
-fi
+

@@ -54,11 +54,13 @@ def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_ver
 	cluster_struct = {}
 	# Loop through outlier file
 	f = open(outlier_file)
+	head_count = 0
 	for line in f:
 		line = line.rstrip()
 		data = line.split()
 		# Header
-		if line.startswith('CLUSTER_ID'):
+		if head_count == 0:
+			head_count = head_count + 1
 			#create mapping from index to individual id
 			position_to_indi = {}
 			for i, val in enumerate(data[1:]):
@@ -66,6 +68,8 @@ def extract_outliers(outlier_file, individuals, pvalue_threshold, enrichment_ver
 			continue
 		# Standard Line
 		cluster_id = data[0]
+		if cluster_id in cluster_struct:
+			pdb.set_trace()
 		# Add key (cluster_id) to cluster_struct object
 		cluster_struct[cluster_id] = {}
 		cluster_struct[cluster_id]['outlier_individuals'] = {}
@@ -137,7 +141,6 @@ def enrichment_analysis(tissue, cluster_struct, output_handle, num_samp):
 	den_frac = float(c)/float(d)
 	odds_ratio = (num_frac/den_frac)
 	output_handle.write(tissue + '\t' + str(a) + '\t' + str(b) + '\t' + str(c) + '\t' + str(d) + '\t' + str(odds_ratio) + '\n')
-
 	return output_handle
 
 
@@ -163,7 +166,7 @@ individuals = {}
 # Extract list of individuals for each tissue
 for tissue in tissues:
 	# Use outlier file to get list of individuals we have RNA-seq for
-	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
+	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix
 	individuals[tissue] = extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, european_ancestry_individual_list)
 	
 
@@ -171,7 +174,7 @@ for tissue in tissues:
 cluster_struct = {}
 # Extract outliers in each tissue and save results in cluster_struct
 for tissue in tissues:
-	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_emperical_pvalue.txt'
+	outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix
 	cluster_struct[tissue] = extract_outliers(outlier_file, individuals[tissue], pvalue_threshold, enrichment_version)
 
 # Add RV calls to cluster_struct object

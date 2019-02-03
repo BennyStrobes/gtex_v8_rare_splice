@@ -6,6 +6,78 @@ library(plyr)
 
 
 
+tbt_variant_outlier_enrichment_comparison_errorbar_plot <- function(tissue_by_tissue_enrichment_file,tissue_by_tissue_heuristic_enrichment_file, output_file) {
+	enrichments <- read.table(tissue_by_tissue_enrichment_file, header=FALSE)
+	num_tissues <- dim(enrichments)[1]
+	enrichments_heuristic <- read.table(tissue_by_tissue_heuristic_enrichment_file, header=FALSE)
+	# Initialize vectors
+	tissue_names <- c()
+	odds_ratios <- c()
+	lower_bounds <- c()
+	upper_bounds <- c()
+	type <- c()
+
+	# Loop through tissues
+	for (tissue_number in 1:num_tissues) {
+		# Extract tissue name for this line
+		tissue_name <- as.character(enrichments[tissue_number, 1])
+		# Compute odds ratios for this line
+		a <- enrichments[tissue_number, 2]
+		b <- enrichments[tissue_number, 3]
+		c <- enrichments[tissue_number, 4]
+		d <- enrichments[tissue_number, 5]
+		orat <- (a/b)/(c/d)
+		# Compute error bars for this orat
+		log_orat <- log(orat)
+		log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
+		#upper_bound <- exp(log_orat + log_bounds)
+		#lower_bound <- exp(log_orat - log_bounds) 
+		upper_bound <- orat*exp(log_bounds)
+		lower_bound <- orat*exp(-log_bounds)
+
+		# Add information to vectors
+		tissue_names <- c(tissue_names, tissue_name)
+		odds_ratios <- c(odds_ratios, orat)
+		lower_bounds <- c(lower_bounds, lower_bound)
+		upper_bounds <- c(upper_bounds, upper_bound)
+		type <- c(type, "probabilistic")
+		
+		# Extract tissue name for this line
+		tissue_name <- as.character(enrichments_heuristic[tissue_number, 1])
+		# Compute odds ratios for this line
+		a <- enrichments_heuristic[tissue_number, 2]
+		b <- enrichments_heuristic[tissue_number, 3]
+		c <- enrichments_heuristic[tissue_number, 4]
+		d <- enrichments_heuristic[tissue_number, 5]
+		orat <- (a/b)/(c/d)
+		# Compute error bars for this orat
+		log_orat <- log(orat)
+		log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
+		#upper_bound <- exp(log_orat + log_bounds)
+		#lower_bound <- exp(log_orat - log_bounds) 
+		upper_bound <- orat*exp(log_bounds)
+		lower_bound <- orat*exp(-log_bounds)
+
+		# Add information to vectors
+		tissue_names <- c(tissue_names, tissue_name)
+		odds_ratios <- c(odds_ratios, orat)
+		lower_bounds <- c(lower_bounds, lower_bound)
+		upper_bounds <- c(upper_bounds, upper_bound)
+		type <- c(type, "heuristic")
+	}
+
+
+	df <- data.frame(tissue_names=factor(tissue_names), outlier_method=factor(type), odds_ratios=odds_ratios, lower_bounds=lower_bounds, upper_bounds=upper_bounds)
+	error_bar_plot <- ggplot() + geom_errorbar(data=df, mapping=aes(x=tissue_names,ymin=lower_bounds, ymax=upper_bounds, colour=outlier_method), position=position_dodge(.9)) +
+					geom_point(data=df, mapping=aes(x=tissue_names, y=odds_ratios, colour=outlier_method),position=position_dodge(.9)) +
+					labs(x = "Tissue", y = "Enrichment", colour="") +
+					geom_hline(yintercept=1) + 
+					theme(legend.position="top",plot.title = element_text(hjust = 0.5),text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=12), axis.text.x = element_text(angle = 90, hjust = 1, vjust=.5)) 
+
+	ggsave(error_bar_plot, file=output_file,width = 30,height=17,units="cm")
+
+
+}
 
 
 
@@ -161,6 +233,16 @@ distance <- '8'
 pvalue_threshold <- '.000001'
 version <- "all"
 
+
+
+# Heuristic approach
+tissue_by_tissue_heuristic_enrichment_file <- paste0(variant_enrichment_dir, "tbt_variant_heuristic_outlier_enrichment_distance_", distance, "_version_",version,".txt")
+tissue_by_tissue_enrichment_file <- paste0(variant_enrichment_dir, "tbt_variant_outlier_enrichment_pvalue_", pvalue_threshold, "_distance_", distance, "_version_",version,".txt")
+output_file <- paste0(visualize_variant_enrichment_dir, "tbt_variant_outlier_enrichment_distance_", distance, "_version_",version, "_comparison_errorbar.pdf")
+tbt_variant_outlier_enrichment_comparison_errorbar_plot(tissue_by_tissue_enrichment_file,tissue_by_tissue_heuristic_enrichment_file, output_file)
+
+
+
 tissue_by_tissue_enrichment_file <- paste0(variant_enrichment_dir, "tbt_variant_outlier_enrichment_pvalue_", pvalue_threshold, "_distance_", distance, "_version_",version,".txt")
 output_file <- paste0(visualize_variant_enrichment_dir, "tbt_variant_outlier_enrichment_pvalue_", pvalue_threshold, "_distance_", distance, "_version_",version, "_errorbar.pdf")
 title <- paste0("Splicing outliers (p <= ", as.character(as.numeric(pvalue_threshold)),")")
@@ -173,3 +255,11 @@ cross_tissue_variant_outlier_enrichment_errorbar_plot(variant_enrichment_dir, ou
 stem <- "cross_tissue_variant_outlier_enrichment_mutually_exclusive_"
 output_file <- paste0(visualize_variant_enrichment_dir, stem, "version_", version,"_errorbar.pdf")
 cross_tissue_variant_outlier_enrichment_errorbar_plot(variant_enrichment_dir, output_file, version, stem)
+
+
+# Heuristic approach
+tissue_by_tissue_enrichment_file <- paste0(variant_enrichment_dir, "tbt_variant_heuristic_outlier_enrichment_distance_", distance, "_version_",version,".txt")
+output_file <- paste0(visualize_variant_enrichment_dir, "tbt_variant_heuristic_outlier_enrichment_distance_", distance, "_version_",version, "_errorbar.pdf")
+title <- paste0("Heuristic outliers")
+tbt_variant_outlier_enrichment_errorbar_plot(tissue_by_tissue_enrichment_file, output_file, title, color_vector)
+

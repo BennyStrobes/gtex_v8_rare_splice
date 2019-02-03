@@ -52,6 +52,12 @@ splicing_outlier_suffix="_covariate_method_none_no_global_outliers_ea_only"
 # Filenames are of form: $splicing_outlier_calling_dir$tissue_name$splicing_outlier_suffix"_emperical_pvalue.txt"
 splicing_outlier_include_global_outliers_suffix="_covariate_method_none"
 
+# Directory containing heuristic outlier calls
+heuristic_outlier_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/heuristic_outlier_calls/"
+
+# Suffix for tissue-specific file names in heuristic_outlier_dir
+heuristic_outlier_suffix="_heuristic_approach_outlier_calls.txt"
+
 # File containing exons of genes relevent to our analysis
 # File created in outlier calling
 exon_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/clusters_filtered/gencode_v26_exons.txt"
@@ -122,8 +128,16 @@ visualize_branchpoint_enrichment_dir=$output_root"visualize_branchpoint_enrichme
 # We have variant calls ($variant_bed_file) for all European Ancestry individuals
 # We now map these variant calls to clusters if that variant is in a window (of a range of sizes) around a splice site in that cluster
 if false; then
-sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir $raw_genomic_annotation_file
+sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
 fi
+
+# Part 1b: Map variants to jxns
+# We have variant calls ($variant_bed_file) for all European Ancestry individuals
+# We now map these variant calls to jxns if that variant is in a window (of a range of sizes) around a splice site in that cluster
+if false; then
+sh map_variants_to_junctions.sh $variant_bed_file $heuristic_outlier_dir $heuristic_outlier_suffix $tissue_names_file $rare_variant_dir
+fi
+
 
 #################
 # Part 2: Compute enrichment of rare variants within spliding outlier calls
@@ -131,15 +145,15 @@ fi
 #    1. For each of the tissues, independently
 #    2. For cross tissue outliers (median pvalue)
 # Then visualize enrichments
-if false; then
-sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file
-fi
+sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file $heuristic_outlier_dir $heuristic_outlier_suffix
+
 
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
 # Then visualize results
+if false; then
 sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file
-
+fi
 
 #################
 # Part 4: Visualize cluster distributions for outliers compared to non-outliers

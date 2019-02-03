@@ -10,7 +10,6 @@
 variant_bed_file="$1"
 cluster_info_file="$2"
 rare_variant_dir="$3"
-raw_genomic_annotation_file="$4"
 
 
 
