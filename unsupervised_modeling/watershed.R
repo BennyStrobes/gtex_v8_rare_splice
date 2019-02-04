@@ -10,7 +10,9 @@ library(sigmoid)
 library(Rcpp)
 library(numDeriv)
 library(lbfgs)
+library(reshape)
 library(grid)
+library(PRROC)
 sourceCpp("crf_exact_updates.cpp")
 
 
@@ -48,6 +50,7 @@ load_data <- function(input_file, number_of_dimensions, pvalue_threshold) {
 	rownames(outlier_pvalues) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
 	# Convert outlier status into binary random variables
 	outliers_binary <- ifelse(abs(outlier_pvalues)<=pvalue_threshold,1,0)
+	outliers_binary[,2] <- ifelse(abs(outlier_pvalues[,2])<=.1,1,0)
 	# Convert outlier status into discretized random variables
 	outliers_discrete <- get_discretized_outliers(outlier_pvalues)
 	# Extract array of N2 pairs
@@ -492,6 +495,52 @@ compute_accuracy <- function(discrete_outliers_test2, predictions_object) {
 	return(correct_count/total_count)
 }
 
+make_confusion_matrix <- function(predictions_object, binary_outliers_test2) {
+	confusion_matrix <- matrix(0,8,8)
+	rownames(confusion_matrix) = labels(predictions_object[[1]])
+	colnames(confusion_matrix) = labels(predictions_object[[1]])
+	for (sample_num in 1:nrow(binary_outliers_test2)) {
+		gold_standard <- paste(binary_outliers_test2[sample_num,], collapse=" ")
+		gold_index <- which(labels(predictions_object[[sample_num]]) == gold_standard)
+		max_value = -1
+		max_index = -1
+		for (combo_num in 1:length(predictions_object[[sample_num]])) {
+			val = predictions_object[[sample_num]][[combo_num]]
+			if (val > max_value) {
+				max_value = val
+				max_index <- combo_num
+			}
+		}
+		confusion_matrix[gold_index, max_index] = confusion_matrix[gold_index,max_index] + 1
+	}
+	confusion_matrix = confusion_matrix/rowSums(confusion_matrix)
+	return(confusion_matrix)
+}
+
+visualize_confusion_matrix <- function(correlation_matrix, output_file) {
+    melted_corr <- melt(correlation_matrix)
+
+    # Axis labels are factors
+    melted_corr$X1 <- factor(melted_corr$X1, levels=c("1 1 1", "2 1 1", "1 2 1", "1 1 2", "2 1 2", "1 2 2", "2 2 1", "2 2 2"))
+    melted_corr$X2 <- factor(melted_corr$X2, levels=c("1 1 1", "2 1 1", "1 2 1", "1 1 2", "2 1 2", "1 2 2", "2 2 1", "2 2 2"))
+    #  PLOT!
+    heatmap <- ggplot(data=melted_corr, aes(x=X1, y=X2)) + geom_tile(aes(fill=value)) #+ scale_fill_gradient(low="grey",high="plum2")
+    #heatmap <- heatmap + scale_fill_distiller()
+    #heatmap <- heatmap + scale_fill_brewer(values = brewer.pal(3,"RdPu"))
+    heatmap <- heatmap + scale_fill_distiller(palette = "Blues", direction=1)
+    heatmap <- heatmap + theme(text = element_text(size=12),axis.text=element_text(size=12), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=11), axis.text.x = element_text(angle = 0, vjust=.5)) 
+    heatmap <- heatmap + labs(x = "Observed Class", y = "Predicted Class",fill="")
+
+    heatmap <- heatmap + scale_x_discrete(breaks=c("1 1 1", "2 1 1", "1 2 1", "1 1 2", "2 1 2", "1 2 2", "2 2 1", "2 2 2"),labels=c("0 0 0", "1 0 0", "0 1 0", "0 0 1", "1 0 1","0 1 1", "1 1 0", "1 1 1"))
+    heatmap <- heatmap + scale_y_discrete(breaks=c("1 1 1", "2 1 1", "1 2 1", "1 1 2", "2 1 2", "1 2 2", "2 2 1", "2 2 2"),labels=c("0 0 0", "1 0 0", "0 1 0", "0 0 1", "1 0 1","0 1 1", "1 1 0", "1 1 1"))
+
+    ggsave(heatmap, file=output_file, width=15, height=11, unit="cm")
+
+
+
+}
+
+
 
 roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables) {
 	# Load in all data (training and test)
@@ -566,6 +615,9 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
   	posterior_prob_test <- posterior_info_test$probability
   	posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise
 
+  	predictions_object <- make_posterior_predictions_object_exact_inference(feat_test, discrete_outliers_test1, emModel$theta_singleton, emModel$theta_pair, emModel$theta, emModel$phi$inlier_component, emModel$phi$outlier_component, emModel$number_of_dimensions)
+	confusion_matrix <- make_confusion_matrix(predictions_object, binary_outliers_test2+1)  	
+	visualize_confusion_matrix(confusion_matrix, paste0(output_root, "confusion_heatmap.pdf"))
 
   	roc_object_across_dimensions <- list()
   	# Loop through dimensions
@@ -575,22 +627,39 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
   		# Pseudo gold standard
   		test_outlier_status <- binary_outliers_test2[,dimension]
   		# river predictions
-  		roc_obj <- roc(test_outlier_status, posterior_prob_test[,dimension])
+  		# roc_obj <- roc(test_outlier_status, posterior_prob_test[,dimension])
+  		roc_obj <- roc.curve(scores.class0 = posterior_prob_test[,dimension][test_outlier_status==1], scores.class1 = posterior_prob_test[,dimension][test_outlier_status==0], curve = T)
+  		pr_obj <- pr.curve(scores.class0 = posterior_prob_test[,dimension][test_outlier_status==1], scores.class1 = posterior_prob_test[,dimension][test_outlier_status==0], curve = T)
   		# Predictions with only RNA
-  		rna_only_roc_obj <- roc(test_outlier_status, real_valued_outliers_test1[,dimension])
+  		#rna_only_roc_obj <- roc(test_outlier_status, real_valued_outliers_test1[,dimension])
+  		rna_only_roc_obj <- roc.curve(scores.class0 = real_valued_outliers_test1[,dimension][test_outlier_status==1], scores.class1 = real_valued_outliers_test1[,dimension][test_outlier_status==0], curve = T)
+  		rna_only_pr_obj <- pr.curve(scores.class0 = real_valued_outliers_test1[,dimension][test_outlier_status==1], scores.class1 = real_valued_outliers_test1[,dimension][test_outlier_status==0], curve = T)
+
   		# predictions with only genomic annotations
-  		gam_roc_obj <- roc(test_outlier_status, gam_posteriors[,dimension])
+  		#gam_roc_obj <- roc(test_outlier_status, gam_posteriors[,dimension])
+   		gam_roc_obj <- roc.curve(scores.class0 = gam_posteriors[,dimension][test_outlier_status==1], scores.class1 = gam_posteriors[,dimension][test_outlier_status==0], curve = T)
+   		gam_pr_obj <- pr.curve(scores.class0 = gam_posteriors[,dimension][test_outlier_status==1], scores.class1 = gam_posteriors[,dimension][test_outlier_status==0], curve = T)
+
 
 		evaROC <-	
-		 list(watershed_sens=roc_obj$sensitivities,
-              watershed_spec=roc_obj$specificities,
-         	  watershed_auc=roc_obj$auc[1],
-         	  GAM_sens=gam_roc_obj$sensitivities,
-              GAM_spec=gam_roc_obj$specificities,
-              GAM_auc=gam_roc_obj$auc[1],
-              rna_only_sens=rna_only_roc_obj$sensitivities,
-              rna_only_spec=rna_only_roc_obj$specificities,
-              rna_only_auc=rna_only_roc_obj$auc[1])
+		 list(watershed_sens=roc_obj$curve[,2],
+              watershed_spec=1-roc_obj$curve[,1],
+         	  watershed_auc=roc_obj$auc,
+         	  watershed_pr_auc=pr_obj$auc.integral,
+         	  watershed_recall=pr_obj$curve[,1],
+         	  watershed_precision=pr_obj$curve[,2],
+         	  GAM_sens=gam_roc_obj$curve[,2],
+              GAM_spec=1-gam_roc_obj$curve[,1],
+              GAM_auc=gam_roc_obj$auc,
+         	  GAM_pr_auc=gam_pr_obj$auc.integral,
+         	  GAM_recall=gam_pr_obj$curve[,1],
+         	  GAM_precision=gam_pr_obj$curve[,2],
+         	  rna_only_pr_auc=rna_only_pr_obj$auc.integral,
+         	  rna_only_recall=rna_only_pr_obj$curve[,1],
+         	  rna_only_precision=rna_only_pr_obj$curve[,2],
+              rna_only_sens=rna_only_roc_obj$curve[,2],
+              rna_only_spec=1-rna_only_roc_obj$curve[,1],
+              rna_only_auc=rna_only_roc_obj$auc)
 
 
 		 roc_object_across_dimensions[[dimension]] <- list(name=dimension_name, evaROC=evaROC)
@@ -645,6 +714,53 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
 
 }
 
+# x is 1-specificity (false positive rate)
+# y is sensitivity  (true positive rate)
+plot_pr_comparison_curve <- function(roc_object, roc_object_ind, number_of_dimensions, output_file) {
+	precision <- c()
+	recall <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed
+		precision <- c(precision, dimension_roc_object$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("watershed", length(dimension_roc_object$evaROC$watershed_precision)))
+		# independent
+		precision <- c(precision, dimension_roc_object_ind$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object_ind$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object_ind$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("river", length(dimension_roc_object_ind$evaROC$watershed_precision)))
+		# rna only
+		precision <- c(precision, dimension_roc_object$evaROC$rna_only_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$rna_only_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$rna_only_precision)))
+		prediction_type <- c(prediction_type, rep("rna only", length(dimension_roc_object$evaROC$rna_only_precision)))
+		# GAM
+		precision <- c(precision, dimension_roc_object$evaROC$GAM_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$GAM_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$GAM_precision)))
+		prediction_type <- c(prediction_type, rep("GAM", length(dimension_roc_object$evaROC$GAM_precision)))
+	}
+	df <- data.frame(precision, recall, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type))
+  
+
+  	plotter <- ggplot(data=df, aes(x=recall, y=precision, colour=prediction_type)) + geom_line() + facet_wrap( ~ outlier_type, ncol=3) +
+                labs(x="Recall", y="Precision", colour="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=10),axis.text=element_text(size=9), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=9), legend.title = element_text(size=10))
+
+	ggsave(plotter, file=output_file,width = 26,height=11,units="cm")
+}
+
+
 
 # x is 1-specificity (false positive rate)
 # y is sensitivity  (true positive rate)
@@ -695,6 +811,118 @@ plot_roc_comparison_curve <- function(roc_object, roc_object_ind, number_of_dime
 
 
 
+# x is 1-specificity (false positive rate)
+# y is sensitivity  (true positive rate)
+plot_roc_comparison_curve2 <- function(roc_object, roc_object_ind, number_of_dimensions, output_file) {
+	tpr <- c()
+	fpr <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed
+		tpr <- c(tpr, dimension_roc_object$evaROC$watershed_sens)
+		fpr <- c(fpr, 1-dimension_roc_object$evaROC$watershed_spec)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_sens)))
+		prediction_type <- c(prediction_type, rep("watershed", length(dimension_roc_object$evaROC$watershed_sens)))
+		# GAM
+		tpr <- c(tpr, dimension_roc_object$evaROC$GAM_sens)
+		fpr <- c(fpr, 1-dimension_roc_object$evaROC$GAM_spec)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$GAM_sens)))
+		prediction_type <- c(prediction_type, rep("GAM", length(dimension_roc_object$evaROC$GAM_sens)))
+	}
+	df <- data.frame(tpr=tpr, fpr=fpr, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type, levels=c("watershed","GAM")))
+  
+
+  	plotter <- ggplot(data=df, aes(x=fpr, y=tpr, colour=outlier_type, linetype=prediction_type)) + geom_line() +
+  				geom_abline(slope=1) +
+                labs(x="False positive rate", y="True positive rate", colour="",linetype="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="right") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
+
+	ggsave(plotter, file=output_file,width = 15,height=11,units="cm")
+}
+
+plot_pr_comparison_curve2 <- function(roc_object, roc_object_ind, number_of_dimensions, output_file) {
+	precision <- c()
+	recall <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed
+		precision <- c(precision, dimension_roc_object$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("watershed", length(dimension_roc_object$evaROC$watershed_precision)))
+
+		# GAM
+		precision <- c(precision, dimension_roc_object$evaROC$GAM_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$GAM_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$GAM_precision)))
+		prediction_type <- c(prediction_type, rep("GAM", length(dimension_roc_object$evaROC$GAM_precision)))
+	}
+	df <- data.frame(precision, recall, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type, levels=c("watershed","GAM")))
+  
+
+  	plotter <- ggplot(data=df, aes(x=recall, y=precision, colour=outlier_type, linetype=prediction_type)) + geom_line() + 
+                labs(x="Recall", y="Precision", colour="",linetype="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="right") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
+
+	ggsave(plotter, file=output_file,width = 19,height=11,units="cm")
+}
+
+plot_pr_comparison_curve3 <- function(roc_object, roc_object_ind, number_of_dimensions, output_file) {
+	precision <- c()
+	recall <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed
+		precision <- c(precision, dimension_roc_object$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("watershed", length(dimension_roc_object$evaROC$watershed_precision)))
+
+		# Indepdent
+		precision <- c(precision, dimension_roc_object_ind$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object_ind$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object_ind$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("river", length(dimension_roc_object_ind$evaROC$watershed_precision)))
+	}
+	df <- data.frame(precision, recall, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type, levels=c("watershed","river")))
+  
+
+  	plotter <- ggplot(data=df, aes(x=recall, y=precision, colour=outlier_type, linetype=prediction_type)) + geom_line() + 
+                labs(x="Recall", y="Precision", colour="",linetype="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="right") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
+
+	ggsave(plotter, file=output_file,width = 19,height=11,units="cm")
+}
+
+
+
+
+
+
 
 
 
@@ -720,6 +948,7 @@ costs=c(100, 10, 1, .1, .01, 1e-3, 1e-4)
 phi_init <- initialize_phi(7, number_of_dimensions) 
 
 
+
 # Load in data
 data_input <- load_data(input_file, number_of_dimensions, pvalue_threshold)
 
@@ -727,11 +956,26 @@ independent_variables = "false"
 output_root <- paste0(watershed_run_dir, stem, "_independent_", independent_variables)
 roc_object <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
 
+
 independent_variables = "true"
 output_root <- paste0(watershed_run_dir, stem, "_independent_", independent_variables)
 roc_object_ind <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
 
+saveRDS(roc_object, "roc_object.rds")
+saveRDS(roc_object_ind, "roc_object_ind.rds")
 
 output_file <- paste0(watershed_run_dir, stem, "_comparison_roc.pdf")
 plot_roc_comparison_curve(roc_object, roc_object_ind, number_of_dimensions, output_file)
 
+
+output_file <- paste0(watershed_run_dir, stem, "_comparison_pr.pdf")
+plot_pr_comparison_curve(roc_object, roc_object_ind, number_of_dimensions, output_file)
+
+output_file <- paste0(watershed_run_dir, stem, "_watershed_gam_comparison_roc.pdf")
+plot_roc_comparison_curve2(roc_object, roc_object_ind, number_of_dimensions, output_file)
+
+output_file <- paste0(watershed_run_dir, stem, "_watershed_gam_comparison_pr.pdf")
+plot_pr_comparison_curve2(roc_object, roc_object_ind, number_of_dimensions, output_file)
+
+output_file <- paste0(watershed_run_dir, stem, "_watershed_river_comparison_pr.pdf")
+plot_pr_comparison_curve3(roc_object, roc_object_ind, number_of_dimensions, output_file)

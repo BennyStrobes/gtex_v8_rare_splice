@@ -161,7 +161,7 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type <- function(distance_
 					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
 					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
 					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
-					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=11),axis.text=element_text(size=10), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11)) +
+					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
 					scale_x_continuous(breaks=-10:9, labels=c("A-10","A-9","A-8","A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7","A+8","A+9","A+10"))
 
 
@@ -171,7 +171,7 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type <- function(distance_
 					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
 					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
 					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
-					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=11),axis.text=element_text(size=10), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11)) +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
 					scale_x_continuous(breaks=-10:9, labels=c("D+10","D+9","D+8","D+7","D+6","D+5","D+4","D+3","D+2","D+1","D-1","D-2","D-3","D-4","D-5","D-6", "D-7","D-8","D-9","D-10"))
 
 
@@ -182,7 +182,7 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type <- function(distance_
 	options(bitmapType = 'cairo', device = 'pdf')
 
 	
-	ggsave(error_bar_plot, file=output_file,width = 17,height=14,units="cm")
+	ggsave(error_bar_plot, file=output_file,width = 15,height=14,units="cm")
 }
 
 

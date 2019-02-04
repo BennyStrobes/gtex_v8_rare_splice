@@ -21,6 +21,7 @@ tbt_variant_outlier_enrichment_comparison_errorbar_plot <- function(tissue_by_ti
 	for (tissue_number in 1:num_tissues) {
 		# Extract tissue name for this line
 		tissue_name <- as.character(enrichments[tissue_number, 1])
+
 		# Compute odds ratios for this line
 		a <- enrichments[tissue_number, 2]
 		b <- enrichments[tissue_number, 3]
@@ -72,9 +73,9 @@ tbt_variant_outlier_enrichment_comparison_errorbar_plot <- function(tissue_by_ti
 					geom_point(data=df, mapping=aes(x=tissue_names, y=odds_ratios, colour=outlier_method),position=position_dodge(.9)) +
 					labs(x = "Tissue", y = "Enrichment", colour="") +
 					geom_hline(yintercept=1) + 
-					theme(legend.position="top",plot.title = element_text(hjust = 0.5),text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=12), axis.text.x = element_text(angle = 90, hjust = 1, vjust=.5)) 
+					theme(legend.position=c(0.13, 0.9),plot.title = element_text(hjust = 0.5),axis.title=element_text(size=15),text = element_text(size=15),axis.text=element_text(size=15), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=15), legend.title = element_text(size=14), axis.text.x = element_text(size=12,angle = 90, hjust = 1, vjust=.5)) 
 
-	ggsave(error_bar_plot, file=output_file,width = 30,height=17,units="cm")
+	ggsave(error_bar_plot, file=output_file,width = 20,height=17,units="cm")
 
 
 }
@@ -123,9 +124,9 @@ tbt_variant_outlier_enrichment_errorbar_plot <- function(tissue_by_tissue_enrich
 					geom_point(data=df, mapping=aes(x=tissue_names, y=odds_ratios), colour=color_vector) +
 					labs(x = "Tissue", y = "Enrichment", title=title) +
 					geom_hline(yintercept=1) + 
-					theme(plot.title = element_text(hjust = 0.5),text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11), axis.text.x = element_text(angle = 90, hjust = 1, vjust=.5)) 
+					theme(plot.title = element_text(hjust = 0.5),text = element_text(size=15),axis.text=element_text(size=15), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=15), legend.title = element_text(size=15), axis.text.x = element_text(size=12,angle = 90, hjust = 1, vjust=.5)) 
 
-	ggsave(error_bar_plot, file=output_file,width = 20,height=17,units="cm")
+	ggsave(error_bar_plot, file=output_file,width = 18,height=15,units="cm")
 
 }
 
@@ -202,10 +203,25 @@ cross_tissue_variant_outlier_enrichment_errorbar_plot <- function(variant_enrich
 					geom_point(data=df, mapping=aes(x=distance, y=odds_ratios, colour=pvalues), position=dodge) +
 					labs(x = "Base pair window around splice site", y = "Enrichment", colour="p-value", title= "Cross tissue splicing outliers") +
 					geom_hline(yintercept=1) + 
-					theme(plot.title = element_text(hjust = 0.5),text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=10), legend.title = element_text(size=11)) 
+					theme(plot.title = element_text(hjust = 0.5),text = element_text(size=13),axis.text=element_text(size=12), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=12), legend.title = element_text(size=13)) 
 
-	ggsave(error_bar_plot, file=output_file,width = 19,height=10.5,units="cm")
+	ggsave(error_bar_plot, file=output_file,width = 15,height=10.5,units="cm")
 
+}
+
+make.point.plot = function(tissuesdf, colors, vertical = TRUE){
+    if (vertical) {
+        p = ggplot(tissuesdf, aes(x = 1, y = -order, label = tissue_id))
+    } else {
+        p = ggplot(tissuesdf, aes(x = order, y = 1))
+    }
+    p = p + geom_point(aes(colour = tissue_id), size = .9) +
+        scale_colour_manual(values = colors) + guides(colour = FALSE) + 
+        theme(axis.line = element_blank(),
+              axis.ticks = element_blank(),
+              axis.text = element_blank(),
+              axis.title = element_blank())
+    return(p)
 }
 
 
@@ -222,9 +238,7 @@ tissue_colors_file = args[4] # File containing mapping from gtex tissue names to
 
 # Extract vector tissue names
 tissue_names <- as.character(unlist(read.table(tissue_names_file,header=FALSE), use.names=FALSE))
-
 tissue_colors = read.table(tissue_colors_file, header = T, stringsAsFactors = F, sep = "\t")
-
 # Get vector of hex colors in correct order
 color_vector <- get_color_vector(tissue_colors, tissue_names)
 
@@ -233,6 +247,10 @@ distance <- '8'
 pvalue_threshold <- '.000001'
 version <- "all"
 
+
+tissues_df <- data.frame(tissue_id=factor(tissue_names, levels=tissue_names), order=1:length(tissue_names))
+
+#point_plot <- make.point.plot(tissues, color_vector, vertical=FALSE)
 
 
 # Heuristic approach

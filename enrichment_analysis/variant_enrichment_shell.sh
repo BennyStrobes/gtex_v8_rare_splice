@@ -30,6 +30,7 @@ distances=( "2" "4" "6" "8" "10" "100" "1000")
 # Range of pvalue thresholds
 pvalue_thresholds=( ".000001" ".00001" ".0001" )
 # Loop through distances
+if false; then
 for distance_window in "${distances[@]}"; do
 	# Loop through range of pvalue thresholds
 	for pvalue_threshold in "${pvalue_thresholds[@]}"; do
@@ -43,7 +44,7 @@ for distance_window in "${distances[@]}"; do
 
 	done
 done
-
+fi
 
 
 
@@ -54,6 +55,7 @@ done
 previous_distance="2"
 distances=( "2" "4" "6" "8" "10" "100" "1000")
 # Loop through distances
+if false; then
 for distance_window in "${distances[@]}"; do
 	echo "Multi-tissue distance="$distance_window
 
@@ -71,7 +73,7 @@ for distance_window in "${distances[@]}"; do
 	python variant_cross_tissue_mutually_exclusive_distance_enrichment_quantification.py $variant_bed_file $previous_variant_bed_file $output_root $splicing_outlier_file $european_ancestry_individual_list $enrichment_version
 	previous_distance=$distance_window
 done
-
+fi
 
 ##################################
 # Heuristic approach variant outlier enrichment
@@ -80,9 +82,9 @@ distance_window="8"
 pvalue_threshold=".05"
 variant_bed_file=$rare_variant_dir"variant_heuristic_junction_bed_"$distance_window".txt"
 output_root=$variant_enrichment_dir"tbt_variant_heuristic_outlier_enrichment_distance_"$distance_window"_version_"$enrichment_version
+if false; then
 python variant_tbt_enrichment_quantification.py $variant_bed_file $output_root $heuristic_outlier_dir $heuristic_outlier_suffix $european_ancestry_individual_list $tissue_names_file $enrichment_version $pvalue_threshold
-
-
+fi
 
 ##################################
 # Visualize enrichments of rare variants within splicing outlier calls
