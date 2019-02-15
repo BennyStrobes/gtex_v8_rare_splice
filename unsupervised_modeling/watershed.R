@@ -13,6 +13,7 @@ library(lbfgs)
 library(reshape)
 library(grid)
 library(PRROC)
+library(RColorBrewer)
 sourceCpp("crf_exact_updates.cpp")
 
 
@@ -518,6 +519,7 @@ make_confusion_matrix <- function(predictions_object, binary_outliers_test2) {
 }
 
 visualize_confusion_matrix <- function(correlation_matrix, output_file) {
+	myPalette <- colorRampPalette(brewer.pal(9,'Blues'), space = "Lab")
     melted_corr <- melt(correlation_matrix)
 
     # Axis labels are factors
@@ -527,7 +529,9 @@ visualize_confusion_matrix <- function(correlation_matrix, output_file) {
     heatmap <- ggplot(data=melted_corr, aes(x=X1, y=X2)) + geom_tile(aes(fill=value)) #+ scale_fill_gradient(low="grey",high="plum2")
     #heatmap <- heatmap + scale_fill_distiller()
     #heatmap <- heatmap + scale_fill_brewer(values = brewer.pal(3,"RdPu"))
-    heatmap <- heatmap + scale_fill_distiller(palette = "Blues", direction=1)
+    #heatmap <- heatmap + scale_fill_distiller(palette = "Blues", direction=1)
+    #heatmap <- heatmap + scale_fill_gradient(high = "#132B43", low = "white")
+    heatmap <- heatmap + scale_fill_gradientn(colours = myPalette(10)[1:6], limits = c(0,1), values = c(0, 0.005, 0.05, 0.1, 0.5, 1))
     heatmap <- heatmap + theme(text = element_text(size=12),axis.text=element_text(size=12), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=11), axis.text.x = element_text(angle = 0, vjust=.5)) 
     heatmap <- heatmap + labs(x = "Observed Class", y = "Predicted Class",fill="")
 
