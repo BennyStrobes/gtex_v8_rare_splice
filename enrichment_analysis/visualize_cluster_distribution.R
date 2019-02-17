@@ -41,7 +41,6 @@ make_differential_splicing_plot=function(y, x=numeric(nrow(y))+1, exons_table=NU
   groups=sort(unique(x))
   
   max_log=.5*ceiling(2*log10( 1+max( unlist( foreach (tis=groups) %do% { intron_meta$counts=summary_func(y[ tis==x,,drop=F]) } ) ) ))
-  print(max_log)
 
   breaks=if (max_log <= 2.5) seq(0,max_log,by=0.5) else seq(0,ceiling(max_log),by=1)
   limits=c(0.0,max_log)
@@ -185,15 +184,19 @@ clusters_to_plot <- read.table(clusters_to_plot_file, header=TRUE)
 num_clusters <- dim(clusters_to_plot)[1]
 
 for (cluster_num in 1:num_clusters) {
+  print(cluster_num)
 	cluster_id <- as.character(clusters_to_plot[cluster_num,1])
-	var_pos <- as.numeric(clusters_to_plot[cluster_num,2])
-	dist_to_ss <- as.character(clusters_to_plot[cluster_num,5])
-	strand <- as.character(clusters_to_plot[cluster_num,6])
+  chrom_num <- as.character(clusters_to_plot[cluster_num,2])
+	var_pos <- as.numeric(clusters_to_plot[cluster_num,3])
+	dist_to_ss <- as.character(clusters_to_plot[cluster_num,6])
+	strand <- as.character(clusters_to_plot[cluster_num,7])
+  annotated_ss <- as.character(clusters_to_plot[cluster_num,8])
+  variant_allele <- as.character(clusters_to_plot[cluster_num,9])
 	counts_file <- paste0(visualize_cluster_distribution_dir, tissue_name, "_", cluster_id, "_counts.txt")
 	counts <- load_data(counts_file)
 	membership_vector <- factor(c(rep("outlier",1), rep("inlier", dim(counts)[1] -1)))
 	output_file <- paste0(visualize_cluster_distribution_dir, tissue_name, "_", cluster_id, "_cluster_viz.pdf")
-	make_differential_splicing_plot(counts, x=membership_vector,main_title=paste0(cluster_id, " / dist_to_ss=",dist_to_ss, " / strand=",strand), snp_pos=var_pos,exons_table=exons_table, output_file=output_file)
+	make_differential_splicing_plot(counts, x=membership_vector,main_title=paste0(cluster_id, " / ",dist_to_ss," / ", variant_allele, " / strand=",strand,"\n", chrom_num,':',var_pos," / ",annotated_ss), snp_pos=var_pos,exons_table=exons_table, output_file=output_file)
 }
 
 

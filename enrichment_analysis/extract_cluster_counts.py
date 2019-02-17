@@ -155,9 +155,9 @@ def extract_cluster_info(clusters_to_plot_file):
 			head_count = head_count + 1
 			continue
 		cluster_id = data[0]
-		var_pos = data[1]
-		outlier_indi = data[2]
-		inlier_indis = data[3].split(',')
+		var_pos = data[2]
+		outlier_indi = data[3]
+		inlier_indis = data[4].split(',')
 		clusters[cluster_id] = {}
 		clusters[cluster_id]['outlier_individual'] = outlier_indi
 		clusters[cluster_id]['variant_position'] = var_pos

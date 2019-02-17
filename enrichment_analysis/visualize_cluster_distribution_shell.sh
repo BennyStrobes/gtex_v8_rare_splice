@@ -29,13 +29,16 @@ enrichment_version="all"
 # Part 1: Extract file containing cluster_id\tvariant_position\toutlier_indi\tinlier_individuals
 variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_"$distance_window".txt"
 clusters_to_plot_file=$visualize_cluster_distribution_dir$tissue_name"_outliers_with_rv_nearby_ss_"$distance_window"_pvalue_"$pvalue_threshold".txt"
+if false; then
 python extract_list_of_outliers_with_rv_nearby_ss.py $tissue_name $pvalue_threshold $variant_bed_file $clusters_to_plot_file $splicing_outlier_dir $splicing_outlier_suffix"_merged" $european_ancestry_individual_list $enrichment_version $cluster_info_file $exon_file
+fi
 
 ##############
 # Part 2: For each cluster in $clusters_to_plot_file, save matrix of cluster counts for outlier indi and inlier indi
 tissue_specific_junction_file=$filtered_cluster_dir$tissue_name"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+if false; then
 python extract_cluster_counts.py $clusters_to_plot_file $tissue_name $tissue_specific_junction_file $visualize_cluster_distribution_dir
-
+fi
 
 ##############
 # Part 3: Visualize clusters in $clusters_to_plot
@@ -44,4 +47,4 @@ python extract_cluster_counts.py $clusters_to_plot_file $tissue_name $tissue_spe
 clusters_to_plot_file="Muscle_Skeletal_outliers_with_rv_nearby_ss_6_pvalue_.000001.txt"
 tissue_name="Muscle_Skeletal"
 exon_file="gencode_v26_exons.txt"
-#Rscript visualize_cluster_distribution.R $clusters_to_plot_file $tissue_name $exon_file
+Rscript visualize_cluster_distribution.R $clusters_to_plot_file $tissue_name $exon_file

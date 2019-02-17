@@ -103,6 +103,12 @@ variant_position_enrichment_dir=$output_root"variant_position_enrichment/"
 # Directory containing visualizations of variant position analysis (ie distance between RV and splice sites)
 visualize_variant_position_enrichment_dir=$output_root"visualize_variant_position_enrichment/"
 
+# Directory containing comparison of jxn usage nearby altered splice sites in outliers and non-outliers
+jxn_usage_nearby_altered_ss_enrichment_dir=$output_root"jxn_usage_nearby_altered_ss_enrichment/"
+
+# Directory containing visualizations of comparison of jxn usage nearby altered splice sites in outliers and non-outliers
+visualize_jxn_usage_nearby_altered_ss_enrichment_dir=$output_root"visualize_jxn_usage_nearby_altered_ss_enrichment/"
+
 # Directory containing visualizations of cluster distributions for outliers compared to non-outliers
 visualize_cluster_distribution_dir=$output_root"visualize_cluster_distribution/"
 
@@ -159,7 +165,13 @@ sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enri
 fi
 
 #################
-# Part 4: Visualize cluster distributions for outliers compared to non-outliers
+# Part 4: Compare jxn usage nearby altered splice sites in outliers and non-outliers
+# Then visualize results
+sh junction_usage_nearby_altered_splice_site_enrichment_shell.sh $rare_variant_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $visualize_jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir
+
+
+#################
+# Part 5: Visualize cluster distributions for outliers compared to non-outliers
 if false; then
 sh visualize_cluster_distribution_shell.sh $rare_variant_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $cluster_info_file $exon_file $visualize_cluster_distribution_dir $tissue_names_file $filtered_cluster_dir
 fi
@@ -173,14 +185,7 @@ if false; then
 sh branchpoint_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
 fi
 
-#################
-# Part 6: Compute enrichments in branchpoints for outliers vs non-outliers
-# Then visualize results
-variant_cluster_intron_mapped_file=$rare_variant_dir"variant_cluster_intron_body_100_bed.txt"
-variant_cluster_intron_mapped_no_concensus_file=$rare_variant_dir"variant_cluster_intron_body_100_no_consensus_bed.txt"
-if false; then
-sh branchpoint_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
-fi
+
 
 
 
