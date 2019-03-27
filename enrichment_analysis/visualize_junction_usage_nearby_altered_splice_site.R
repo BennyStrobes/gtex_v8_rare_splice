@@ -15,12 +15,12 @@ odds_ratio_boxplot_across_tissues <- function(aa, output_file) {
 	orat <- c()
 	type <- c()
 	orat <- c(orat, df_to_concensus$odds_ratio, df_from_concensus$odds_ratio)
-	type <- c(type, rep("to_concensus", length(df_to_concensus$odds_ratio)), rep("from_concensus", length(df_from_concensus$odds_ratio)))
+	type <- c(type, rep("Consensus Created", length(df_to_concensus$odds_ratio)), rep("Consensus Destroyed", length(df_from_concensus$odds_ratio)))
 	df <- data.frame(odds_ratio=log(orat), type=as.factor(type))
 	plotter <- ggplot(df, aes(x=type, y=odds_ratio, fill=type)) + geom_boxplot() + 
 		theme(text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=12), legend.title = element_text(size=11)) +
-		labs(x="Variant Class", y="log(Odds Ratio)", fill="") + 
-		scale_fill_manual(values=c("dodgerblue2", "violetred2")) +
+		labs(x="", y="ln(Odds Ratio)", fill="") + 
+		scale_fill_manual(values=c("dodgerblue", "violetred1")) +
 		theme(legend.position="none") + 
 		geom_hline(yintercept=0)
 	ggsave(plotter, file=output_file,width = 16,height=12,units="cm")

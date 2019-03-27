@@ -25,7 +25,7 @@ tissue_names_file="${11}"
 # Liftover $branchpoint_bed_file from hg19 to hg38
 ####################################################
 branchpoint_hg38_bed_file=$branchpoint_enrichment_dir"branchpoint_hg38.bed"
-python liftover_shell.py $branchpoint_bed_file $branchpoint_hg38_bed_file $liftover_directory "hg19_to_hg38"
+# python liftover_shell.py $branchpoint_bed_file $branchpoint_hg38_bed_file $liftover_directory "hg19_to_hg38"
 
 
 
@@ -37,16 +37,15 @@ cluster_level_outlier_file=$splicing_outlier_dir"cross_tissue"$splicing_outlier_
 ####################################################
 # Range of Distances
 distances=( "0" "1" "2" "3" "4" "5" "10" "20")
-distances=( "0" "1" "2" "3" "4" "5" "10" )
+distances=( "0" )
 
 
 # Loop through distances
 for distance in "${distances[@]}"
 do
-	echo $distance
 	# Map variants to branchpoints
 	variant_bed_branchpoint_mapped=$branchpoint_enrichment_dir"all_rare_variants_noWindow_SNPs_branchpoint_"$distance"_mapped.txt"
-	python map_variants_to_branchpoints.py $variant_bed_file $branchpoint_hg38_bed_file $variant_bed_branchpoint_mapped $distance
+	#python map_variants_to_branchpoints.py $variant_bed_file $branchpoint_hg38_bed_file $variant_bed_branchpoint_mapped $distance
 
 	pvalue="1e-05"
 	tbt_enrichment_file=$branchpoint_enrichment_dir"tissue_by_tissue_"$pvalue"_branchpoint_"$distance"_enrichment.txt"
@@ -67,6 +66,7 @@ distances=( "0" "1" "2" "3" "4" "5" "10" )
 
 
 # Loop through distances
+if false; then
 for distance in "${distances[@]}"
 do
 	echo $distance
@@ -82,7 +82,7 @@ do
 	cross_tissue_enrichment_file=$branchpoint_enrichment_dir"cross_tissue_no_concensus_branchpoint_"$distance"_enrichment.txt"
 	python branchpoint_enrichment.py $cluster_level_outlier_file $variant_bed_branchpoint_mapped $cross_tissue_enrichment_file $european_ancestry_individual_list
 done
-
+fi
 
 ####################################################
 # Visualize results
@@ -96,28 +96,3 @@ fi
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-####################################################
-# Get gene level pvalues (via min transformation) for multi-tisssue outliers
-####################################################
-if false; then
-cluster_level_outlier_file=$splicing_outlier_dir"cross_tissue"$splicing_outlier_suffix"_emperical_pvalue.txt"
-gene_level_outlier_file=$splicing_outlier_dir"cross_tissue"$splicing_outlier_suffix"_min_gene_level_emperical_pvalue.txt"
-python convert_cluster_pvalue_to_gene_level.py $cluster_level_outlier_file $gene_level_outlier_file $cluster_info_file
-fi

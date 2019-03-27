@@ -26,7 +26,6 @@ branchpoint_bed_file = sys.argv[2]  #  Input file containing beds of branchpoint
 variant_bed_branchpoint_mapped = sys.argv[3]  # Output file where variant file contains a column indicating whether variant overlaps branchpoint window
 distance_window = int(sys.argv[4])
 
-
 # Open output file 
 t = open(variant_bed_branchpoint_mapped, 'w')
 
@@ -41,10 +40,10 @@ for chrom_num_int in range(1,23):
 	for line in f:
 		line = line.rstrip()
 		data = line.split()
-		line_chrom = data[1]
+		line_chrom = data[0]
 		if line_chrom != chrom_string:
 			continue
-		position = int(data[2])
+		position = int(data[1])
 		binary_fall_in_branchpoint = chromosome[position]
 		t.write(line + '\t' + str(binary_fall_in_branchpoint) + '\n')
 	f.close()

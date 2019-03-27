@@ -74,9 +74,9 @@ def extract_rare_variants(variant_bed_file, cluster_struct, individuals):
 		line = line.rstrip()
 		data = line.split()
 		# Extract relevent fields
-		indi = data[0]
-		ensamble_id = data[8]
-		in_branchpoint = int(data[9])
+		indi = data[3]
+		ensamble_id = data[10]		
+		in_branchpoint = int(data[11])
 		# Add RV
 		# Don't have RNA-seq for this individual
 		if indi not in individuals:
@@ -133,7 +133,6 @@ outlier_file = sys.argv[1]
 variant_bed_file = sys.argv[2]
 enrichment_output_file = sys.argv[3]
 european_ancestry_individual_list = sys.argv[4]
-
 
 
 
