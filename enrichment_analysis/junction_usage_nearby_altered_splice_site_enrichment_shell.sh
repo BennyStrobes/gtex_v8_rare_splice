@@ -22,11 +22,9 @@ filtered_cluster_dir="${11}"
 
 pvalue_outlier_threshold=".000001"
 pvalue_inlier_threshold=".5"
-variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_10.txt"
+variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_100.txt"
 
-if false; then
 python quantify_junction_usage_nearby_altered_splice_site.py $pvalue_outlier_threshold $pvalue_inlier_threshold $variant_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir
-fi
 
 
 Rscript visualize_junction_usage_nearby_altered_splice_site.R $jxn_usage_nearby_altered_ss_enrichment_dir $visualize_jxn_usage_nearby_altered_ss_enrichment_dir

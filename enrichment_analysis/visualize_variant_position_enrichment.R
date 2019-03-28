@@ -482,11 +482,11 @@ ppt_enrichment_donor <- function(outlier_distance_file, inlier_distance_file, ss
 	lower_bounds <- c()
 
 
-	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -10, -5, ss_type)
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -10, -7, ss_type)
 	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
 	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
 	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
-	position_labels <- c(position_labels, "[D+5, D+9]")
+	position_labels <- c(position_labels, "[D+7, D+9]")
 
 	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -15, -10, ss_type)
 	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
@@ -545,6 +545,168 @@ ppt_enrichment_donor <- function(outlier_distance_file, inlier_distance_file, ss
 
 }
 
+purine_pyrimidine_variant_changes_in_specific_region <- function(outlier_distance_file, inlier_distance_file, ss_type, ppt_start, ppt_end, output_file) {
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+
+	inlier_distances_region <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance > ppt_start & inlier_distances$distance <= ppt_end & as.character(inlier_distances$annotated_splice_site)=="annotated",]
+	outlier_distances_region <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance > ppt_start & outlier_distances$distance <= ppt_end & as.character(outlier_distances$annotated_splice_site)=="annotated",]
+
+	num_outliers <- dim(outlier_distances_region)[1]
+	num_inliers <- dim(inlier_distances_region)[1]
+
+	odds_ratios <- c()
+	lower_bounds <- c()
+	upper_bounds <- c()
+	variant_class <- c()
+
+	# Purine -> pyrimidine
+	pu_py_outlier <- sum((outlier_distances_region$major_allele == "A" | outlier_distances_region$major_allele == "G") & (outlier_distances_region$variant_allele == "C" | outlier_distances_region$variant_allele == "T"))
+	pu_py_inlier <- sum((inlier_distances_region$major_allele == "A" | inlier_distances_region$major_allele == "G") & (inlier_distances_region$variant_allele == "C" | inlier_distances_region$variant_allele == "T"))
+	orat <- (pu_py_outlier/num_outliers)/(pu_py_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/pu_py_outlier) - (1.0/num_outliers) + (1.0/pu_py_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "purine -> pyrimidine")
+
+	# Purine -> purine
+	pu_pu_outlier <- sum((outlier_distances_region$major_allele == "A" | outlier_distances_region$major_allele == "G") & (outlier_distances_region$variant_allele == "A" | outlier_distances_region$variant_allele == "G"))
+	pu_pu_inlier <- sum((inlier_distances_region$major_allele == "A" | inlier_distances_region$major_allele == "G") & (inlier_distances_region$variant_allele == "A" | inlier_distances_region$variant_allele == "G"))
+	orat <- (pu_pu_outlier/num_outliers)/(pu_pu_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/pu_pu_outlier) - (1.0/num_outliers) + (1.0/pu_pu_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "purine -> purine")
+
+	# pyrimidine -> purine
+	py_pu_outlier <- sum((outlier_distances_region$major_allele == "C" | outlier_distances_region$major_allele == "T") & (outlier_distances_region$variant_allele == "A" | outlier_distances_region$variant_allele == "G"))
+	py_pu_inlier <- sum((inlier_distances_region$major_allele == "C" | inlier_distances_region$major_allele == "T") & (inlier_distances_region$variant_allele == "A" | inlier_distances_region$variant_allele == "G"))
+	orat <- (py_pu_outlier/num_outliers)/(py_pu_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/py_pu_outlier) - (1.0/num_outliers) + (1.0/py_pu_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "pyrimidine -> purine")
+
+
+	# pyrimidine -> pyrimidine
+	py_py_outlier <- sum((outlier_distances_region$major_allele == "C" | outlier_distances_region$major_allele == "T") & (outlier_distances_region$variant_allele == "C" | outlier_distances_region$variant_allele == "T")) 
+	py_py_inlier <- sum((inlier_distances_region$major_allele == "C" | inlier_distances_region$major_allele == "T") & (inlier_distances_region$variant_allele == "C" | inlier_distances_region$variant_allele == "T")) 
+	orat <- (py_py_outlier/num_outliers)/(py_py_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/py_py_outlier) - (1.0/num_outliers) + (1.0/py_py_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "pyrimidine -> pyrimidine")
+
+	df <- data.frame(odds_ratio=odds_ratios, dist=1:length(variant_class), lower_bound=lower_bounds, upper_bound=upper_bounds, variant_class=factor(variant_class))
+
+
+
+	error_bar_plot_annotated <-  ggplot() + geom_errorbar(data=df, mapping=aes(x=dist,ymin=lower_bound, ymax=upper_bound),color="darkorchid") +
+					geom_point(data=df, mapping=aes(x=dist, y=odds_ratio), color="darkorchid") +
+					labs(x = "", y = "Enrichment", title="Annotated splice site") +
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=1:length(df$dist), labels=df$variant_class)
+
+
+
+
+
+	inlier_distances_region <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance > ppt_start & inlier_distances$distance <= ppt_end & as.character(inlier_distances$annotated_splice_site)=="novel",]
+	outlier_distances_region <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance > ppt_start & outlier_distances$distance <= ppt_end & as.character(outlier_distances$annotated_splice_site)=="novel",]
+
+	num_outliers <- dim(outlier_distances_region)[1]
+	num_inliers <- dim(inlier_distances_region)[1]
+
+	odds_ratios <- c()
+	lower_bounds <- c()
+	upper_bounds <- c()
+	variant_class <- c()
+
+	# Purine -> pyrimidine
+	pu_py_outlier <- sum((outlier_distances_region$major_allele == "A" | outlier_distances_region$major_allele == "G") & (outlier_distances_region$variant_allele == "C" | outlier_distances_region$variant_allele == "T"))
+	pu_py_inlier <- sum((inlier_distances_region$major_allele == "A" | inlier_distances_region$major_allele == "G") & (inlier_distances_region$variant_allele == "C" | inlier_distances_region$variant_allele == "T"))
+	orat <- (pu_py_outlier/num_outliers)/(pu_py_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/pu_py_outlier) - (1.0/num_outliers) + (1.0/pu_py_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "purine -> pyrimidine")
+
+	# Purine -> purine
+	pu_pu_outlier <- sum((outlier_distances_region$major_allele == "A" | outlier_distances_region$major_allele == "G") & (outlier_distances_region$variant_allele == "A" | outlier_distances_region$variant_allele == "G"))
+	pu_pu_inlier <- sum((inlier_distances_region$major_allele == "A" | inlier_distances_region$major_allele == "G") & (inlier_distances_region$variant_allele == "A" | inlier_distances_region$variant_allele == "G"))
+	orat <- (pu_pu_outlier/num_outliers)/(pu_pu_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/pu_pu_outlier) - (1.0/num_outliers) + (1.0/pu_pu_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "purine -> purine")
+
+	# pyrimidine -> purine
+	py_pu_outlier <- sum((outlier_distances_region$major_allele == "C" | outlier_distances_region$major_allele == "T") & (outlier_distances_region$variant_allele == "A" | outlier_distances_region$variant_allele == "G"))
+	py_pu_inlier <- sum((inlier_distances_region$major_allele == "C" | inlier_distances_region$major_allele == "T") & (inlier_distances_region$variant_allele == "A" | inlier_distances_region$variant_allele == "G"))
+	orat <- (py_pu_outlier/num_outliers)/(py_pu_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/py_pu_outlier) - (1.0/num_outliers) + (1.0/py_pu_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "pyrimidine -> purine")
+
+
+	# pyrimidine -> pyrimidine
+	py_py_outlier <- sum((outlier_distances_region$major_allele == "C" | outlier_distances_region$major_allele == "T") & (outlier_distances_region$variant_allele == "C" | outlier_distances_region$variant_allele == "T")) 
+	py_py_inlier <- sum((inlier_distances_region$major_allele == "C" | inlier_distances_region$major_allele == "T") & (inlier_distances_region$variant_allele == "C" | inlier_distances_region$variant_allele == "T")) 
+	orat <- (py_py_outlier/num_outliers)/(py_py_inlier/num_inliers)
+	log_bounds <- 1.96*sqrt((1.0/py_py_outlier) - (1.0/num_outliers) + (1.0/py_py_inlier) - (1.0/num_inliers))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+	odds_ratios <- c(odds_ratios, orat)
+	lower_bounds <- c(lower_bounds, lower_bound)
+	upper_bounds <- c(upper_bounds, upper_bound)
+	variant_class <- c(variant_class, "pyrimidine -> pyrimidine")
+
+	df <- data.frame(odds_ratio=odds_ratios, dist=1:length(variant_class), lower_bound=lower_bounds, upper_bound=upper_bounds, variant_class=factor(variant_class))
+
+
+
+	error_bar_plot_novel <-  ggplot() + geom_errorbar(data=df, mapping=aes(x=dist,ymin=lower_bound, ymax=upper_bound),color="darkorchid") +
+					geom_point(data=df, mapping=aes(x=dist, y=odds_ratio), color="darkorchid") +
+					labs(x = "", y = "Enrichment", title="Novel splice site") +
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=1:length(df$dist), labels=df$variant_class)
+
+	error_bar_plot <- plot_grid(error_bar_plot_annotated, error_bar_plot_novel, ncol=1)
+
+
+	ggsave(error_bar_plot, file=output_file,width = 20,height=22,units="cm")
+
+
+}
+
+
 
 
 
@@ -579,7 +741,19 @@ inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance
 output_file <- paste0(visualize_variant_position_enrichment_dir, "ppt_enrichment_", ss_type, "_", distance, "_", pvalue_threshold, "odds_ratios.pdf")
 ppt_enrichment_donor(outlier_distance_file, inlier_distance_file, ss_type, output_file)
 
-print("DONE")
+#######################
+# Make odds ratio enrichment plots showing pyrimidine/purine nature of ppt variants
+#########################
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+ss_type <- "acceptor"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "ppt_enrichment_", ss_type, "_", distance, "_", pvalue_threshold, "_purine_pyrimidine_enrichment.pdf")
+ppt_start <- -35
+ppt_end <- -5
+purine_pyrimidine_variant_changes_in_specific_region(outlier_distance_file, inlier_distance_file, ss_type, ppt_start, ppt_end, output_file)
 
 #######################
 # Make plots showing allele frequency at each position seperated by outliers/non-outliers and also seperated by novel/annotated

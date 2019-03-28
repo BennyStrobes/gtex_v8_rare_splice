@@ -36,9 +36,8 @@ fi
 ##############
 # Part 2: For each cluster in $clusters_to_plot_file, save matrix of cluster counts for outlier indi and inlier indi
 tissue_specific_junction_file=$filtered_cluster_dir$tissue_name"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
-if false; then
 python extract_cluster_counts.py $clusters_to_plot_file $tissue_name $tissue_specific_junction_file $visualize_cluster_distribution_dir
-fi
+
 
 ##############
 # Part 3: Visualize clusters in $clusters_to_plot
@@ -47,4 +46,6 @@ fi
 clusters_to_plot_file="Muscle_Skeletal_outliers_with_rv_nearby_ss_6_pvalue_.000001.txt"
 tissue_name="Muscle_Skeletal"
 exon_file="gencode_v26_exons.txt"
+if false; then
 Rscript visualize_cluster_distribution.R $clusters_to_plot_file $tissue_name $exon_file
+fi

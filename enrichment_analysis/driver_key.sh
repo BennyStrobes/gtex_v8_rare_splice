@@ -161,8 +161,9 @@ fi
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
 # Then visualize results
+if false; then
 sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file
-
+fi
 
 #################
 # Part 4: Compare jxn usage nearby altered splice sites in outliers and non-outliers

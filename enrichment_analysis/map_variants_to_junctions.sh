@@ -17,7 +17,6 @@ rare_variant_dir="$5"
 
 # Range of Distances
 distances=( "2" "4" "6" "8" "10" "20" "100" "1000")
-distances=( "8" )
 
 # Loop through distances
 for distance in "${distances[@]}"

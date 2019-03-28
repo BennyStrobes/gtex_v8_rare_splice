@@ -215,7 +215,9 @@ def extract_rare_variants(variant_bed_file, cluster_struct, individuals, cluster
 		else:
 			print('assumption eroror!')
 		major_allele, variant_allele = correct_alleles_for_strand(cluster_to_strand_mapping[cluster_id], major_allele, variant_allele)
-		cluster_struct[cluster_id]['rv_individuals'][indi] = (chrom_num, var_pos, major_allele + '->' + variant_allele)
+		if indi not in cluster_struct[cluster_id]['rv_individuals']:
+			cluster_struct[cluster_id]['rv_individuals'][indi] = []
+		cluster_struct[cluster_id]['rv_individuals'][indi].append((chrom_num, var_pos, major_allele + '->' + variant_allele))
 	f.close()
 	return cluster_struct
 
@@ -340,20 +342,94 @@ def extract_cases_where_outlier_individuals_has_concensus_variant(tissue_names, 
 			for outlier_individual in outlier_indi.keys():
 				# Check if outlier is also a RV
 				if outlier_individual in rv_indi:
-					chrom_num = rv_indi[outlier_individual][0]
-					var_pos = rv_indi[outlier_individual][1]
-					variant_allele = rv_indi[outlier_individual][2]
+					for tupler in rv_indi[outlier_individual]:
+						chrom_num = tupler[0]
+						var_pos = tupler[1]
+						variant_allele = tupler[2]
 
-					distance, ss_type, ss_annotated, ss_name = get_distance_to_nearest_splice_site(cluster_to_ss_mapping[cluster_id], int(var_pos), chrom_num, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
-					variant_position_around_ss_name = get_variant_position_around_ss_name(distance, ss_type)
-					if variant_position_around_ss_name not in valid_positions:
-						continue
-					strand = cluster_to_strand_mapping[cluster_id]
+						distance, ss_type, ss_annotated, ss_name = get_distance_to_nearest_splice_site(cluster_to_ss_mapping[cluster_id], int(var_pos), chrom_num, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
+						variant_position_around_ss_name = get_variant_position_around_ss_name(distance, ss_type)
+						if variant_position_around_ss_name not in valid_positions:
+							continue
+						strand = cluster_to_strand_mapping[cluster_id]
 					
-					to_or_from_concensus = get_to_or_from_concensus(valid_positions[variant_position_around_ss_name], variant_allele)
-					inlier_string = ','.join(cluster_struct[cluster_id]['inlier_individuals'].keys())
-					# Print to output file
-					t.write(tissue + '\t' + cluster_id + '\t' + chrom_num + '\t' + var_pos + '\t' + ss_name + '\t' + outlier_individual + '\t' + inlier_string + '\t' + variant_position_around_ss_name + '\t' + strand + '\t' + ss_annotated + '\t' + variant_allele + '\t' + to_or_from_concensus + '\n')
+						to_or_from_concensus = get_to_or_from_concensus(valid_positions[variant_position_around_ss_name], variant_allele)
+						inlier_string = ','.join(cluster_struct[cluster_id]['inlier_individuals'].keys())
+						# Print to output file
+						t.write(tissue + '\t' + cluster_id + '\t' + chrom_num + '\t' + var_pos + '\t' + ss_name + '\t' + outlier_individual + '\t' + inlier_string + '\t' + variant_position_around_ss_name + '\t' + strand + '\t' + ss_annotated + '\t' + variant_allele + '\t' + to_or_from_concensus + '\n')
+	t.close()
+
+def get_pyrimidine_purine_variant_classification(variant_allele):
+	old = variant_allele.split('->')[0]
+	new = variant_allele.split('->')[1]
+	if old == 'C' or old == 'T':
+		old_class = 'pyrimidine'
+	else:
+		old_class = 'purine'
+	if new == 'C' or new == 'T':
+		new_class = 'pyrimidine'
+	else:
+		new_class = 'purine'
+	return old_class + '->' + new_class
+
+# Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby ppt around splice site for that cluster
+# PPT includes (A-5)-(A-34)
+def extract_cases_where_outlier_individuals_has_ppt_variant(tissue_names, cluster_to_ss_mapping, cluster_to_strand_mapping, annotated_splice_sites, pvalue_outlier_threshold, pvalue_inlier_threshold, variant_bed_file, splicing_outlier_dir, splicing_outlier_suffix, european_ancestry_individual_list, output_file):
+	valid_positions = {}
+	for position in range(5,35):
+		string_pos = 'A-' + str(position)
+		valid_positions[string_pos] = 1
+
+	# Open output file handle
+	t = open(output_file, 'w')
+	# Print header
+	t.write('tissue\tcluster_id\tchrom_num\tvariant_position\tss_name\toutlier_individual\tinlier_individuals\tdistance_to_ss\tstrand\tannotated_ss\tvariant_allele\tvariant_type\n')
+
+	# Loop through tissues
+	for tissue in tissue_names:
+		print(tissue)
+		# In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
+		# Extract list of individuals for this tissue
+		# Use outlier file to get list of individuals we have RNA-seq for
+		outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_merged_emperical_pvalue.txt'
+		individuals = extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, european_ancestry_individual_list)
+
+		# Extract outliers in this tissue and save results in cluster_struct
+		outlier_file = splicing_outlier_dir + tissue + splicing_outlier_suffix + '_merged_emperical_pvalue.txt'
+		cluster_struct = extract_outliers(outlier_file, individuals, pvalue_outlier_threshold, pvalue_inlier_threshold, "all")
+
+		# Add RV calls to cluster_struct object
+		cluster_struct = extract_rare_variants(variant_bed_file, cluster_struct, individuals, cluster_to_strand_mapping)
+		# Loop through cluster ids
+		for cluster_id in cluster_struct.keys():
+			# dictionary containing all individuals that have a RV for this cluster
+			rv_indi = cluster_struct[cluster_id]['rv_individuals']
+			# dictionary containing all individuals that have a RV for this cluster
+			outlier_indi = cluster_struct[cluster_id]['outlier_individuals']
+
+			# Skip clusters with no outliers or no rv
+			if len(outlier_indi) == 0 or len(rv_indi) == 0:
+				continue
+
+			# Loop through outliers
+			for outlier_individual in outlier_indi.keys():
+				# Check if outlier is also a RV
+				if outlier_individual in rv_indi:
+					for tupler in rv_indi[outlier_individual]:
+						chrom_num = tupler[0]
+						var_pos = tupler[1]
+						variant_allele = tupler[2]
+
+						distance, ss_type, ss_annotated, ss_name = get_distance_to_nearest_splice_site(cluster_to_ss_mapping[cluster_id], int(var_pos), chrom_num, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
+						variant_position_around_ss_name = get_variant_position_around_ss_name(distance, ss_type)
+						if variant_position_around_ss_name not in valid_positions:
+							continue
+						strand = cluster_to_strand_mapping[cluster_id]
+					
+						variant_type = get_pyrimidine_purine_variant_classification(variant_allele)
+						inlier_string = ','.join(cluster_struct[cluster_id]['inlier_individuals'].keys())
+						# Print to output file
+						t.write(tissue + '\t' + cluster_id + '\t' + chrom_num + '\t' + var_pos + '\t' + ss_name + '\t' + outlier_individual + '\t' + inlier_string + '\t' + variant_position_around_ss_name + '\t' + strand + '\t' + ss_annotated + '\t' + variant_allele + '\t' + variant_type + '\n')
 	t.close()
 
 # Extract object containing junction counts
@@ -482,6 +558,8 @@ annotated_splice_sites = get_dictionary_of_annotated_splice_sites(exon_file)
 tissue_names = get_tissue_names(tissue_names_file)
 
 
+
+
 # Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby concensus site around splice site for that cluster
 # Concensus sites include A-2, A-1, A+1, D-1, D+1, D+2,D+3,D+4,D+5,D+6
 output_file = output_dir + 'tissue_by_tissue_outliers_with_rv_in_concensus_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '.txt'
@@ -492,6 +570,17 @@ extract_cases_where_outlier_individuals_has_concensus_variant(tissue_names, clus
 output_file2 = output_dir + 'tissue_by_tissue_outliers_with_rv_in_concensus_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '_with_read_counts.txt'
 add_read_count_contingency_table(output_file, output_file2, tissue_names, filtered_cluster_dir)
 
+
+
+# Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby ppt around splice site for that cluster
+# PPT includes (A-5)-(A-34)
+output_file = output_dir + 'tissue_by_tissue_outliers_with_rv_in_ppt_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '.txt'
+extract_cases_where_outlier_individuals_has_ppt_variant(tissue_names, cluster_to_ss_mapping, cluster_to_strand_mapping, annotated_splice_sites, pvalue_outlier_threshold, pvalue_inlier_threshold, variant_bed_file, splicing_outlier_dir, splicing_outlier_suffix, european_ancestry_individual_list, output_file)
+
+
+# Part 2: Add read count contingency table for each variant-jxn pair
+output_file2 = output_dir + 'tissue_by_tissue_outliers_with_rv_in_ppt_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '_with_read_counts.txt'
+add_read_count_contingency_table(output_file, output_file2, tissue_names, filtered_cluster_dir)
 
 
 
