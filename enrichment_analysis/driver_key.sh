@@ -122,6 +122,7 @@ visualize_branchpoint_enrichment_dir=$output_root"visualize_branchpoint_enrichme
 
 
 
+
 #############################################################
 # Scripts: Run the following X parts in Series
 #############################################################
@@ -160,9 +161,8 @@ fi
 #################
 # Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
 # Then visualize results
-if false; then
 sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file
-fi
+
 
 #################
 # Part 4: Compare jxn usage nearby altered splice sites in outliers and non-outliers
@@ -178,14 +178,12 @@ sh visualize_cluster_distribution_shell.sh $rare_variant_dir $splicing_outlier_d
 fi
 
 #################
-# Part 5: Compute enrichments in branchpoints for outliers vs non-outliers
+# Part 6: Compute enrichments in branchpoints for outliers vs non-outliers
 # Then visualize results
 variant_cluster_intron_mapped_file=$rare_variant_dir"variant_cluster_only_bed_100.txt"
-variant_cluster_intron_mapped_no_concensus_file=$rare_variant_dir"variant_cluster_intron_body_100_no_consensus_bed.txt"
-
-sh branchpoint_enrichment_shell.sh $variant_cluster_intron_mapped_file $variant_cluster_intron_mapped_no_concensus_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
-
-
+if false; then
+sh branchpoint_enrichment_shell.sh $variant_cluster_intron_mapped_file $branchpoint_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $branchpoint_enrichment_dir $visualize_branchpoint_enrichment_dir $liftover_directory $cluster_info_file $tissue_names_file
+fi
 
 
 

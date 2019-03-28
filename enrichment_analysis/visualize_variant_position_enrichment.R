@@ -378,11 +378,172 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_annotation_vs_nov
 	ggsave(error_bar_plot, file=output_file,width = 26,height=16,units="cm")
 }
 
+extract_ppt_odds_ratio_data <- function(outlier_distances, inlier_distances, ppt_start, ppt_end, ss_type) {
+	aa <- sum(as.character(outlier_distances$splice_site_type)==ss_type & outlier_distances$distance <= ppt_end & outlier_distances$distance > ppt_start) + 1
+
+	bb <- sum(as.character(outlier_distances$splice_site_type)==ss_type) + 1
+
+	cc <- sum(as.character(inlier_distances$splice_site_type)==ss_type & inlier_distances$distance <= ppt_end & inlier_distances$distance > ppt_start) + 1
+
+	dd <- sum(as.character(inlier_distances$splice_site_type)==ss_type) + 1 
 
 
+	orat <- (aa/bb)/(cc/dd)
+	log_bounds <- 1.96*sqrt((1.0/aa) - (1.0/bb) + (1.0/cc) - (1.0/dd))
+	upper_bound <- orat*exp(log_bounds)
+	lower_bound <- orat*exp(-log_bounds)
+
+	df <- data.frame(odds_ratio=orat, upper_bound=upper_bound, lower_bound=lower_bound)
+	return(df)
+
+}
 
 
+ppt_enrichment_acceptor <- function(outlier_distance_file, inlier_distance_file, ss_type, output_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
 
+	position_labels <- c()
+	odds_ratios <- c()
+	upper_bounds <- c()
+	lower_bounds <- c()
+
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -10, -5, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-5, A-9]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -15, -10, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-10, A-14]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -20, -15, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-15, A-19]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -25, -20, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-20, A-24]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -30, -25, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-25, A-29]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -35, -30, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-30, A-34]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -40, -35, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-35, A-39]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -45, -40, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[A-40, A-44]")
+
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	df <- data.frame(odds_ratio=odds_ratios,upper_bound=upper_bounds, lower_bound=lower_bounds, dist_to_ss=1:length(position_labels), position=factor(position_labels, levels=position_labels))
+
+	error_bar_plot <-  ggplot() + geom_errorbar(data=df, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=df, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Acceptor Splice Site") +
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=1:length(position_labels), labels=position_labels)
+
+	ggsave(error_bar_plot, file=output_file,width = 20,height=13,units="cm")
+
+}
+
+ppt_enrichment_donor <- function(outlier_distance_file, inlier_distance_file, ss_type, output_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+	position_labels <- c()
+	odds_ratios <- c()
+	upper_bounds <- c()
+	lower_bounds <- c()
+
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -10, -5, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+5, D+9]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -15, -10, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+10, D+14]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -20, -15, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+15, D+19]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -25, -20, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+20, D+24]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -30, -25, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+25, D+29]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -35, -30, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+30, D+34]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -40, -35, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+35, D+39]")
+
+	orat_data <- extract_ppt_odds_ratio_data(outlier_distances, inlier_distances, -45, -40, ss_type)
+	odds_ratios <- c(odds_ratios, orat_data$odds_ratio)
+	upper_bounds <- c(upper_bounds, orat_data$upper_bound)
+	lower_bounds <- c(lower_bounds, orat_data$lower_bound)
+	position_labels <- c(position_labels, "[D+40, D+44]")
+
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	df <- data.frame(odds_ratio=odds_ratios,upper_bound=upper_bounds, lower_bound=lower_bounds, dist_to_ss=1:length(position_labels), position=factor(position_labels, levels=position_labels))
+
+	error_bar_plot <-  ggplot() + geom_errorbar(data=df, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=df, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Donor Splice Site") +
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=1:length(position_labels), labels=position_labels)
+
+	ggsave(error_bar_plot, file=output_file,width = 20,height=13,units="cm")
+
+}
 
 
 
@@ -397,9 +558,32 @@ visualize_variant_position_enrichment_dir <- args[2]  # Output dir
 
 
 
+#######################
+# Make plots PPT enrichment
+#########################
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+ss_type <- "acceptor"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "ppt_enrichment_", ss_type, "_", distance, "_", pvalue_threshold, "odds_ratios.pdf")
+ppt_enrichment_acceptor(outlier_distance_file, inlier_distance_file, ss_type, output_file)
 
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+ss_type <- "donor"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "ppt_enrichment_", ss_type, "_", distance, "_", pvalue_threshold, "odds_ratios.pdf")
+ppt_enrichment_donor(outlier_distance_file, inlier_distance_file, ss_type, output_file)
 
+print("DONE")
 
+#######################
+# Make plots showing allele frequency at each position seperated by outliers/non-outliers and also seperated by novel/annotated
+#########################
 distance <- "1000"
 version <- "observed_splice_site"
 pvalue_threshold <- "1e-05"
@@ -461,7 +645,7 @@ make_novel_annotated_seperated_variant_allele_odds_ratio_plot(as.numeric(distanc
 
 
 #######################
-# Specific allele plots
+# Make plots showing allele frequency at each position seperated by outliers/non-outliers
 #########################
 
 distance <- "1000"
