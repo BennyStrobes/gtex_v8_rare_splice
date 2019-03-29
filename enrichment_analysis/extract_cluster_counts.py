@@ -2,6 +2,7 @@ import numpy as np
 import os
 import sys
 import pdb
+from leafcutter_cluster_classification import classify_cluster
 
 
 
@@ -158,10 +159,12 @@ def extract_cluster_info(clusters_to_plot_file):
 		var_pos = data[2]
 		outlier_indi = data[3]
 		inlier_indis = data[4].split(',')
+		strand = data[6]
 		clusters[cluster_id] = {}
 		clusters[cluster_id]['outlier_individual'] = outlier_indi
 		clusters[cluster_id]['variant_position'] = var_pos
 		clusters[cluster_id]['inlier_individual_array'] = inlier_indis
+		clusters[cluster_id]['strand'] = strand
 	f.close()
 	return clusters
 
@@ -233,7 +236,12 @@ def save_jxns_to_output_file(inlier_individuals, outlier_individuals, jxn_names,
 		t.write(val + '\t' + '\t'.join(np.squeeze(np.asarray(inlier_filtered_matrix[i,0:])).astype(int).astype(str)) + '\n')
 	t.close()
 
-
+def revise_jxn_names(jxn_names):
+	new = []
+	for jxn_name in jxn_names:
+		new_name = jxn_name.split(':')[1] + ':' + jxn_name.split(':')[2]
+		new.append(new_name)
+	return new
 
 clusters_to_plot_file = sys.argv[1]
 tissue_name = sys.argv[2]
@@ -247,6 +255,9 @@ cluster_struct = extract_cluster_info(clusters_to_plot_file)
 # Keys are cluster_ids and values are jxn_counts
 cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(tissue_specific_junction_file, 20)
 
+t_classify = open(visualize_cluster_distribution_dir + tissue_name + '_cluster_assignments.txt','w')
+t_classify.write('cluster_id\texon_skipping\talternate_5\talternate_3\n')
+
 # Loop through clusters to save
 for cluster_id in cluster_struct.keys():
 	outlier_individual = np.asarray([cluster_struct[cluster_id]['outlier_individual']])
@@ -255,6 +266,11 @@ for cluster_id in cluster_struct.keys():
 	jxn_matrix = cluster_jxn_data_structure[cluster_id]['jxn_matrix']
 	ordered_individuals = np.asarray(cluster_jxn_data_structure[cluster_id]['samples'])
 
+	short_jxn_names = revise_jxn_names(jxn_names)
+	exon_skipping_bool, alternate_5_bool, alternate_3_bool = classify_cluster(short_jxn_names, cluster_struct[cluster_id]['strand'])
+	t_classify.write(cluster_id + '\t' + str(exon_skipping_bool) + '\t' + str(alternate_5_bool) + '\t' + str(alternate_3_bool) + '\n')
+
 	# Save results for inliers
 	inlier_output_file = visualize_cluster_distribution_dir + tissue_name + '_' + cluster_id + '_counts.txt'
 	save_jxns_to_output_file(inlier_individuals, outlier_individual, jxn_names, jxn_matrix, ordered_individuals, inlier_output_file)
+t_classify.close()

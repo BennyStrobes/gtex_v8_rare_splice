@@ -169,6 +169,7 @@ load_data <- function(file_name) {
 clusters_to_plot_file <- args[1]  # File where each line is a cluster
 tissue_name <- args[2]  # Name of tissue
 exon_file <- args[3]  # File containing exon positions
+cluster_assignment_file <- args[4]  # File containing assignments of clusters to alternative splicing classes
 
 visualize_cluster_distribution_dir <- "/Users/bennystrobes/Google Drive/Research/gtex_v8/rare_var/visualize/leaf_viz/visualize_cluster_distribution/"
 
@@ -181,6 +182,15 @@ exons_table <- read.table(exon_file,header=T)
 clusters_to_plot <- read.table(clusters_to_plot_file, header=TRUE)
 
 
+cluster_assignments <- read.table(paste0(visualize_cluster_distribution_dir,cluster_assignment_file), header=TRUE)
+
+#temper = cluster_assignments[as.character(cluster_assignments$cluster_id) == "cluster10259",]
+
+#print(temper)
+#print(temper[1,1])
+#print(temper[1,2])
+#print(temper[1,3])
+#print(as.character(temper[1,4]))
 num_clusters <- dim(clusters_to_plot)[1]
 
 for (cluster_num in 1:num_clusters) {
@@ -194,9 +204,13 @@ for (cluster_num in 1:num_clusters) {
   variant_allele <- as.character(clusters_to_plot[cluster_num,9])
 	counts_file <- paste0(visualize_cluster_distribution_dir, tissue_name, "_", cluster_id, "_counts.txt")
 	counts <- load_data(counts_file)
+  cluster_assignment_vec <- cluster_assignments[as.character(cluster_assignments$cluster_id) == cluster_id,]
+  es_boolean <- as.character(cluster_assignment_vec[1,2])
+  alt_5_boolean <- as.character(cluster_assignment_vec[1,3])
+  alt_3_boolean <- as.character(cluster_assignment_vec[1,4])
 	membership_vector <- factor(c(rep("outlier",1), rep("inlier", dim(counts)[1] -1)))
 	output_file <- paste0(visualize_cluster_distribution_dir, tissue_name, "_", cluster_id, "_cluster_viz.pdf")
-	make_differential_splicing_plot(counts, x=membership_vector,main_title=paste0(cluster_id, " / ",dist_to_ss," / ", variant_allele, " / strand=",strand,"\n", chrom_num,':',var_pos," / ",annotated_ss), snp_pos=var_pos,exons_table=exons_table, output_file=output_file)
+	make_differential_splicing_plot(counts, x=membership_vector,main_title=paste0(cluster_id, " / ",dist_to_ss," / ", variant_allele, " / strand=",strand,"\n", chrom_num,':',var_pos," / ",annotated_ss, "\nes=", es_boolean," / alt_5=",alt_5_boolean, " / alt_3=", alt_3_boolean), snp_pos=var_pos,exons_table=exons_table, output_file=output_file)
 }
 
 

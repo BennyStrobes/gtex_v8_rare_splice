@@ -279,6 +279,15 @@ def get_variant_position_around_ss_name(distance, ss_type):
 		pdb.set_trace()
 	return namer
 
+
+def extract_readible_exon_exon_junctions(dicti):
+	arr = []
+	start = dicti['start_splice_sites']
+	end = dicti['end_splice_sites']
+	for i, ele in enumerate(start):
+		arr.append(str(ele) + ':' + str(end[i]))
+	return arr
+
 #######################
 # Command line args
 #######################
@@ -349,6 +358,11 @@ for cluster_id in cluster_struct.keys():
 			variant_position_around_ss_name = get_variant_position_around_ss_name(distance, ss_type)
 			strand = cluster_to_strand_mapping[cluster_id]
 			inlier_string = ','.join(cluster_struct[cluster_id]['inlier_individuals'].keys())
+
+			# Classify cluster
+			#exon_exon_junctions = extract_readible_exon_exon_junctions(cluster_to_ss_mapping[cluster_id])
+			#exon_skipping_bool, alternate_5_bool, alternate_3_bool = classify_cluster(exon_exon_junctions, strand)
+
 			# Print to output file
 			t.write(cluster_id + '\t' + chrom_num + '\t' + var_pos + '\t' + outlier_individual + '\t' + inlier_string + '\t' + variant_position_around_ss_name + '\t' + strand + '\t' + ss_annotated + '\t' + variant_allele + '\n')
 t.close()

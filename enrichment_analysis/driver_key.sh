@@ -174,9 +174,8 @@ fi
 
 #################
 # Part 5: Visualize cluster distributions for outliers compared to non-outliers
-if false; then
 sh visualize_cluster_distribution_shell.sh $rare_variant_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $cluster_info_file $exon_file $visualize_cluster_distribution_dir $tissue_names_file $filtered_cluster_dir
-fi
+
 
 #################
 # Part 6: Compute enrichments in branchpoints for outliers vs non-outliers
