@@ -3,7 +3,7 @@
 #SBATCH
 #SBATCH --time=4:00:00
 #SBATCH --partition=shared
-#SBATCH --mem=10GB
+#SBATCH --mem=25GB
 #SBATCH --nodes=1
 
 
@@ -29,12 +29,11 @@ distance="1000"
 
 
 # Loop through pvalue thresholds
-if false; then
 for pvalue_threshold in "${pvalue_thresholds[@]}"; do
 	echo $distance"_"$pvalue_threshold
 	python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file
 done
-fi
+
 
 
 
@@ -43,9 +42,9 @@ fi
 ########################
 # Visualize results
 ########################
+if false; then
 Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir
-
-
+fi
 
 
 

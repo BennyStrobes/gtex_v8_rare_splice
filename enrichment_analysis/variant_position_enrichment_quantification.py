@@ -3,6 +3,7 @@ import os
 import sys
 import pdb
 import gzip
+from leafcutter_cluster_classification import classify_cluster
 
 
 # In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
@@ -226,6 +227,37 @@ def correct_alleles_for_strand(strand, major_allele, variant_allele):
 	else:
 		return major_allele, variant_allele
 
+def get_mapping_from_cluster_to_alternative_splicing_type(cluster_info_file, cluster_to_strand_mapping):
+	f = open(cluster_info_file)
+	cluster_to_alternative_splicing_type_mapping = {}
+	head_count = 0
+	counter = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		counter = counter +1
+		cluster_id = data[0]
+		strand = cluster_to_strand_mapping[cluster_id]
+		# Get list of exon- exon juntions for this cluster
+		unprocess_jxns = data[1].split(',')
+		exon_exon_junctions = []
+		for unprocess_jxn in unprocess_jxns:
+			info = unprocess_jxn.split(':')
+			new_info = info[1] + ':' + info[2]
+			exon_exon_junctions.append(new_info)
+		# Classify
+		exon_skipping_bool, alt_5_bool, alt_3_bool = classify_cluster(exon_exon_junctions, strand)
+		if cluster_id not in cluster_to_alternative_splicing_type_mapping:
+			cluster_to_alternative_splicing_type_mapping[cluster_id] = (exon_skipping_bool, alt_5_bool, alt_3_bool)
+		else:
+			print('assumption error')
+			pdb.set_trace()
+	f.close()
+	return cluster_to_alternative_splicing_type_mapping
+
 
 # Print distance to splice site for outliers and non-outliers based on observed exon-exon junctions
 def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individuals, cluster_info_file, inlier_positions_file, outlier_positions_file, variant_bed_file, exon_file):
@@ -233,14 +265,16 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 	cluster_mapping = extract_mapping_from_cluster_id_to_junctions(cluster_info_file)
 	# Create mapping from cluster id to strand
 	cluster_to_strand_mapping = get_cluster_to_strand_mapping(cluster_info_file, exon_file)
+	# Create mapping from cluster id to cluster classification
+	cluster_to_alternative_splicing_type_mapping = get_mapping_from_cluster_to_alternative_splicing_type(cluster_info_file, cluster_to_strand_mapping)
 	# Create dictionary of annotated splice sites
 	# Where keys are "chr"$chrom_num"_"#splice_sites
 	annotated_splice_sites = get_dictionary_of_annotated_splice_sites(exon_file)
 	# Open output file handles
 	t_outlier = open(outlier_positions_file, 'w')
 	t_inlier = open(inlier_positions_file, 'w')
-	t_outlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\n')
-	t_inlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\n')
+	t_outlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\texon_skipping\talternative_5_prime\talternative_3_prime\n')
+	t_inlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\texon_skipping\talternative_5_prime\talternative_3_prime\n')
 	# Stream variant bed file
 	used = {}
 	f = open(variant_bed_file)
@@ -284,12 +318,12 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 		if individual_id in cluster_struct[cluster_id]['outlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
 			distance, ss_type, ss_annotated = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
-			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\n')
+			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][0]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][1]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][2]) + '\n')
 		# Individaul is an inlier
 		if individual_id in cluster_struct[cluster_id]['inlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
 			distance, ss_type, ss_annotated = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
-			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\n')
+			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][0]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][1]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][2]) + '\n')
 	# CLose input and output file handles
 	f.close()
 	t_inlier.close()

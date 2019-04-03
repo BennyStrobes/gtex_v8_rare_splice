@@ -67,6 +67,8 @@ def classify_cluster(exon_exon_junctions, strand):
 	alternative_3 = False
 	# Need to loop through all N choose 3 triplets of junctions to identify if there is any exon skipping
 	num_jxns = len(exon_exon_junctions)
+	if num_jxns > 100:  # Bit of a hack here.
+		return True, True, True
 	comb_3 = combinations(range(num_jxns), 3)
 	exon_skipping_triplets = []
 	for i in list(comb_3):

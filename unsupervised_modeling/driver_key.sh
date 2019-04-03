@@ -69,5 +69,6 @@ if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
+if false; then 
 sh watershed_run.sh $unsupervised_learning_input_dir $watershed_run_dir 
-
+fi
