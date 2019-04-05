@@ -53,7 +53,7 @@ unsupervised_learning_input_dir=$output_root"unsupervised_learning_input/"
 river_run_dir=$output_root"river/"
 
 # Directory containing results from watershed analysis
-watershed_run_dir=$output_root"watershed_run/"
+watershed_3_class_roc_run_dir=$output_root"watershed_three_class_roc/"
 
 
 
@@ -69,6 +69,5 @@ if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
-if false; then 
-sh watershed_run.sh $unsupervised_learning_input_dir $watershed_run_dir 
-fi
+sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir
+

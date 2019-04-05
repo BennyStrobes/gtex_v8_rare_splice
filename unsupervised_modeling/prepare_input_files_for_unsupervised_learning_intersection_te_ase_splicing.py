@@ -534,7 +534,7 @@ splicing_outlier_genes = get_splicing_outlier_info(individuals, genes, pvalue, s
 # For total expression outliers extract list of genes for which we have at least one outlier sample and extract zscore threshold that gives us num_outlier_samples
 total_expression_outlier_genes = get_total_expression_outlier_info(individuals, genes, pvalue, total_expression_outlier_file)
 
-# Take union of outlier genes from each of three methods
+# Take intersection of outlier genes from each of three methods
 outlier_genes = intersection_of_three_dictionaries(splicing_outlier_genes, total_expression_outlier_genes, ase_outlier_genes)
 
 
@@ -550,20 +550,22 @@ ase_output_file = unsupervised_learning_input_dir + 'ase_outliers_' + str(pvalue
 print_outlier_output_file(ase_outliers, genomic_annotation_file, ase_output_file, gene_individual_to_variant_mapping_file)
 splicing_output_file = unsupervised_learning_input_dir + 'splicing_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
 print_outlier_output_file(splicing_outliers, genomic_annotation_file, splicing_output_file, gene_individual_to_variant_mapping_file)
-# Print outliers
 total_expression_output_file = unsupervised_learning_input_dir + 'total_expression_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
 print_outlier_output_file(total_expression_outliers, genomic_annotation_file, total_expression_output_file, gene_individual_to_variant_mapping_file)
 
-
-
-# Merge two outlier files
+# Merge three outlier files
 merged_output_file = unsupervised_learning_input_dir + 'merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
+
+
+
+
+
+
 
 # Print outliers
 splicing_output_file = unsupervised_learning_input_dir + 'fully_observed_splicing_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
 print_outlier_output_file_no_nan(splicing_outliers, total_expression_outliers,ase_outliers, genomic_annotation_file, splicing_output_file, gene_individual_to_variant_mapping_file)
-# Print outliers
 total_expression_output_file = unsupervised_learning_input_dir + 'fully_observed_total_expression_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
 print_outlier_output_file_no_nan(total_expression_outliers, splicing_outliers, ase_outliers, genomic_annotation_file, total_expression_output_file, gene_individual_to_variant_mapping_file)
 ase_output_file = unsupervised_learning_input_dir + 'fully_observed_ase_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
@@ -571,29 +573,11 @@ print_outlier_output_file_no_nan(ase_outliers, total_expression_outliers, splici
 
 
 
-# Merge two outlier files
+# Merge three outlier files
 merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
 
 
 
-
-
-##############################
-# Ignore ASE for now
-##############################
-# For ASE outliers extract list of genes for which we have at least one outlier sample and extract pvalue threshold that gives us num_outlier_samples
-# ase_outlier_genes, ase_pvalue_threshold = get_splicing_outlier_info(individuals, genes, num_outlier_samples, ase_outlier_file)
-
-#ase_outliers = get_ase_outliers(outlier_genes, individuals, ase_pvalue_threshold, ase_outlier_file)
-#ase_outliers_unique = get_ase_outliers(ase_outlier_genes, individuals, ase_pvalue_threshold, ase_outlier_file)
-
-# Print outliers
-#ase_output_file = unsupervised_learning_input_dir + 'ase_outliers_' + str(num_outlier_samples) + '_comparison_between_methods.txt'
-#print_outlier_output_file(ase_outliers, genomic_annotation_file, ase_output_file)
-
-# Print outliers
-#ase_output_file = unsupervised_learning_input_dir + 'ase_unique_outliers_' + str(num_outlier_samples) + '_comparison_between_methods.txt'
-#print_outlier_output_file(ase_outliers_unique, genomic_annotation_file, ase_output_file)
 
