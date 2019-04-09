@@ -53,7 +53,7 @@ unsupervised_learning_input_dir=$output_root"unsupervised_learning_input/"
 river_run_dir=$output_root"river/"
 
 # Directory containing results from watershed analysis
-watershed_3_class_roc_run_dir=$output_root"watershed_three_class_roc_rep/"
+watershed_3_class_roc_run_dir=$output_root"watershed_three_class_roc/"
 
 
 
