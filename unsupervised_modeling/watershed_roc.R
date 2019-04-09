@@ -273,10 +273,16 @@ extract_pairwise_observed_labels <- function(binary_outliers_train) {
 initialize_genomic_annotation_variables <- function(number_of_features, number_of_dimensions, independent_variables) {
 	if (independent_variables == "true") {
 		pair_value = 0
-	} else {
+		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+	} else if (independent_variables == "false") {
 		pair_value = 1e-7
+		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+	} else if (independent_variables == "false_geno") {
+		pair_value = 1e-7
+		theta_pair = matrix(0, number_of_features+1, choose(number_of_dimensions, 2))
+		theta_pair[1,] <- numeric(choose(number_of_dimensions, 2)) + pair_value
 	}
-	theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+
 	beta_init = matrix(0,number_of_features+1, number_of_dimensions)
 	theta_singleton = beta_init[1,]
 	theta = beta_init[2:(number_of_features + 1),]
@@ -289,7 +295,9 @@ initialize_genomic_annotation_variables <- function(number_of_features, number_o
 		x <- c(x, theta[, dimension])
 	}
 	# Add theta_pair (edges between unobserved nodes)
-	x <- c(x, theta_pair[1,])
+	for (row_number in 1:(dim(theta_pair)[1])) {
+		x <- c(x, theta_pair[row_number,])
+	}
 	return(x)
 }
 
@@ -301,19 +309,24 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 
 	if (independent_variables == "true") {
 		pair_value = 0
-	} else {
+		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+	} else if (independent_variables == "false") {
 		pair_value = 1e-7
+		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+	} else if (independent_variables == "false_geno") {
+		pair_value = 1e-7
+		theta_pair = matrix(0, number_of_features+1, choose(number_of_dimensions, 2))
+		theta_pair[1,] <- numeric(choose(number_of_dimensions, 2)) + pair_value
 	}
 
 	# Create GAM parameters section
-	theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
 	beta_init = matrix(0,number_of_features+1, number_of_dimensions)
 	theta_singleton = beta_init[1,]
 	theta = beta_init[2:(number_of_features + 1),]
 	gam_parameters = list(theta_pair=theta_pair, theta_singleton=theta_singleton, theta=theta)
 
 
-	phi_placeholder <- initialize_phi(7, number_of_dimensions) 
+	phi_placeholder <- initialize_phi(3, number_of_dimensions) 
 
 	pairwise_binary_outliers_train <- extract_pairwise_observed_labels(binary_outliers_train)
 
@@ -341,7 +354,12 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
     		outliers_train_fold <- binary_outliers_train_shuff[-testIndexes,]
     		pairwise_outliers_train_fold <- pairwise_binary_outliers_train_shuff[-testIndexes,]
 
-			lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
+    		# num_grad <- grad(compute_exact_crf_likelihood_for_lbfgs, gradient_variable_vec, feat=feat_test_fold, discrete_outliers=outliers_test_fold, posterior=outliers_test_fold, posterior_pairwise=pairwise_outliers_test_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables)
+    		# actual_grad <- compute_exact_crf_gradient_for_lbfgs(gradient_variable_vec, feat=feat_test_fold, discrete_outliers=outliers_test_fold, posterior=outliers_test_fold, posterior_pairwise=pairwise_outliers_test_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables)
+
+
+
+			lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=0)
 			# Check to make sure LBFGS converged OK
 			if (lbfgs_output$convergence != 0) {
 				print(paste0("LBFGS optimazation on CRF did not converge. It reported convergence error of: ", lbfgs_output$convergence))
@@ -354,8 +372,9 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 			for (dimension in 1:number_of_dimensions) {
 				gam_parameters$theta[,dimension] <- lbfgs_output$par[(number_of_dimensions + 1 + ncol(feat_train)*(dimension-1)):(number_of_dimensions + ncol(feat_train)*(dimension))]
 			}
- 			gam_parameters$theta_pair[1,] <- lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)]
-
+ 			#gam_parameters$theta_pair[1,] <- lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)]
+			#theta_pair[1,] <- x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)]
+			gam_parameters$theta_pair <- matrix(lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
 
 			# Compute expected value of the CRFs (mu)
 			mu_list_test <- update_marginal_probabilities_exact_inference_cpp(feat_test_fold, outliers_test_fold, gam_parameters$theta_singleton, gam_parameters$theta_pair, gam_parameters$theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
@@ -375,13 +394,15 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 	best_index <- which(avg_aucs==max(avg_aucs))
 	best_lambda <- costs[best_index]
 	# Using best lambda, recompute GAM
-	lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_shuff, discrete_outliers=binary_outliers_train_shuff, posterior=binary_outliers_train_shuff, posterior_pairwise=pairwise_binary_outliers_train_shuff, phi=phi_placeholder, lambda=best_lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables)
+	lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_shuff, discrete_outliers=binary_outliers_train_shuff, posterior=binary_outliers_train_shuff, posterior_pairwise=pairwise_binary_outliers_train_shuff, phi=phi_placeholder, lambda=best_lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=0)
 	# Get optimized crf coefficients back into model_params format
 	gam_parameters$theta_singleton <- lbfgs_output$par[1:number_of_dimensions]
 	for (dimension in 1:number_of_dimensions) {
 		gam_parameters$theta[,dimension] <- lbfgs_output$par[(number_of_dimensions + 1 + ncol(feat_train)*(dimension-1)):(number_of_dimensions + ncol(feat_train)*(dimension))]
 	}
- 	gam_parameters$theta_pair[1,] <- lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)]
+ 	#gam_parameters$theta_pair[1,] <- lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)]
+	gam_parameters$theta_pair <- matrix(lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+
 	return(list(lambda=best_lambda, gam_parameters=gam_parameters))
 }
 
@@ -425,7 +446,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
  	#######################################
 	## Fit Genomic Annotation Model (GAM)
 	#######################################
-	nfolds <- 5
+	nfolds <- 2
 	gam_data <- genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, costs, independent_variables)
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
 	# Predict on held out test data
@@ -439,8 +460,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
 	#######################################
 	lambda_singleton <- 0
   	lambda_pair <- 0
-  	######lambda <- gam_data$lambda
-  	lambda <- .001
+  	lambda <- gam_data$lambda
   	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, output_root)
 	saveRDS(watershed_model, paste0(output_root, "_model_params.rds"))
 	#watershed_model <- readRDS(paste0(output_root, "_model_params.rds"))
@@ -744,8 +764,8 @@ pseudoc <- as.numeric(args[6])
 #####################
 # Parameters
 #####################
-costs= c(.01, 1e-3, 1e-4, 0)
-# costs= c(1e-4, 0)
+#costs= c(.01, 1e-3, 1e-4, 0)
+costs= c(.01, 1e-3)
 phi_init <- initialize_phi(3, number_of_dimensions) 
 
 
@@ -755,6 +775,15 @@ phi_init <- initialize_phi(3, number_of_dimensions)
 #######################################
 data_input <- load_watershed_data(input_file, number_of_dimensions, pvalue_threshold)
 
+
+
+
+#######################################
+## Run models (RIVER and GAM) assuming edges (connections) between dimensions
+#######################################
+independent_variables = "false_geno"
+output_root <- paste0(output_stem, "_independent_", independent_variables)
+roc_object_geno_edge <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions
@@ -770,6 +799,7 @@ independent_variables = "true"
 output_root <- paste0(output_stem, "_independent_", independent_variables)
 roc_object_ind <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
 
+saveRDS(roc_object_geno_edge, paste0(output_stem, "roc_object_geno_edge.rds"))
 saveRDS(roc_object, paste0(output_stem, "roc_object.rds"))
 saveRDS(roc_object_ind, paste0(output_stem, "roc_object_ind.rds"))
 
@@ -781,35 +811,35 @@ saveRDS(roc_object_ind, paste0(output_stem, "roc_object_ind.rds"))
 #######################################
 ## Visualize Confusion matrix for both RIVER and Watershed
 #######################################
-visualize_river_and_watershed_confusion_matrices(roc_object$confusion, roc_object_ind$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_comparison.pdf"))
+#visualize_river_and_watershed_confusion_matrices(roc_object$confusion, roc_object_ind$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_comparison.pdf"))
 
 
 #######################################
 ## Visualize ROC curves for all models (RNA-only, GAM, RIVER, watershed) and all three outlier types (te, splice, ase)
 #######################################
-plot_roc_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_roc.pdf"))
+#plot_roc_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_roc.pdf"))
 
 #######################################
 ## Visualize precision-recall curves for all models (RNA-only, GAM, RIVER, watershed) and all three outlier types (te, splice, ase)
 #######################################
-plot_pr_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_pr.pdf"))
+#plot_pr_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_pr.pdf"))
 
 
 
 #######################################
 ## Visualize precision-recall curves for river-watershed comparison and all three outlier types (te, splice, ase)
 #######################################
-plot_pr_river_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_river_comparison_pr.pdf"))
+#plot_pr_river_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_river_comparison_pr.pdf"))
 
 
 #######################################
 ## Visualize precision-recall curves for watershed-GAM comparison and all three outlier types (te, splice, ase)
 #######################################
-plot_pr_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions,  paste0(output_stem, "_watershed_gam_comparison_pr.pdf"))
+#plot_pr_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions,  paste0(output_stem, "_watershed_gam_comparison_pr.pdf"))
 
 
 #######################################
 ## Visualize ROC curves for watershed-GAM comparison and all three outlier types (te, splice, ase)
 #######################################
-plot_roc_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_gam_comparison_roc.pdf"))
+#plot_roc_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_gam_comparison_roc.pdf"))
 
