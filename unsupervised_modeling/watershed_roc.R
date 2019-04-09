@@ -27,10 +27,12 @@ get_discretized_outliers <- function(outlier_pvalues) {
 			under_expression = outlier_pvalues[,dimension] < 0
 			log_pvalues = -log10(abs(outlier_pvalues[,dimension]) + 1e-6)
 			log_pvalues[under_expression] = log_pvalues[under_expression]*-1
-			discretized <- cut(log_pvalues,breaks=c(-6.01,-4,-2,-1,1,2,4,6.01))
+			#discretized <- cut(log_pvalues,breaks=c(-6.01,-4,-2,-1,1,2,4,6.01))
+			discretized <- cut(log_pvalues, breaks=c(-6.01,-1,1,6.01))
 		} else {
 			log_pvalues = -log10(abs(outlier_pvalues[,dimension]) + 1e-6)
-			discretized <- cut(log_pvalues, 7)
+			# discretized <- cut(log_pvalues, 7)
+			discretized <- cut(log_pvalues, breaks=c(-.01,1,4,6))
 		}
 		outliers_discretized[,dimension] = as.numeric(discretized)
 	}
@@ -44,40 +46,28 @@ get_discretized_outliers <- function(outlier_pvalues) {
 initialize_phi<- function(num_bins,dim) {
   phi_outlier <- matrix(1,dim,num_bins)
   phi_inlier <- matrix(1,dim,num_bins)
-  phi_inlier[,1] = .4
+  phi_inlier[,1] = .8
   phi_inlier[,2] = .1
   phi_inlier[,3] = .1
-  phi_inlier[,4] = .1
-  phi_inlier[,5] = .1
-  phi_inlier[,6] = .1
-  phi_inlier[,7] = .1
+ 
 
-  phi_outlier[,1] = .05
-  phi_outlier[,2] = .05
-  phi_outlier[,3] = .1
-  phi_outlier[,4] = .1
-  phi_outlier[,5] = .2
-  phi_outlier[,6] = .2
-  phi_outlier[,7] = .3
+  phi_outlier[,1] = .01
+  phi_outlier[,2] = .29
+  phi_outlier[,3] = .7
+
 
   ####################
   # Total expression
   ####################
-  phi_inlier[2,1] = .1
-  phi_inlier[2,2] = .1
-  phi_inlier[2,3] = .1
-  phi_inlier[2,4] = .4
-  phi_inlier[2,5] = .1
-  phi_inlier[2,6] = .1
-  phi_inlier[2,7] = .1
+  phi_inlier[2,1] = .05
+  phi_inlier[2,2] = .9
+  phi_inlier[2,3] = .05
 
-  phi_outlier[2,1] = .25
-  phi_outlier[2,2] = .1
-  phi_outlier[2,3] = .1
-  phi_outlier[2,4] = .1
-  phi_outlier[2,5] = .1
-  phi_outlier[2,6] = .1
-  phi_outlier[2,7] = .25
+
+  phi_outlier[2,1] = .49
+  phi_outlier[2,2] = .02
+  phi_outlier[2,3] = .49
+
 
 
   phi_init <- list(inlier_component = phi_inlier, outlier_component = phi_outlier)
@@ -344,14 +334,14 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 		for(i in 1:nfolds){
     		#Segement your data by fold using the which() function 
     		testIndexes <- which(folds==i,arr.ind=TRUE)
-    		feat_test <- feat_train_shuff[testIndexes,]
-    		outliers_test <- binary_outliers_train_shuff[testIndexes,]
-    		pairwise_outliers_test <- pairwise_binary_outliers_train_shuff[testIndexes,]
-    		feat_train <- feat_train_shuff[-testIndexes,]
-    		outliers_train <- binary_outliers_train_shuff[-testIndexes,]
-    		pairwise_outliers_train <- pairwise_binary_outliers_train_shuff[-testIndexes,]
+    		feat_test_fold <- feat_train_shuff[testIndexes,]
+    		outliers_test_fold <- binary_outliers_train_shuff[testIndexes,]
+    		pairwise_outliers_test_fold <- pairwise_binary_outliers_train_shuff[testIndexes,]
+    		feat_train_fold <- feat_train_shuff[-testIndexes,]
+    		outliers_train_fold <- binary_outliers_train_shuff[-testIndexes,]
+    		pairwise_outliers_train_fold <- pairwise_binary_outliers_train_shuff[-testIndexes,]
 
-			lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train, discrete_outliers=outliers_train, posterior=outliers_train, posterior_pairwise=pairwise_outliers_train, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables)
+			lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
 			# Check to make sure LBFGS converged OK
 			if (lbfgs_output$convergence != 0) {
 				print(paste0("LBFGS optimazation on CRF did not converge. It reported convergence error of: ", lbfgs_output$convergence))
@@ -368,12 +358,12 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 
 
 			# Compute expected value of the CRFs (mu)
-			mu_list_test <- update_marginal_probabilities_exact_inference_cpp(feat_test, outliers_test, gam_parameters$theta_singleton, gam_parameters$theta_pair, gam_parameters$theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+			mu_list_test <- update_marginal_probabilities_exact_inference_cpp(feat_test_fold, outliers_test_fold, gam_parameters$theta_singleton, gam_parameters$theta_pair, gam_parameters$theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
 			mu_test <- mu_list_test$probability
 
 			# Compute roc
 			test_predictions <- as.vector(mu_test)
-			test_labels <- as.vector(outliers_test)
+			test_labels <- as.vector(outliers_test_fold)
 			roc_obj <- roc.curve(scores.class0 = test_predictions[test_labels==1], scores.class1 = test_predictions[test_labels==0], curve = T)
 			auc <- roc_obj$auc
 			aucs <- c(aucs, auc)
@@ -444,50 +434,21 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
 
 
 
-
-
- 	# Initialize betas
- 	#num_features <- dim(feat_all)[2] + 1  # Plus 1 comes from the intercept
- 	#beta_init <- matrix(0, num_features, number_of_dimensions)
- 	# Initialize matrix keeping track of GAM posterior probabilities in test data
- 	#gam_posteriors <- matrix(0, dim(feat_test)[1], number_of_dimensions)
- 	# Initialize coefficient vectors
- 	# Loop through outlier types
- 	#for (dimension in 1:number_of_dimensions) {
- 		#Training binary outlier status for dimension #dimension
- 		#outlier_status <- binary_outliers_train[,dimension] 
- 		# Train GAM for this outlier type
- 		#logisticCV <- cv.glmnet(feat_train, as.vector(outlier_status), lambda=costs, family="binomial", alpha=0, nfolds=10)
-		# Get beta intercept corresponding to the lambda (l2 penalty) that does best in n-fold cross-validation
-		#temp_beta <- logisticCV$glmnet.fit$beta[,logisticCV$lambda == logisticCV$lambda.min]
-		#intercept <- logisticCV$glmnet.fit$a0[logisticCV$lambda == logisticCV$lambda.min]
-		# Fill in values into beta_init
-		#beta_init[1,dimension] <- intercept  # Add intercept
-		#beta_init[2:num_features, dimension] <- temp_beta  # Add coefficient vector
-		#print(paste0("Optimal lambda for dimension ", dimension, " is ", logisticCV$lambda.min))
-
-		## Compute a P(FR | G) for Test data
-  		#gam_post_prob_test <- predict(logisticCV, feat_test, s="lambda.min", type="response")
-  		#gam_posteriors[,dimension] <- gam_post_prob_test
- 	#}
-
-
  	#######################################
 	## Fit Watershed Model (using training data)
 	#######################################
 	lambda_singleton <- 0
   	lambda_pair <- 0
-  	# lambda <- logisticCV$lambda.min
-  	lambda <- gam_data$lambda
+  	######lambda <- gam_data$lambda
+  	lambda <- .001
   	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, output_root)
-	# saveRDS(watershed_model, paste0(output_root, "_model_params.rds"))
+	saveRDS(watershed_model, paste0(output_root, "_model_params.rds"))
 	#watershed_model <- readRDS(paste0(output_root, "_model_params.rds"))
 
 
  	#######################################
 	## Get test data watershed posterior probabilities
 	#######################################
- 	#posterior_info_test <- update_marginal_probabilities_exact_inference_cpp(feat_test, discrete_outliers_test1, emModel$theta_singleton, emModel$theta_pair, emModel$theta, emModel$phi$inlier_component, emModel$phi$outlier_component, emModel$number_of_dimensions, choose(emModel$number_of_dimensions, 2), TRUE)
  	posterior_info_test <- update_marginal_posterior_probabilities(feat_test, discrete_outliers_test1, watershed_model)
   	posterior_prob_test <- posterior_info_test$probability  # Marginal posteriors
   	posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise  # Pairwise posteriors
@@ -783,8 +744,9 @@ pseudoc <- as.numeric(args[6])
 #####################
 # Parameters
 #####################
-costs= c(1, .1, .01, 1e-3, 1e-4, 0)
-phi_init <- initialize_phi(7, number_of_dimensions) 
+costs= c(.01, 1e-3, 1e-4, 0)
+# costs= c(1e-4, 0)
+phi_init <- initialize_phi(3, number_of_dimensions) 
 
 
 
@@ -792,6 +754,7 @@ phi_init <- initialize_phi(7, number_of_dimensions)
 ## Load in data
 #######################################
 data_input <- load_watershed_data(input_file, number_of_dimensions, pvalue_threshold)
+
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions
@@ -807,8 +770,8 @@ independent_variables = "true"
 output_root <- paste0(output_stem, "_independent_", independent_variables)
 roc_object_ind <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
 
-saveRDS(roc_object, "roc_object.rds")
-saveRDS(roc_object_ind, "roc_object_ind.rds")
+saveRDS(roc_object, paste0(output_stem, "roc_object.rds"))
+saveRDS(roc_object_ind, paste0(output_stem, "roc_object_ind.rds"))
 
 # roc_object <- readRDS("roc_object.rds")
 # roc_object_ind <- readRDS("roc_object_ind.rds")
@@ -849,6 +812,4 @@ plot_pr_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, numbe
 ## Visualize ROC curves for watershed-GAM comparison and all three outlier types (te, splice, ase)
 #######################################
 plot_roc_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_gam_comparison_roc.pdf"))
-
-
 

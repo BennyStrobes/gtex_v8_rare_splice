@@ -53,7 +53,7 @@ unsupervised_learning_input_dir=$output_root"unsupervised_learning_input/"
 river_run_dir=$output_root"river/"
 
 # Directory containing results from watershed analysis
-watershed_3_class_roc_run_dir=$output_root"watershed_three_class_roc/"
+watershed_3_class_roc_run_dir=$output_root"watershed_three_class_roc_rep/"
 
 
 
@@ -69,5 +69,14 @@ if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir
+
+
+
+pseudocount="30"
+pvalue_threshold=".1"
+gene_thresh="0.01"  # Threshold for deciding which genes to include
+sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_threshold $gene_thresh
+
+
+
 

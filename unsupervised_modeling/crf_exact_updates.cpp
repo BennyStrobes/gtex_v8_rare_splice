@@ -245,6 +245,7 @@ double compute_exact_observed_data_log_likelihood_cpp(NumericMatrix feat, Numeri
 		// Add log of this observed data likelihood to a variable log_likelihood
 		log_likelihood += log(observed_sample_likelihood);
 	}
+	// log_likelihood = log_likelihood/feat.nrow();
 	return log_likelihood;
 }
 
@@ -279,15 +280,15 @@ double compute_crf_likelihood_exact_inference_cpp(NumericMatrix posterior, Numer
 	// Add L2 penalties
 	int dimension_counter = 0;
 	for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
-		log_likelihood = log_likelihood - lambda_singleton*(theta_singleton(dimension)*theta_singleton(dimension));
+		log_likelihood = log_likelihood - .5*lambda_singleton*(theta_singleton(dimension)*theta_singleton(dimension));
 		for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
 			if (dimension != dimension2) {
-				log_likelihood = log_likelihood - lambda_pair*(theta_pair(0,dimension_counter)*theta_pair(0, dimension_counter));
+				log_likelihood = log_likelihood - .5*lambda_pair*(theta_pair(0,dimension_counter)*theta_pair(0, dimension_counter));
 				dimension_counter += 1;
 			}
 		}
 		for (int d = 0; d < feat.ncol(); d++) {
-			log_likelihood = log_likelihood - lambda*(theta(d,dimension)*theta(d,dimension));
+			log_likelihood = log_likelihood - .5*lambda*(theta(d,dimension)*theta(d,dimension));
 		}
 	}
 	return log_likelihood;
