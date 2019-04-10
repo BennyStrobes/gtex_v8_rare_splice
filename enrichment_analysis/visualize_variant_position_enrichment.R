@@ -33,9 +33,9 @@ extract_odds_ratio_data <- function(outlier_distances, inlier_distances, distanc
 		no_rv_inlier <- sum(inlier_distances[,1] != distance_iter)
 		# odds_ratio_old <- (rv_outlier/rv_inlier)/(no_rv_outlier/no_rv_inlier)
 		a <- rv_outlier  + 1
-		b <- rv_outlier + no_rv_outlier +1
+		b <- rv_outlier + no_rv_outlier + 2
 		c <- rv_inlier +1
-		d <- rv_inlier + no_rv_inlier +1
+		d <- rv_inlier + no_rv_inlier + 2
 		orat <- (a/b)/(c/d)
 
 		log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
@@ -304,6 +304,220 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type <- function(distance_
 
 # Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites) using odds ratios of real vs background
 # Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_ss_class <- function(distance_window, inlier_distance_file, outlier_distance_file, title, output_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+
+	outlier_donor_distances_exon_skipping <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor" & as.character(outlier_distances$exon_skipping)=="True",]
+	outlier_acceptor_distances_exon_skipping <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor" & as.character(outlier_distances$exon_skipping)=="True",]
+	inlier_donor_distances_exon_skipping <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor" & as.character(inlier_distances$exon_skipping)=="True",]
+	inlier_acceptor_distances_exon_skipping <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor" & as.character(inlier_distances$exon_skipping)=="True",]
+
+	outlier_donor_distances_5_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor" & as.character(outlier_distances$alternative_5_prime)=="True",]
+	outlier_acceptor_distances_5_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor" & as.character(outlier_distances$alternative_5_prime)=="True",]
+	inlier_donor_distances_5_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor" & as.character(inlier_distances$alternative_5_prime)=="True",]
+	inlier_acceptor_distances_5_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor" & as.character(inlier_distances$alternative_5_prime)=="True",]
+
+	outlier_donor_distances_3_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor" & as.character(outlier_distances$alternative_3_prime)=="True",]
+	outlier_acceptor_distances_3_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor" & as.character(outlier_distances$alternative_3_prime)=="True",]
+	inlier_donor_distances_3_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor" & as.character(inlier_distances$alternative_3_prime)=="True",]
+	inlier_acceptor_distances_3_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor" & as.character(inlier_distances$alternative_3_prime)=="True",]
+
+
+	donor_df_exon_skipping <- extract_odds_ratio_data(outlier_donor_distances_exon_skipping, inlier_donor_distances_exon_skipping, 10)
+	acceptor_df_exon_skipping <- extract_odds_ratio_data(outlier_acceptor_distances_exon_skipping, inlier_acceptor_distances_exon_skipping, 10)
+
+	donor_df_5_prime <- extract_odds_ratio_data(outlier_donor_distances_5_prime, inlier_donor_distances_5_prime, 10)
+	acceptor_df_5_prime <- extract_odds_ratio_data(outlier_acceptor_distances_5_prime, inlier_acceptor_distances_5_prime, 10)
+	
+	donor_df_3_prime <- extract_odds_ratio_data(outlier_donor_distances_3_prime, inlier_donor_distances_3_prime, 10)
+	acceptor_df_3_prime <- extract_odds_ratio_data(outlier_acceptor_distances_3_prime, inlier_acceptor_distances_3_prime, 10)
+
+	
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	acceptor_exon_skipping_plot <-  ggplot() + geom_errorbar(data=acceptor_df_exon_skipping, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=acceptor_df_exon_skipping, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Acceptor splice site (Exon skipping)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("A-10","A-9","A-8","A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7","A+8","A+9","A+10"))
+
+
+	donor_exon_skipping_plot <-  ggplot() + geom_errorbar(data=donor_df_exon_skipping, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=donor_df_exon_skipping, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Donor splice site (Exon skipping)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("D+10","D+9","D+8","D+7","D+6","D+5","D+4","D+3","D+2","D+1","D-1","D-2","D-3","D-4","D-5","D-6", "D-7","D-8","D-9","D-10"))
+
+
+
+	acceptor_5_prime_plot <-  ggplot() + geom_errorbar(data=acceptor_df_5_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=acceptor_df_5_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Acceptor splice site (Alternative donor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("A-10","A-9","A-8","A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7","A+8","A+9","A+10"))
+
+
+	donor_5_prime_plot <-  ggplot() + geom_errorbar(data=donor_df_5_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=donor_df_5_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Donor splice site (Alternative donor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("D+10","D+9","D+8","D+7","D+6","D+5","D+4","D+3","D+2","D+1","D-1","D-2","D-3","D-4","D-5","D-6", "D-7","D-8","D-9","D-10"))
+
+
+	acceptor_3_prime_plot <-  ggplot() + geom_errorbar(data=acceptor_df_3_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=acceptor_df_3_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Acceptor splice site (Alternative acceptor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("A-10","A-9","A-8","A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7","A+8","A+9","A+10"))
+
+
+	donor_3_prime_plot <-  ggplot() + geom_errorbar(data=donor_df_3_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=donor_df_3_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Donor splice site (Alternative acceptor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("D+10","D+9","D+8","D+7","D+6","D+5","D+4","D+3","D+2","D+1","D-1","D-2","D-3","D-4","D-5","D-6", "D-7","D-8","D-9","D-10"))
+
+
+
+	error_bar_plot <- plot_grid(donor_exon_skipping_plot, acceptor_exon_skipping_plot, donor_5_prime_plot, acceptor_5_prime_plot, donor_3_prime_plot, acceptor_3_prime_plot, ncol=2)
+
+
+
+
+	
+	ggsave(error_bar_plot, file=output_file,width = 26,height=22,units="cm")
+}
+
+# Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites) using odds ratios of real vs background
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_ss_class_mutually_exclusive <- function(distance_window, inlier_distance_file, outlier_distance_file, title, output_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+
+	outlier_donor_distances_exon_skipping <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor" & as.character(outlier_distances$exon_skipping)=="True" & as.character(outlier_distances$alternative_5_prime)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+	outlier_acceptor_distances_exon_skipping <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor" & as.character(outlier_distances$exon_skipping)=="True" & as.character(outlier_distances$alternative_5_prime)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+	inlier_donor_distances_exon_skipping <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor" & as.character(inlier_distances$exon_skipping)=="True" & as.character(outlier_distances$alternative_5_prime)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+	inlier_acceptor_distances_exon_skipping <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor" & as.character(inlier_distances$exon_skipping)=="True" & as.character(outlier_distances$alternative_5_prime)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+
+	outlier_donor_distances_5_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor" & as.character(outlier_distances$alternative_5_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+	outlier_acceptor_distances_5_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor" & as.character(outlier_distances$alternative_5_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+	inlier_donor_distances_5_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor" & as.character(inlier_distances$alternative_5_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+	inlier_acceptor_distances_5_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor" & as.character(inlier_distances$alternative_5_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_3_prime)=="False",]
+
+	outlier_donor_distances_3_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor" & as.character(outlier_distances$alternative_3_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_5_prime)=="False",]
+	outlier_acceptor_distances_3_prime <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor" & as.character(outlier_distances$alternative_3_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_5_prime)=="False",]
+	inlier_donor_distances_3_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor" & as.character(inlier_distances$alternative_3_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_5_prime)=="False",]
+	inlier_acceptor_distances_3_prime <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor" & as.character(inlier_distances$alternative_3_prime)=="True" & as.character(outlier_distances$exon_skipping)=="False" & as.character(outlier_distances$alternative_5_prime)=="False",]
+
+
+	donor_df_exon_skipping <- extract_odds_ratio_data(outlier_donor_distances_exon_skipping, inlier_donor_distances_exon_skipping, 10)
+	acceptor_df_exon_skipping <- extract_odds_ratio_data(outlier_acceptor_distances_exon_skipping, inlier_acceptor_distances_exon_skipping, 10)
+
+	donor_df_5_prime <- extract_odds_ratio_data(outlier_donor_distances_5_prime, inlier_donor_distances_5_prime, 10)
+	acceptor_df_5_prime <- extract_odds_ratio_data(outlier_acceptor_distances_5_prime, inlier_acceptor_distances_5_prime, 10)
+	
+	donor_df_3_prime <- extract_odds_ratio_data(outlier_donor_distances_3_prime, inlier_donor_distances_3_prime, 10)
+	acceptor_df_3_prime <- extract_odds_ratio_data(outlier_acceptor_distances_3_prime, inlier_acceptor_distances_3_prime, 10)
+
+	
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	acceptor_exon_skipping_plot <-  ggplot() + geom_errorbar(data=acceptor_df_exon_skipping, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=acceptor_df_exon_skipping, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Acceptor splice site (Exon skipping)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("A-10","A-9","A-8","A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7","A+8","A+9","A+10"))
+
+
+	donor_exon_skipping_plot <-  ggplot() + geom_errorbar(data=donor_df_exon_skipping, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=donor_df_exon_skipping, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Donor splice site (Exon skipping)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("D+10","D+9","D+8","D+7","D+6","D+5","D+4","D+3","D+2","D+1","D-1","D-2","D-3","D-4","D-5","D-6", "D-7","D-8","D-9","D-10"))
+
+
+
+	acceptor_5_prime_plot <-  ggplot() + geom_errorbar(data=acceptor_df_5_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=acceptor_df_5_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Acceptor splice site (Alternative donor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("A-10","A-9","A-8","A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7","A+8","A+9","A+10"))
+
+
+	donor_5_prime_plot <-  ggplot() + geom_errorbar(data=donor_df_5_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=donor_df_5_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Donor splice site (Alternative donor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("D+10","D+9","D+8","D+7","D+6","D+5","D+4","D+3","D+2","D+1","D-1","D-2","D-3","D-4","D-5","D-6", "D-7","D-8","D-9","D-10"))
+
+
+	acceptor_3_prime_plot <-  ggplot() + geom_errorbar(data=acceptor_df_3_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=acceptor_df_3_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Acceptor splice site (Alternative acceptor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1), text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("A-10","A-9","A-8","A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7","A+8","A+9","A+10"))
+
+
+	donor_3_prime_plot <-  ggplot() + geom_errorbar(data=donor_df_3_prime, mapping=aes(x=dist_to_ss,ymin=lower_bounds, ymax=upper_bounds),color="darkorchid") +
+					geom_point(data=donor_df_3_prime, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Enrichment", title="Donor splice site (Alternative acceptor)") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					theme(axis.text.x=element_text(angle=45,hjust=1),text = element_text(size=14),axis.text=element_text(size=13), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=13), legend.title = element_text(size=14)) +
+					scale_x_continuous(breaks=-10:9, labels=c("D+10","D+9","D+8","D+7","D+6","D+5","D+4","D+3","D+2","D+1","D-1","D-2","D-3","D-4","D-5","D-6", "D-7","D-8","D-9","D-10"))
+
+
+
+	error_bar_plot <- plot_grid(donor_exon_skipping_plot, acceptor_exon_skipping_plot, donor_5_prime_plot, acceptor_5_prime_plot, donor_3_prime_plot, acceptor_3_prime_plot, ncol=2)
+
+
+
+
+	
+	ggsave(error_bar_plot, file=output_file,width = 26,height=22,units="cm")
+}
+
+
+
+# Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites) using odds ratios of real vs background
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
 make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_annotation_vs_novel <- function(distance_window, inlier_distance_file, outlier_distance_file, title, output_file) {
 	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
 	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
@@ -381,11 +595,11 @@ make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_annotation_vs_nov
 extract_ppt_odds_ratio_data <- function(outlier_distances, inlier_distances, ppt_start, ppt_end, ss_type) {
 	aa <- sum(as.character(outlier_distances$splice_site_type)==ss_type & outlier_distances$distance <= ppt_end & outlier_distances$distance > ppt_start) + 1
 
-	bb <- sum(as.character(outlier_distances$splice_site_type)==ss_type) + 1
+	bb <- sum(as.character(outlier_distances$splice_site_type)==ss_type) + 2
 
 	cc <- sum(as.character(inlier_distances$splice_site_type)==ss_type & inlier_distances$distance <= ppt_end & inlier_distances$distance > ppt_start) + 1
 
-	dd <- sum(as.character(inlier_distances$splice_site_type)==ss_type) + 1 
+	dd <- sum(as.character(inlier_distances$splice_site_type)==ss_type) + 2 
 
 
 	orat <- (aa/bb)/(cc/dd)
@@ -720,6 +934,7 @@ visualize_variant_position_enrichment_dir <- args[2]  # Output dir
 
 
 
+if (FALSE) {
 #######################
 # Make plots PPT enrichment
 #########################
@@ -927,6 +1142,52 @@ title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
 make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_annotation_vs_novel(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
 
 
+#######################
+# Positional distribution plots for RV sepertated by donor vs acceptor splice sites and splice site classification
+#########################
+# Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites) using odds ratios of real vs background
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_ss_class_seperated_odds_ratio_density_plot.pdf")
+title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
+make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_ss_class(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
+
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-06"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_ss_class_seperated_odds_ratio_density_plot.pdf")
+title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
+make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_ss_class(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
+}
+
+#######################
+# Positional distribution plots for RV sepertated by donor vs acceptor splice sites and splice site classification (mutually exclusive)
+#########################
+# Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites) using odds ratios of real vs background
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_ss_class_mutually_exclusive_seperated_odds_ratio_density_plot.pdf")
+title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
+make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_ss_class_mutually_exclusive(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
+
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-06"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_ss_class_mutually_exclusive_seperated_odds_ratio_density_plot.pdf")
+title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
+make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_ss_class_mutually_exclusive(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
 
 
 
