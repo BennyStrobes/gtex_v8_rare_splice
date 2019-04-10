@@ -765,7 +765,7 @@ pseudoc <- as.numeric(args[6])
 # Parameters
 #####################
 #costs= c(.01, 1e-3, 1e-4, 0)
-costs= c(.01, 1e-3)
+costs= c(.1, .01, 1e-3)
 phi_init <- initialize_phi(3, number_of_dimensions) 
 
 
@@ -784,6 +784,7 @@ data_input <- load_watershed_data(input_file, number_of_dimensions, pvalue_thres
 independent_variables = "false_geno"
 output_root <- paste0(output_stem, "_independent_", independent_variables)
 roc_object_geno_edge <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
+saveRDS(roc_object_geno_edge, paste0(output_stem, "roc_object_geno_edge.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions
@@ -791,6 +792,7 @@ roc_object_geno_edge <- roc_analysis(data_input, number_of_dimensions, phi_init,
 independent_variables = "false"
 output_root <- paste0(output_stem, "_independent_", independent_variables)
 roc_object <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
+saveRDS(roc_object, paste0(output_stem, "roc_object.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming no edges (connections) between dimensions
@@ -798,9 +800,6 @@ roc_object <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, ps
 independent_variables = "true"
 output_root <- paste0(output_stem, "_independent_", independent_variables)
 roc_object_ind <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
-
-saveRDS(roc_object_geno_edge, paste0(output_stem, "roc_object_geno_edge.rds"))
-saveRDS(roc_object, paste0(output_stem, "roc_object.rds"))
 saveRDS(roc_object_ind, paste0(output_stem, "roc_object_ind.rds"))
 
 # roc_object <- readRDS("roc_object.rds")

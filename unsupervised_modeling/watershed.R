@@ -291,7 +291,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 	##################
 
 
-	for (iter in 1:100) {
+	for (iter in 1:60) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
 		model_params$posterior = expected_posteriors$probability
