@@ -21,7 +21,7 @@ sourceCpp("crf_exact_updates.cpp")
 
 
 
-load_watershed_data <- function(input_file, number_of_dimensions, pvalue_threshold) {
+load_watershed_data <- function(input_file, number_of_dimensions, pvalue_fraction) {
 	raw_data <- read.table(input_file, header=TRUE)
 	# Get genomic features (first 2 columns are line identifiers and last (number_of_dimensions+1) columns are outlier status' and N2 pair
 	feat <- raw_data[,3:(ncol(raw_data)-number_of_dimensions-1)]
@@ -32,8 +32,13 @@ load_watershed_data <- function(input_file, number_of_dimensions, pvalue_thresho
 	# sample name as SubjectID:GeneName
 	rownames(outlier_pvalues) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
 	# Convert outlier status into binary random variables
-	outliers_binary <- ifelse(abs(outlier_pvalues)<=pvalue_threshold,1,0)
-	# outliers_binary[,2] <- ifelse(abs(outlier_pvalues[,2])<=.1,1,0)
+	outliers_binary <- ifelse(abs(outlier_pvalues)<=.1,1,0) # Strictly for initialization of binary output matrix
+	for (dimension_num in 1:number_of_dimensions) {
+		ordered <- sort(abs(outlier_pvalues[,dimension_num]))
+		max_val <- ordered[floor(length(ordered)*pvalue_fraction)]
+		outliers_binary[,dimension_num] <- ifelse(abs(outlier_pvalues[,dimension_num])<=max_val,1,0)
+	}
+	print(summary(outliers_binary))
 	# Convert outlier status into discretized random variables
 	outliers_discrete <- get_discretized_outliers(outlier_pvalues)
 	# Extract array of N2 pairs

@@ -446,7 +446,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
  	#######################################
 	## Fit Genomic Annotation Model (GAM)
 	#######################################
-	nfolds <- 2
+	nfolds <- 5
 	gam_data <- genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, costs, independent_variables)
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
 	# Predict on held out test data
@@ -462,7 +462,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
   	lambda_pair <- 0
   	lambda <- gam_data$lambda
   	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, output_root)
-	saveRDS(watershed_model, paste0(output_root, "_model_params.rds"))
+	# saveRDS(watershed_model, paste0(output_root, "_model_params.rds"))
 	#watershed_model <- readRDS(paste0(output_root, "_model_params.rds"))
 
 
@@ -494,7 +494,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
 
 
 
-  	return(list(roc=roc_object_across_dimensions, confusion=confusion_matrix))
+  	return(list(roc=roc_object_across_dimensions, confusion=confusion_matrix, model_params=watershed_model))
 
 }
 
@@ -741,6 +741,43 @@ plot_pr_river_watershed_comparison_curve <- function(roc_object, roc_object_ind,
 
 
 
+plot_pr_watershed_watershed_edge_comparison_curve <- function(roc_object, roc_object_ind, number_of_dimensions, output_file) {
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	precision <- c()
+	recall <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed
+		precision <- c(precision, dimension_roc_object$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("watershed", length(dimension_roc_object$evaROC$watershed_precision)))
+
+		# Indepdent
+		precision <- c(precision, dimension_roc_object_ind$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object_ind$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object_ind$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("watershed_edge", length(dimension_roc_object_ind$evaROC$watershed_precision)))
+	}
+	df <- data.frame(precision, recall, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type, levels=c("watershed","watershed_edge")))
+  
+
+  	plotter <- ggplot(data=df, aes(x=recall, y=precision, colour=outlier_type, linetype=prediction_type)) + geom_line() + 
+                labs(x="Recall", y="Precision", colour="",linetype="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="right") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
+
+	ggsave(plotter, file=output_file,width = 19,height=11,units="cm")
+}
+
 
 
 
@@ -754,7 +791,7 @@ plot_pr_river_watershed_comparison_curve <- function(roc_object, roc_object_ind,
 # Command line arguments
 #########################################
 
-pvalue_threshold <- as.numeric(args[1])  # Threshold for calling outliers
+pvalue_fraction <- as.numeric(args[1])  # Threshold for calling outliers
 input_file <- args[2]  # Watershed input file
 output_stem <- args[3]  # Stem to save all output files
 number_of_dimensions <- as.numeric(args[4])  # Dimensionality of space
@@ -765,7 +802,7 @@ pseudoc <- as.numeric(args[6])
 # Parameters
 #####################
 #costs= c(.01, 1e-3, 1e-4, 0)
-costs= c(.1, .01, 1e-3)
+costs= c(.1, .01, 1e-3, 1e-4)
 phi_init <- initialize_phi(3, number_of_dimensions) 
 
 
@@ -773,18 +810,9 @@ phi_init <- initialize_phi(3, number_of_dimensions)
 #######################################
 ## Load in data
 #######################################
-data_input <- load_watershed_data(input_file, number_of_dimensions, pvalue_threshold)
+data_input <- load_watershed_data(input_file, number_of_dimensions, pvalue_fraction)
 
 
-
-
-#######################################
-## Run models (RIVER and GAM) assuming edges (connections) between dimensions
-#######################################
-independent_variables = "false_geno"
-output_root <- paste0(output_stem, "_independent_", independent_variables)
-roc_object_geno_edge <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
-saveRDS(roc_object_geno_edge, paste0(output_stem, "roc_object_geno_edge.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions
@@ -792,7 +820,8 @@ saveRDS(roc_object_geno_edge, paste0(output_stem, "roc_object_geno_edge.rds"))
 independent_variables = "false"
 output_root <- paste0(output_stem, "_independent_", independent_variables)
 roc_object <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
-saveRDS(roc_object, paste0(output_stem, "roc_object.rds"))
+saveRDS(roc_object, paste0(output_stem, "_roc_object.rds"))
+#roc_object <- readRDS(paste0(output_stem, "_roc_object.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming no edges (connections) between dimensions
@@ -800,45 +829,108 @@ saveRDS(roc_object, paste0(output_stem, "roc_object.rds"))
 independent_variables = "true"
 output_root <- paste0(output_stem, "_independent_", independent_variables)
 roc_object_ind <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
-saveRDS(roc_object_ind, paste0(output_stem, "roc_object_ind.rds"))
+saveRDS(roc_object_ind, paste0(output_stem, "_roc_object_ind.rds"))
+#roc_object_ind <- readRDS(paste0(output_stem, "_roc_object_ind.rds"))
 
-# roc_object <- readRDS("roc_object.rds")
-# roc_object_ind <- readRDS("roc_object_ind.rds")
-# roc and confusion
 
 
 #######################################
 ## Visualize Confusion matrix for both RIVER and Watershed
 #######################################
-#visualize_river_and_watershed_confusion_matrices(roc_object$confusion, roc_object_ind$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_comparison.pdf"))
+visualize_river_and_watershed_confusion_matrices(roc_object$confusion, roc_object_ind$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_comparison.pdf"))
 
 
 #######################################
 ## Visualize ROC curves for all models (RNA-only, GAM, RIVER, watershed) and all three outlier types (te, splice, ase)
 #######################################
-#plot_roc_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_roc.pdf"))
+plot_roc_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_roc.pdf"))
 
 #######################################
 ## Visualize precision-recall curves for all models (RNA-only, GAM, RIVER, watershed) and all three outlier types (te, splice, ase)
 #######################################
-#plot_pr_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_pr.pdf"))
+plot_pr_all_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_all_comparison_pr.pdf"))
 
 
 
 #######################################
 ## Visualize precision-recall curves for river-watershed comparison and all three outlier types (te, splice, ase)
 #######################################
-#plot_pr_river_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_river_comparison_pr.pdf"))
+plot_pr_river_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_river_comparison_pr.pdf"))
+
 
 
 #######################################
 ## Visualize precision-recall curves for watershed-GAM comparison and all three outlier types (te, splice, ase)
 #######################################
-#plot_pr_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions,  paste0(output_stem, "_watershed_gam_comparison_pr.pdf"))
+plot_pr_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions,  paste0(output_stem, "_watershed_gam_comparison_pr.pdf"))
 
 
 #######################################
 ## Visualize ROC curves for watershed-GAM comparison and all three outlier types (te, splice, ase)
 #######################################
-#plot_roc_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_gam_comparison_roc.pdf"))
+plot_roc_gam_watershed_comparison_curve(roc_object$roc, roc_object_ind$roc, number_of_dimensions, paste0(output_stem, "_watershed_gam_comparison_roc.pdf"))
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####################
+# OLD
+#####################
+#######################################
+## Run models (RIVER and GAM) assuming edges (connections) between dimensions
+#######################################
+#independent_variables = "false_geno"
+#output_root <- paste0(output_stem, "_independent_", independent_variables)
+#roc_object_geno_edge <- roc_analysis(data_input, number_of_dimensions, phi_init, costs, pseudoc, inference_method, output_root, independent_variables)
+#saveRDS(roc_object_geno_edge, paste0(output_stem, "roc_object_geno_edge.rds"))
+#roc_object_geno_edge <- readRDS(paste0(output_stem, "roc_object_geno_edge.rds"))
+
+
+#######################################
+## Visualize precision-recall curves for watershed with and without genome edges comparison and all three outlier types (te, splice, ase)
+#######################################
+#plot_pr_watershed_watershed_edge_comparison_curve(roc_object$roc, roc_object_geno_edge$roc, number_of_dimensions, paste0(output_stem, "_watershed_watershed_geno_edge_comparison_pr.pdf"))
