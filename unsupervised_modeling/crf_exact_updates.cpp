@@ -101,7 +101,8 @@ double un_normalized_crf_weight(NumericMatrix all_binary_combinations_matrix, in
 				dimension_counter += 1;
 			}
 		}
-		if (posterior_bool == true) {
+		// Check to see if we are supposed to incorperate expression data && whether the expression data is observed
+		if (posterior_bool == true && discrete_outliers(sample_num, dimension) == discrete_outliers(sample_num, dimension)) {
 			if (all_binary_combinations_matrix(combination_number, dimension) == 1) {
 				weight += log(phi_outlier(dimension, discrete_outliers(sample_num, dimension) - 1));
 			} else {
@@ -144,10 +145,13 @@ double exact_observed_sample_likelihood(double normalization_constant, NumericMa
 	for (int combination_number = 0; combination_number < all_binary_combinations_matrix.nrow(); combination_number++) {
 		double combination_prob = exact_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, combination_number, all_binary_combinations_matrix, false);
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
-			if (all_binary_combinations_matrix(combination_number, dimension) == 1) {
-				combination_prob = combination_prob*phi_outlier(dimension, discrete_outliers(sample_num, dimension) - 1);
-			} else {
-				combination_prob = combination_prob*phi_inlier(dimension, discrete_outliers(sample_num, dimension) - 1);
+			// Check to make sure expression is measured
+			if (discrete_outliers(sample_num, dimension) == discrete_outliers(sample_num, dimension)) {
+				if (all_binary_combinations_matrix(combination_number, dimension) == 1) {
+					combination_prob = combination_prob*phi_outlier(dimension, discrete_outliers(sample_num, dimension) - 1);
+				} else {
+					combination_prob = combination_prob*phi_inlier(dimension, discrete_outliers(sample_num, dimension) - 1);
+				}
 			}
 		}
 		prob += combination_prob;
@@ -168,7 +172,10 @@ double exact_marginal_pairwise_probability(double normalization_constant, int di
 
 // [[Rcpp::export]]
 List update_marginal_probabilities_exact_inference_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int number_of_pairs, bool posterior_bool) {
-	// Rcpp::Rcout << feat(1,1) << std::endl;  
+	// Rcpp::Rcout << discrete_outliers(0,1) << std::endl;  
+	// bool temp = discrete_outliers(0,1) == discrete_outliers(0,1);
+	// Rcpp::Rcout << temp << std::endl;  
+
 	// Initialize output matrices
 	NumericMatrix probabilities(feat.nrow(), number_of_dimensions);
 	NumericMatrix probabilities_pairwise(feat.nrow(), number_of_pairs);

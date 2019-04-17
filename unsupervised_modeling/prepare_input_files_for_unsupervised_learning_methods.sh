@@ -14,11 +14,7 @@ unsupervised_learning_input_dir="$5"
 gene_individual_to_variant_mapping_file="$6"
 
 
-pvalue=".05"
-echo $pvalue
-python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicing.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $pvalue $gene_individual_to_variant_mapping_file
-
-
+if false; then
 pvalue=".01"
 echo $pvalue
 python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicing.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $pvalue $gene_individual_to_variant_mapping_file
@@ -36,3 +32,11 @@ python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicin
 pvalue=".04"
 echo $pvalue
 python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicing.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $pvalue $gene_individual_to_variant_mapping_file
+
+
+pvalue=".05"
+echo $pvalue
+python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicing.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $pvalue $gene_individual_to_variant_mapping_file
+fi
+
+python prepare_input_files_for_unsupervised_learning_all_variants.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir

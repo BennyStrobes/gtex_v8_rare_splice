@@ -18,28 +18,6 @@ library(RColorBrewer)
 source("watershed.R")
 
 
-get_discretized_outliers <- function(outlier_pvalues) {
-	# initialize output
-	outliers_discretized <- matrix(0,dim(outlier_pvalues)[1], dim(outlier_pvalues)[2])
-	for (dimension in 1:ncol(outlier_pvalues)) {
-		# Check if it is total expression
-		if (min(outlier_pvalues[,dimension]) < 0) {
-			under_expression = outlier_pvalues[,dimension] < 0
-			log_pvalues = -log10(abs(outlier_pvalues[,dimension]) + 1e-6)
-			log_pvalues[under_expression] = log_pvalues[under_expression]*-1
-			#discretized <- cut(log_pvalues,breaks=c(-6.01,-4,-2,-1,1,2,4,6.01))
-			discretized <- cut(log_pvalues, breaks=c(-6.01,-1,1,6.01))
-		} else {
-			log_pvalues = -log10(abs(outlier_pvalues[,dimension]) + 1e-6)
-			# discretized <- cut(log_pvalues, 7)
-			discretized <- cut(log_pvalues, breaks=c(-.01,1,4,6))
-		}
-		outliers_discretized[,dimension] = as.numeric(discretized)
-	}
-	colnames(outliers_discretized) = colnames(outlier_pvalues)
-	return(outliers_discretized)
-}
-
 
 
 
@@ -359,7 +337,7 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 
 
 
-			lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=0)
+			lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
 			# Check to make sure LBFGS converged OK
 			if (lbfgs_output$convergence != 0) {
 				print(paste0("LBFGS optimazation on CRF did not converge. It reported convergence error of: ", lbfgs_output$convergence))
@@ -394,7 +372,7 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 	best_index <- which(avg_aucs==max(avg_aucs))
 	best_lambda <- costs[best_index]
 	# Using best lambda, recompute GAM
-	lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_shuff, discrete_outliers=binary_outliers_train_shuff, posterior=binary_outliers_train_shuff, posterior_pairwise=pairwise_binary_outliers_train_shuff, phi=phi_placeholder, lambda=best_lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=0)
+	lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_shuff, discrete_outliers=binary_outliers_train_shuff, posterior=binary_outliers_train_shuff, posterior_pairwise=pairwise_binary_outliers_train_shuff, phi=phi_placeholder, lambda=best_lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
 	# Get optimized crf coefficients back into model_params format
 	gam_parameters$theta_singleton <- lbfgs_output$par[1:number_of_dimensions]
 	for (dimension in 1:number_of_dimensions) {
@@ -461,7 +439,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, costs, pseu
 	lambda_singleton <- 0
   	lambda_pair <- 0
   	lambda <- gam_data$lambda
-  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, output_root)
+  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables)
 	# saveRDS(watershed_model, paste0(output_root, "_model_params.rds"))
 	#watershed_model <- readRDS(paste0(output_root, "_model_params.rds"))
 

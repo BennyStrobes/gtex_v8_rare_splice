@@ -52,17 +52,20 @@ unsupervised_learning_input_dir=$output_root"unsupervised_learning_input/"
 # Directory containing results from single outlier type RIVER runs
 river_run_dir=$output_root"river/"
 
-# Directory containing results from watershed analysis
+# Directory containing results from watershed ROC analysis
 watershed_3_class_roc_run_dir=$output_root"watershed_three_class_roc/"
 
+# Directory containing results from watershed analysis applied to all variants
+watershed_3_class_score_run_dir=$output_root"watershed_three_class_scores/"
 
 
 
 ###############################################
 # Scripts
 ###############################################
+if false; then
 sbatch prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
-
+fi
 
 if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
@@ -73,41 +76,13 @@ fi
 if false; then
 pseudocount="30"
 pvalue_fraction=".01"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="30"
-pvalue_fraction=".02"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="30"
-pvalue_fraction=".03"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="30"
-pvalue_fraction=".04"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="20"
-pvalue_fraction=".01"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="10"
-pvalue_fraction=".01"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="40"
-pvalue_fraction=".01"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="50"
-pvalue_fraction=".01"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="5"
-pvalue_fraction=".01"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-pseudocount="1"
-pvalue_fraction=".01"
-sbatch watershed_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
+sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
 fi
+
+
+
+pseudocount="30"
+pvalue_fraction=".01"
+sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
+
+
