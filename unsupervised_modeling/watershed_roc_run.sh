@@ -15,7 +15,7 @@ pvalue_fraction="$4"
 
 # Parameters!
 number_of_dimensions="3"
-inference_method="exact"
+inference_method="vi"
 
 gene_thresh="0.01"
 input_stem="fully_observed_merged_outliers_"$gene_thresh"_genes_intersection_between_te_ase_splicing"
@@ -25,4 +25,5 @@ output_stem=$watershed_run_dir"fully_observed_te_ase_splicing_outliers_gene_pval
 echo $pseudocount
 echo $pvalue_fraction
 echo $gene_thresh
+echo $inference_method
 Rscript watershed_roc.R $pvalue_fraction $input_file $output_stem $number_of_dimensions $inference_method $pseudocount

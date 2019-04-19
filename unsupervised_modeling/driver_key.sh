@@ -73,16 +73,15 @@ fi
 
 
 
+pseudocount="30"
+pvalue_fraction=".01"
+sh watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
+
+
+
+pseudocount="30"
+pvalue_fraction=".01"
 if false; then
-pseudocount="30"
-pvalue_fraction=".01"
-sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-fi
-
-
-
-pseudocount="30"
-pvalue_fraction=".01"
 sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
-
+fi
 
