@@ -16,8 +16,98 @@ library(PRROC)
 library(RColorBrewer)
 library(DirichletReg)
 sourceCpp("crf_exact_updates.cpp")
+sourceCpp("crf_variational_updates.cpp")
+
+initialize_genomic_annotation_variables_v_rand <- function(number_of_features, number_of_dimensions, independent_variables) {
+  if (independent_variables == "true") {
+    pair_value = 0
+    theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+  } else if (independent_variables == "false") {
+    pair_value = 4
+    theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+  } else if (independent_variables == "false_geno") {
+    pair_value = 1e-7
+    theta_pair = matrix(0, number_of_features+1, choose(number_of_dimensions, 2))
+    theta_pair[1,] <- numeric(choose(number_of_dimensions, 2)) + pair_value
+  }
+
+  beta_init = matrix(rnorm((number_of_features+1)*number_of_dimensions,sd=.1),number_of_features+1, number_of_dimensions)
+  theta_singleton = beta_init[1,]
+  theta = beta_init[2:(number_of_features + 1),]
+  # Initialize vector
+  x <- c()
+  # Add theta_singleton (intercepts)
+  x <- c(x, theta_singleton)
+  # Add theta for each dimension (betas)
+  for (dimension in 1:number_of_dimensions) {
+    x <- c(x, theta[, dimension])
+  }
+  # Add theta_pair (edges between unobserved nodes)
+  for (row_number in 1:(dim(theta_pair)[1])) {
+    x <- c(x, theta_pair[row_number,])
+  }
+  return(x)
+}
+
+ 
+grad_desc=function(grad_fxn, log_likelihood_fxn, x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, mu_init, mu_pairwise_init, convergence_thresh, step_size, independent_variables, convergence_criteria, master_stepsize=1) {
+  convergence_value = 0
+  convergence_message = "no errors"
+
+  number_of_dimensions <- dim(discrete_outliers)[2]
+  num_genomic_features <- dim(feat)[2]
+
+  # Get crf coefficients back into inference format
+  theta_singleton <- x[1:number_of_dimensions]
+  theta <- matrix(0,num_genomic_features,number_of_dimensions)
+  for (dimension in 1:number_of_dimensions) {
+	theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
+  }
+  theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+  mu_list <- update_marginal_probabilities_vi_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), step_size, convergence_thresh, mu_init, FALSE)
+  mu <- mu_list$probability
+  mu_pairwise <- mu_list$probability_pairwise
+
+  convergence = FALSE
+  iterations = 1
+  progress=list()
+  prev_likelihood = log_likelihood_fxn(x, feat=feat, discrete_outliers=discrete_outliers, posterior=posterior, posterior_pairwise=posterior_pairwise, phi=phi, lambda=lambda, lambda_pair=lambda_pair, lambda_singleton=lambda_singleton, mu_init=mu, mu_pairwise_init=mu_pairwise, convergence_thresh=convergence_thresh, step_size=step_size, independent_variables=independent_variables)
+  x_init = x
+  while(convergence==FALSE) {
+    g <- grad_fxn(x, feat=feat, discrete_outliers=discrete_outliers, posterior=posterior, posterior_pairwise=posterior_pairwise, phi=phi, lambda=lambda, lambda_pair=lambda_pair, lambda_singleton=lambda_singleton, mu_init=mu, mu_pairwise_init=mu_pairwise, convergence_thresh=convergence_thresh, step_size=step_size, independent_variables=independent_variables)
+    x = x-master_stepsize*g
+    
+
+  	# Get crf coefficients back into inference format
+    theta_singleton <- x[1:number_of_dimensions]
+    theta <- matrix(0,num_genomic_features,number_of_dimensions)
+    for (dimension in 1:number_of_dimensions) {
+	   theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
+     }
+     theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+     mu_list <- update_marginal_probabilities_vi_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), step_size, convergence_thresh, mu, FALSE)
+     mu <- mu_list$probability
+     mu_pairwise <- mu_list$probability_pairwise
 
 
+    likelihood <- log_likelihood_fxn(x, feat=feat, discrete_outliers=discrete_outliers, posterior=posterior, posterior_pairwise=posterior_pairwise, phi=phi, lambda=lambda, lambda_pair=lambda_pair, lambda_singleton=lambda_singleton, mu_init=mu, mu_pairwise_init=mu_pairwise, convergence_thresh=convergence_thresh, step_size=step_size, independent_variables=independent_variables)
+    print(likelihood)
+    if (abs(prev_likelihood - likelihood) < convergence_criteria) {
+    	convergence = TRUE
+      if (iterations == 1) {
+        x = x_init
+        convergence_value = 2
+        convergence_message = "The initial variables already minimize the objective function."
+      }
+    }
+    prev_likelihood = likelihood
+    iterations = iterations + 1
+    if (iterations %% 10 == 0) {
+      print(as.vector(x))
+    }
+  }
+  list(par=x,log_prob=progress,convergence=convergence_value, message=convergence_message)
+}
 
 
 initialize_phi<- function(num_bins,dim) {
@@ -52,15 +142,15 @@ initialize_phi<- function(num_bins,dim) {
 }
 
 
-initialize_genomic_annotation_variables <- function(number_of_features, number_of_dimensions, independent_variables) {
+initialize_genomic_annotation_variables <- function(number_of_features, number_of_dimensions, independent_variables, theta_pair_init) {
 	if (independent_variables == "true") {
 		pair_value = 0
 		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
 	} else if (independent_variables == "false") {
-		pair_value = 1e-7
+		pair_value = theta_pair_init
 		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
 	} else if (independent_variables == "false_geno") {
-		pair_value = 1e-7
+		pair_value = theta_pair_init
 		theta_pair = matrix(0, number_of_features+1, choose(number_of_dimensions, 2))
 		theta_pair[1,] <- numeric(choose(number_of_dimensions, 2)) + pair_value
 	}
@@ -83,20 +173,21 @@ initialize_genomic_annotation_variables <- function(number_of_features, number_o
 	return(x)
 }
 
-genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfolds, costs, independent_variables) {
+genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_pair_costs, independent_variables, inference_method, gradient_descent_threshold, theta_pair_init) {
 	number_of_dimensions <- dim(binary_outliers_train)[2]
 	number_of_features <- dim(feat_train)[2]
 
-	gradient_variable_vec <- initialize_genomic_annotation_variables(number_of_features, number_of_dimensions, independent_variables)
+  gradient_variable_vec <- initialize_genomic_annotation_variables(number_of_features, number_of_dimensions, independent_variables, theta_pair_init)
+
 
 	if (independent_variables == "true") {
 		pair_value = 0
 		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
 	} else if (independent_variables == "false") {
-		pair_value = 1e-7
+		pair_value = .5
 		theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
 	} else if (independent_variables == "false_geno") {
-		pair_value = 1e-7
+		pair_value = .5
 		theta_pair = matrix(0, number_of_features+1, choose(number_of_dimensions, 2))
 		theta_pair[1,] <- numeric(choose(number_of_dimensions, 2)) + pair_value
 	}
@@ -122,8 +213,9 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 	folds <- cut(seq(1,nrow(feat_train_shuff)),breaks=nfolds,labels=FALSE)
 
 	avg_aucs <- c()
-	for (cost_iter in 1:length(costs)) {
-		lambda <- costs[cost_iter]
+	for (cost_iter in 1:length(lambda_costs)) {
+		lambda <- lambda_costs[cost_iter]
+    lambda_pair <- lambda_pair_costs[cost_iter]
 		#Perform nfolds-fold cross validation
 		aucs <- c()
 		for(i in 1:nfolds){
@@ -136,12 +228,31 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
     		outliers_train_fold <- binary_outliers_train_shuff[-testIndexes,]
     		pairwise_outliers_train_fold <- pairwise_binary_outliers_train_shuff[-testIndexes,]
 
-    		# num_grad <- grad(compute_exact_crf_likelihood_for_lbfgs, gradient_variable_vec, feat=feat_test_fold, discrete_outliers=outliers_test_fold, posterior=outliers_test_fold, posterior_pairwise=pairwise_outliers_test_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables)
-    		# actual_grad <- compute_exact_crf_gradient_for_lbfgs(gradient_variable_vec, feat=feat_test_fold, discrete_outliers=outliers_test_fold, posterior=outliers_test_fold, posterior_pairwise=pairwise_outliers_test_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables)
+
+    
+
+    	if (inference_method == "exact") {
+				lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=lambda_pair, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
+			} else if (inference_method == "vi") {
+				num_genomic_features <- number_of_features
+				theta_singleton <- gradient_variable_vec[1:number_of_dimensions]
+				theta <- matrix(0,num_genomic_features,number_of_dimensions)
+				for (dimension in 1:number_of_dimensions) {
+					theta[,dimension] <- gradient_variable_vec[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
+				}
+				theta_pair <- matrix(gradient_variable_vec[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(gradient_variable_vec)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+				mu_init = matrix(.5, dim(feat_train_fold)[1], number_of_dimensions)
+        mu_pairwise_init <- matrix(.5, dim(feat_train_fold)[1], choose(number_of_dimensions, 2))
+
+				#mu_list <- update_marginal_probabilities_vi_cpp(feat_train_fold, outliers_train_fold, theta_singleton, theta_pair, theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), 0.1, 1e-20, mu_init, FALSE)
+				#mu_init2 <- mu_list$probability
+				#mu_pairwise_init2 <- mu_list$probability_pairwise
+				#lbfgs_output <- lbfgs(compute_vi_crf_likelihood_for_lbfgs, compute_vi_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0,mu_init=mu_init2, mu_pairwise_init=mu_pairwise_init2, convergence_thresh=1e-200, step_size=0.5, independent_variables=independent_variables,invisible=0)
+				lbfgs_output <- grad_desc(compute_vi_crf_gradient_for_lbfgs, compute_vi_crf_likelihood_for_lbfgs, gradient_variable_vec, feat_train_fold, outliers_train_fold, outliers_train_fold, pairwise_outliers_train_fold, phi_placeholder, lambda, lambda_pair, 0, mu_init, mu_pairwise_init, 1e-8, .5, independent_variables, gradient_descent_threshold)
+
+			}
 
 
-
-			lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_fold, discrete_outliers=outliers_train_fold, posterior=outliers_train_fold, posterior_pairwise=pairwise_outliers_train_fold, phi=phi_placeholder, lambda=lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
 			# Check to make sure LBFGS converged OK
 			if (lbfgs_output$convergence != 0) {
 				print(paste0("LBFGS optimazation on CRF did not converge. It reported convergence error of: ", lbfgs_output$convergence))
@@ -159,24 +270,44 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 			gam_parameters$theta_pair <- matrix(lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
 
 			# Compute expected value of the CRFs (mu)
-			mu_list_test <- update_marginal_probabilities_exact_inference_cpp(feat_test_fold, outliers_test_fold, gam_parameters$theta_singleton, gam_parameters$theta_pair, gam_parameters$theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
-			mu_test <- mu_list_test$probability
+			if (inference_method == "exact") {
+				mu_list_test <- update_marginal_probabilities_exact_inference_cpp(feat_test_fold, outliers_test_fold, gam_parameters$theta_singleton, gam_parameters$theta_pair, gam_parameters$theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+				mu_test <- mu_list_test$probability
+			} else if (inference_method == "vi") {
+				mu_init = matrix(.5, dim(feat_train_fold)[1], number_of_dimensions)
+				mu_list_test <- update_marginal_probabilities_vi_cpp(feat_test_fold, outliers_test_fold, gam_parameters$theta_singleton, gam_parameters$theta_pair, gam_parameters$theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), 0.1, 1e-20, mu_init, FALSE)
+				mu_test <- mu_list_test$probability
+			}
 
 			# Compute roc
 			test_predictions <- as.vector(mu_test)
 			test_labels <- as.vector(outliers_test_fold)
-			roc_obj <- roc.curve(scores.class0 = test_predictions[test_labels==1], scores.class1 = test_predictions[test_labels==0], curve = T)
-			auc <- roc_obj$auc
+			pr_obj <- pr.curve(scores.class0 = test_predictions[test_labels==1], scores.class1 = test_predictions[test_labels==0], curve = T)
+			auc <- pr_obj$auc.integral
 			aucs <- c(aucs, auc)
 		}
 		avg_aucs <- c(avg_aucs, mean(aucs))
 	}
 	# Get best (one with highest avg auc across folds) lambda 
 	print(avg_aucs)
-	best_index <- which(avg_aucs==max(avg_aucs))
-	best_lambda <- costs[best_index]
+	best_index <- which(avg_aucs==max(avg_aucs))[1]  # [1] for tie breakers
+	best_lambda <- lambda_costs[best_index]
+  best_lambda_pair <- lambda_pair_costs[best_index]
 	# Using best lambda, recompute GAM
-	lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_shuff, discrete_outliers=binary_outliers_train_shuff, posterior=binary_outliers_train_shuff, posterior_pairwise=pairwise_binary_outliers_train_shuff, phi=phi_placeholder, lambda=best_lambda, lambda_pair=0, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
+	if (inference_method == "exact") {
+		lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_shuff, discrete_outliers=binary_outliers_train_shuff, posterior=binary_outliers_train_shuff, posterior_pairwise=pairwise_binary_outliers_train_shuff, phi=phi_placeholder, lambda=best_lambda, lambda_pair=best_lambda_pair, lambda_singleton=0, independent_variables=independent_variables,invisible=1)
+  } else if (inference_method == "vi") {
+		mu_init = matrix(.5, dim(feat_train_fold)[1], number_of_dimensions)
+
+		mu_list <- update_marginal_probabilities_vi_cpp(feat_train_shuff, binary_outliers_train_shuff, theta_singleton, theta_pair, theta, phi_placeholder$inlier_component, phi_placeholder$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), 0.1, 1e-20, mu_init, FALSE)
+		mu_init2 <- mu_list$probability
+		mu_pairwise_init2 <- mu_list$probability_pairwise
+
+		#lbfgs_output <- lbfgs(compute_vi_crf_likelihood_for_lbfgs, compute_vi_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat_train_shuff, discrete_outliers=binary_outliers_train_shuff, posterior=binary_outliers_train_shuff, posterior_pairwise=pairwise_binary_outliers_train_shuff, phi=phi_placeholder, lambda=best_lambda, lambda_pair=0, lambda_singleton=0,mu_init=mu_init2, mu_pairwise_init=mu_pairwise_init2, convergence_thresh=1e-200, step_size=0.5, independent_variables=independent_variables,invisible=0)
+		lbfgs_output <- grad_desc(compute_vi_crf_gradient_for_lbfgs, compute_vi_crf_likelihood_for_lbfgs, gradient_variable_vec, feat_train_shuff, binary_outliers_train_shuff, binary_outliers_train_shuff, pairwise_binary_outliers_train_shuff, phi_placeholder, best_lambda, best_lambda_pair, 0, mu_init2, mu_pairwise_init2, 1e-8, .5, independent_variables, gradient_descent_threshold)
+
+
+	}
 	# Get optimized crf coefficients back into model_params format
 	gam_parameters$theta_singleton <- lbfgs_output$par[1:number_of_dimensions]
 	for (dimension in 1:number_of_dimensions) {
@@ -184,8 +315,7 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 	}
  	#gam_parameters$theta_pair[1,] <- lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)]
 	gam_parameters$theta_pair <- matrix(lbfgs_output$par[(number_of_dimensions + (number_of_dimensions*ncol(feat_train)) + 1):length(lbfgs_output$par)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
-
-	return(list(lambda=best_lambda, gam_parameters=gam_parameters))
+	return(list(lambda=best_lambda, lambda_pair=best_lambda_pair, gam_parameters=gam_parameters))
 }
 
 
@@ -241,7 +371,7 @@ load_watershed_data <- function(input_file, number_of_dimensions, pvalue_fractio
 
 
 
-initialize_model_params <- function(num_samples, num_genomic_features, number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables) {
+initialize_model_params <- function(num_samples, num_genomic_features, number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, gradient_descent_threshold) {
 
 	model_params <- list(theta_pair = theta_pair_init, 
 						 theta_singleton = theta_singleton_init,
@@ -260,6 +390,7 @@ initialize_model_params <- function(num_samples, num_genomic_features, number_of
 						 pseudoc = pseudoc,
 						 observed_data_log_likelihood = 0,
 						 independent_variables = independent_variables,
+             gradient_descent_threshold=gradient_descent_threshold,
 						 inference_method = inference_method)
 
    return(model_params)
@@ -271,6 +402,8 @@ initialize_model_params <- function(num_samples, num_genomic_features, number_of
 update_marginal_posterior_probabilities <- function(feat, discrete_outliers, model_params) {
 	if (model_params$inference_method == "exact") {
 		posterior_list <- update_marginal_probabilities_exact_inference_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2), TRUE)
+	} else if (model_params$inference_method == "vi") {
+		posterior_list <- update_marginal_probabilities_vi_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2), 0.1, 1e-100, model_params$posterior, TRUE)
 	}
 	return(posterior_list)
 }
@@ -297,6 +430,111 @@ extract_gradient_variable_vector <- function(model_params) {
 
 	return(x)
 }
+
+
+# Calculate gradient of crf likelihood (fxn formatted to be used in LBFGS)
+compute_vi_crf_gradient_for_lbfgs <- function(x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, mu_init, mu_pairwise_init, convergence_thresh, step_size, independent_variables) {
+
+
+	# Extract relevent scalers describing data
+	num_genomic_features <- ncol(feat)
+	num_samples <- nrow(feat)
+	number_of_dimensions <- ncol(discrete_outliers)
+
+	# Get crf coefficients back into inference format
+	theta_singleton <- x[1:number_of_dimensions]
+	theta <- matrix(0,num_genomic_features,number_of_dimensions)
+	for (dimension in 1:number_of_dimensions) {
+		theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
+	}
+
+	theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+
+
+
+	# Compute expected value of the CRFs (mu)
+	# mu_list <- update_marginal_probabilities_exact_inference_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+	#mu_list <- update_marginal_probabilities_vi_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), step_size, convergence_thresh, mu_init, FALSE)
+	#mu <- mu_list$probability
+	#mu_pairwise <- mu_list$probability_pairwise
+	mu <- mu_init
+	mu_pairwise <- mu_pairwise_init
+
+	# Gradient of singleton terms (intercepts)
+	grad_singleton <- (colSums(posterior) - colSums(mu))*(1/nrow(posterior)) - lambda_singleton*theta_singleton
+
+	# Gradient of theta terms (betas)
+	theta_vec <- x[(number_of_dimensions+1):(length(x)-(choose(number_of_dimensions, 2)*nrow(theta_pair)))]
+	grad_theta <- c()
+	for (dimension in 1:number_of_dimensions) {
+		temp_grad <- colSums(posterior[,dimension]*feat) - colSums(mu[,dimension]*feat)
+		grad_theta <- c(grad_theta, temp_grad)
+	}
+
+	grad_theta <- grad_theta*(1/nrow(posterior)) - lambda*theta_vec
+
+	# Gradient of theta pair terms (edges)
+	if (independent_variables == "true") {
+		grad_pair <- numeric(nrow(posterior_pairwise))
+	} else if (independent_variables == "false") {
+		grad_pair <- (colSums(posterior_pairwise) - colSums(mu_pairwise))*(1/nrow(posterior_pairwise)) - lambda_pair*theta_pair[1,]
+	} else if (independent_variables == "false_geno") {
+		for (theta_pair_dimension in 1:(dim(theta_pair)[1])) {
+			if (theta_pair_dimension == 1) {
+				grad_pair <- (colSums(posterior_pairwise) - colSums(mu_pairwise))*(1/nrow(posterior_pairwise)) - lambda_pair*theta_pair[theta_pair_dimension,]
+			} else {
+				temp_grad_pair <- (colSums(posterior_pairwise*feat[,(theta_pair_dimension-1)]) - colSums(mu_pairwise*feat[,(theta_pair_dimension-1)]))*(1/nrow(posterior_pairwise)) - lambda*theta_pair[theta_pair_dimension,]
+				grad_pair <- c(grad_pair, temp_grad_pair)
+			}
+		}
+	}
+
+	# Merge all gradients
+	grad <- c(grad_singleton, grad_theta, grad_pair)
+	#print("analytical gradient")
+	#print(as.vector(-grad))
+	#print("Numerical gradient")
+	#num_vi_grad <- grad(compute_vi_crf_likelihood_for_lbfgs, x, feat=feat, discrete_outliers=discrete_outliers, posterior=posterior, posterior_pairwise=posterior_pairwise, phi=phi, lambda=lambda, lambda_pair=0, lambda_singleton=0, mu_init=mu_init, mu_pairwise_init=mu_pairwise_init, convergence_thresh=convergence_thresh, step_size=step_size, independent_variables=independent_variables)
+	#print(num_vi_grad)
+	return(-grad)
+}
+
+compute_vi_crf_likelihood_for_lbfgs <- function(x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, mu_init, mu_pairwise_init, convergence_thresh, step_size, independent_variables) {
+	# Extract relevent scalers describing data
+	num_genomic_features <- ncol(feat)
+	num_samples <- nrow(feat)
+	number_of_dimensions <- ncol(discrete_outliers)
+
+	# Get crf coefficients back into inference format
+	theta_singleton <- x[1:number_of_dimensions]
+	theta <- matrix(0,num_genomic_features,number_of_dimensions)
+	for (dimension in 1:number_of_dimensions) {
+		theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
+	}
+	#theta_pair <- matrix(0,1, choose(number_of_dimensions, 2))
+	#theta_pair[1,] <- x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)]
+	theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+
+	# Compute expected value of the CRFs (mu)
+	#mu_list <- update_marginal_probabilities_vi_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), step_size, convergence_thresh, mu_init, FALSE)
+	#mu <- mu_list$probability
+	#mu_pairwise <- mu_list$probability_pairwise
+
+
+	# Compute likelihood in cpp function
+	#####################################
+	#log_likelihood <- compute_crf_likelihood_vi_cpp(posterior, posterior_pairwise, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, lambda, lambda_pair, lambda_singleton, mu, mu_pairwise)
+	#####################################
+	log_likelihood <- compute_crf_likelihood_vi_cpp(posterior, posterior_pairwise, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, lambda, lambda_pair, lambda_singleton, mu_init, mu_pairwise_init)
+	#print("Analytical likelihood")
+	#print(-log_likelihood)
+	return(-log_likelihood)
+}
+
+
+
+
+
 
 # Calculate gradient of crf likelihood (fxn formatted to be used in LBFGS)
 compute_exact_crf_gradient_for_lbfgs <- function(x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, independent_variables) {
@@ -387,8 +625,24 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 
 
 	# Run LBFGS (https://cran.r-project.org/web/packages/lbfgs/lbfgs.pdf) using our gradient and likelihood functions.
-	lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton, independent_variables=model_params$independent_variables, invisible=1)
-	
+	if (model_params$inference_method == "exact") {
+		lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton, independent_variables=model_params$independent_variables, invisible=1)
+	} else if (model_params$inference_method == "vi") {
+		theta_singleton <- gradient_variable_vec[1:model_params$number_of_dimensions]
+		theta <- matrix(0,model_params$num_genomic_features, model_params$number_of_dimensions)
+		for (dimension in 1:model_params$number_of_dimensions) {
+			theta[,dimension] <- gradient_variable_vec[(model_params$number_of_dimensions + 1 + model_params$num_genomic_features*(dimension-1)):(model_params$number_of_dimensions + model_params$num_genomic_features*(dimension))]
+		}
+		theta_pair <- matrix(gradient_variable_vec[(model_params$number_of_dimensions + (model_params$number_of_dimensions*model_params$num_genomic_features) + 1):length(gradient_variable_vec)], ncol=choose(model_params$number_of_dimensions, 2),byrow=TRUE)
+
+		mu_list <- update_marginal_probabilities_vi_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2), 0.1, 1e-100, model_params$mu, FALSE)
+		mu_init2 <- mu_list$probability
+		mu_pairwise_init2 <- mu_list$probability_pairwise
+
+		#lbfgs_output <- lbfgs(compute_vi_crf_likelihood_for_lbfgs, compute_vi_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=0, lambda_singleton=0,mu_init=mu_init2, mu_pairwise_init=mu_pairwise_init2, convergence_thresh=1e-200, step_size=0.5, independent_variables=model_params$independent_variables,invisible=0)
+		lbfgs_output <- grad_desc(compute_vi_crf_gradient_for_lbfgs, compute_vi_crf_likelihood_for_lbfgs, gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, mu_init2, mu_pairwise_init2, 1e-8, .5, independent_variables, model_params$gradient_descent_threshold)
+
+	}
 	# Check to make sure LBFGS converged OK
 	if (lbfgs_output$convergence != 0) {
 		print(paste0("LBFGS optimazation on CRF did not converge. It reported convergence error of: ", lbfgs_output$convergence))
@@ -470,8 +724,8 @@ prior_log_likelihood <- function(phi, theta, theta_pair, theta_singleton, pseudo
 
 }
 
-integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables) {
-	model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables)
+integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, gradient_descent_threshold) {
+	model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, gradient_descent_threshold)
 
 
 	#################
@@ -479,9 +733,10 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 	##################
 
 
-	for (iter in 1:60) {
+	for (iter in 1:65) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
+
 		model_params$posterior = expected_posteriors$probability
 		model_params$posterior_pairwise = expected_posteriors$probability_pairwise
 

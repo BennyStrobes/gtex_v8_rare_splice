@@ -8,8 +8,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-
-// NumericMatrix all_binary_combinations_matrix = extract_all_binary_combinations(2);
+// [[Rcpp::export]]
 NumericMatrix extract_all_binary_combinations(int n) {
 	// Initialize output
 	int nTemp = (int)pow(2, n) - 1;

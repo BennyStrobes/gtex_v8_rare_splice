@@ -1,6 +1,9 @@
 args = commandArgs(trailingOnly=TRUE)
-source("watershed.R")
-
+# source("watershed.R")
+library(cowplot)
+library(RColorBrewer)
+library(ggplot2)
+library(Biobase)
 
 initialize_phi<- function(num_bins,dim) {
   phi_outlier <- matrix(1,dim,num_bins)
@@ -243,6 +246,369 @@ genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfold
 }
 
 
+fully_observed_gam_outlier_scatterplot_comparison_in_one_dimension <- function(df, outlier_type) {
+   #PLOT!
+  scatter <-  ggplot(df,aes(coloring,gam)) + geom_point(size=.1,aes(colour=watershed)) + theme(text = element_text(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) 
+  scatter <- scatter + scale_color_gradient(low="pink",high="blue")
+  scatter <- scatter +  labs(colour="Watershed posterior",x = "mean[-log10(outlier pvalue)]", y = "GAM posterior", title=outlier_type) 
+  scatter <- scatter + theme(legend.position="right")
+  return(scatter)
+}
+
+# Limit to fully observed cases
+# Have one plot per outlier type showing:
+### x-axis median outlier pvalue across observed tissues
+### Y-axis GAM posterior
+### Colored by watershed posterior
+########################################
+fully_observed_gam_outlier_scatterplot_comparison_colored_by_watershed <- function(data, output_file) {
+  options(bitmapType = 'cairo', device = 'pdf')
+  # Remove instances that do not have all 3 expression signals
+  fully_observed_indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  fully_observed_data <- data[fully_observed_indices,]
+  # Remove directionality/sign from total expression pvalues
+  fully_observed_data$total_expression_outlier_pvalue <- abs(fully_observed_data$total_expression_outlier_pvalue)
+  # Compute mean outlier score (acrosss all 3 outlier classes)
+  outlier_means <- rowMeans(-log10(1e-6 + fully_observed_data[,2:4]))
+
+  # Put each outlier class into it own neat data frame
+  splicing_df <- data.frame(gam=fully_observed_data$splicing_gam_crf_posterior,watershed=fully_observed_data$splicing_watershed_posterior, coloring=outlier_means)
+  te_df <- data.frame(gam=fully_observed_data$total_expression_gam_crf_posterior,watershed=fully_observed_data$total_expression_watershed_posterior, coloring=outlier_means)
+  ase_df <- data.frame(gam=fully_observed_data$ase_gam_crf_posterior,watershed=fully_observed_data$ase_watershed_posterior, coloring=outlier_means)
+
+  splicing_plot <- fully_observed_gam_outlier_scatterplot_comparison_in_one_dimension(splicing_df, "splice")
+  te_plot <- fully_observed_gam_outlier_scatterplot_comparison_in_one_dimension(te_df, "total expression")
+  ase_plot <- fully_observed_gam_outlier_scatterplot_comparison_in_one_dimension(ase_df, "ase")
+  combined_plot <- plot_grid(ase_plot, splicing_plot, te_plot, ncol=1)
+
+  ggsave(combined_plot, file=output_file, width=19,height=20,units="cm")
+
+}
+
+fully_observed_watershed_river_scatterplot_comparison_in_one_dimension <- function(df, outlier_type, coloring_label) {
+  spearman_rho = cor(df$river, df$watershed, method="spearman") 
+  #PLOT!
+  scatter <-  ggplot(df,aes(river,watershed)) + geom_point(size=.1,aes(colour=coloring)) + theme(text = element_text(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) 
+  scatter <- scatter + scale_color_gradient(low="pink",high="blue")
+  scatter <- scatter +  labs(colour=coloring_label,x = "RIVER posterior", y = "Watershed posterior", title=paste0(outlier_type, " / spearman rho: ", round(spearman_rho,digits=2))) 
+  scatter <- scatter + theme(legend.position="right")
+  return(scatter)
+}
+
+fully_observed_watershed_river_scatterplot_comparison_colored_by_median_outlier_score <- function(data, output_file) {
+  options(bitmapType = 'cairo', device = 'pdf')
+  # Remove instances that do not have all 3 expression signals
+  fully_observed_indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  fully_observed_data <- data[fully_observed_indices,]
+  # Remove directionality/sign from total expression pvalues
+  fully_observed_data$total_expression_outlier_pvalue <- abs(fully_observed_data$total_expression_outlier_pvalue)
+  # Compute mean outlier score (acrosss all 3 outlier classes)
+  outlier_means <- rowMeans(-log10(1e-6 + fully_observed_data[,2:4]))
+
+  # Put each outlier class into it own neat data frame
+  splicing_df <- data.frame(river=fully_observed_data$splicing_river_posterior,watershed=fully_observed_data$splicing_watershed_posterior, coloring=outlier_means)
+  te_df <- data.frame(river=fully_observed_data$total_expression_river_posterior,watershed=fully_observed_data$total_expression_watershed_posterior, coloring=outlier_means)
+  ase_df <- data.frame(river=fully_observed_data$ase_river_posterior,watershed=fully_observed_data$ase_watershed_posterior, coloring=outlier_means)
+
+  splicing_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(splicing_df, "splice", "mean[-log10(pvalue)]")
+  te_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(te_df, "total expression", "mean[-log10(pvalue)]")
+  ase_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(ase_df, "ase", "mean[-log10(pvalue)]")
+
+  combined_plot <- plot_grid(ase_plot, splicing_plot, te_plot, ncol=1)
+
+  ggsave(combined_plot, file=output_file, width=19,height=20,units="cm")
+
+}
+
+fully_observed_watershed_river_scatterplot_comparison_colored_by_average_outlier_score <- function(data, output_file) {
+  options(bitmapType = 'cairo', device = 'pdf')
+  # Remove instances that do not have all 3 expression signals
+  fully_observed_indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  fully_observed_data <- data[fully_observed_indices,]
+  # Remove directionality/sign from total expression pvalues
+  fully_observed_data$total_expression_outlier_pvalue <- abs(fully_observed_data$total_expression_outlier_pvalue)
+  # Compute mean outlier score (acrosss all 3 outlier classes)
+  outlier_medians <- rowMedians(as.matrix(-log10(1e-6 + fully_observed_data[,2:4])))
+
+  # Put each outlier class into it own neat data frame
+  splicing_df <- data.frame(river=fully_observed_data$splicing_river_posterior,watershed=fully_observed_data$splicing_watershed_posterior, coloring=outlier_medians)
+  te_df <- data.frame(river=fully_observed_data$total_expression_river_posterior,watershed=fully_observed_data$total_expression_watershed_posterior, coloring=outlier_medians)
+  ase_df <- data.frame(river=fully_observed_data$ase_river_posterior,watershed=fully_observed_data$ase_watershed_posterior, coloring=outlier_medians)
+
+  splicing_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(splicing_df, "splice", "median[-log10(pvalue)]")
+  te_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(te_df, "total expression", "median[-log10(pvalue)]")
+  ase_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(ase_df, "ase", "median[-log10(pvalue)]")
+
+  combined_plot <- plot_grid(ase_plot, splicing_plot, te_plot, ncol=1)
+
+  ggsave(combined_plot, file=output_file, width=19,height=20,units="cm")
+
+}
+
+fully_observed_watershed_river_scatterplot_comparison_colored_by_classes_outlier_score <- function(data, output_file) {
+  options(bitmapType = 'cairo', device = 'pdf')
+  # Remove instances that do not have all 3 expression signals
+  fully_observed_indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  fully_observed_data <- data[fully_observed_indices,]
+  # Remove directionality/sign from total expression pvalues
+  fully_observed_data$total_expression_outlier_pvalue <- abs(fully_observed_data$total_expression_outlier_pvalue)
+
+
+
+  # Put each outlier class into it own neat data frame
+  splicing_df <- data.frame(river=fully_observed_data$splicing_river_posterior,watershed=fully_observed_data$splicing_watershed_posterior, coloring=-log10(1e-6 + fully_observed_data$splicing_outlier_pvalue))
+  te_df <- data.frame(river=fully_observed_data$total_expression_river_posterior,watershed=fully_observed_data$total_expression_watershed_posterior, coloring=-log10(1e-6 + fully_observed_data$total_expression_outlier_pvalue))
+  ase_df <- data.frame(river=fully_observed_data$ase_river_posterior,watershed=fully_observed_data$ase_watershed_posterior, coloring=-log10(1e-6 + fully_observed_data$ase_outlier_pvalue))
+
+  splicing_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(splicing_df, "splice", "-log10(pvalue)")
+  te_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(te_df, "total expression", "-log10(pvalue)")
+  ase_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(ase_df, "ase", "-log10(pvalue)")
+
+  combined_plot <- plot_grid(ase_plot, splicing_plot, te_plot, ncol=1)
+
+  ggsave(combined_plot, file=output_file, width=19,height=20,units="cm")
+
+}
+
+fully_observed_watershed_river_scatterplot_comparison_colored_by_classes_independent_gam_score <- function(data, output_file) {
+  options(bitmapType = 'cairo', device = 'pdf')
+  # Remove instances that do not have all 3 expression signals
+  fully_observed_indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  fully_observed_data <- data[fully_observed_indices,]
+  # Remove directionality/sign from total expression pvalues
+  fully_observed_data$total_expression_outlier_pvalue <- abs(fully_observed_data$total_expression_outlier_pvalue)
+
+
+
+  # Put each outlier class into it own neat data frame
+  splicing_df <- data.frame(river=fully_observed_data$splicing_river_posterior,watershed=fully_observed_data$splicing_watershed_posterior, coloring=fully_observed_data$splicing_gam_posterior)
+  te_df <- data.frame(river=fully_observed_data$total_expression_river_posterior,watershed=fully_observed_data$total_expression_watershed_posterior, coloring=fully_observed_data$total_expression_gam_posterior)
+  ase_df <- data.frame(river=fully_observed_data$ase_river_posterior,watershed=fully_observed_data$ase_watershed_posterior, coloring=fully_observed_data$ase_gam_posterior)
+
+  splicing_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(splicing_df, "splice", "GAM posterior")
+  te_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(te_df, "total expression", "GAM posterior")
+  ase_plot <- fully_observed_watershed_river_scatterplot_comparison_in_one_dimension(ase_df, "ase", "GAM posterior")
+
+  combined_plot <- plot_grid(ase_plot, splicing_plot, te_plot, ncol=1)
+
+  ggsave(combined_plot, file=output_file, width=19,height=20,units="cm")
+
+}
+
+
+visualize_watershed_posterior_distributions <- function(data, output_file) {
+  options(bitmapType = 'cairo', device = 'pdf')
+  thresh=.5
+  #################################################
+  #### First part is to put data in correct format
+  #################################################
+  # Initialize arrays
+  posteriors <- c()
+  outlier_types <- c()
+  observed_types <- c()
+  # Fully observed case
+  indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,s,te",3))
+  # TE unobserved
+  indices <- !is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,s",3))
+
+  # ase unobserved
+  indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("s,te",3))
+  # splice unobserved
+  indices <- is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,te",3))
+  # ase observed
+  indices <- is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase",3))
+  # splicing observed
+  indices <- !is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("s",3))
+  # TE observed
+  indices <- is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("te",3))
+
+  df <- data.frame(posterior=posteriors, outlier_type=factor(outlier_types,levels=c("ase","splice","total expression")), observed_type=factor(observed_types, levels=c("ase","s","te","ase,s","s,te","ase,te","ase,s,te")))
+
+  p_5 <- ggplot(data=df, aes(x=observed_type, y=posterior, fill=outlier_type)) +
+        geom_bar(stat="identity", color="black", position=position_dodge())+
+        theme(text = element_text(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+        labs(x="Observed outlier type", y=paste0("% posterior >= ", thresh), fill="Outlier type")
+
+  thresh=.7
+  #################################################
+  #### First part is to put data in correct format
+  #################################################
+  # Initialize arrays
+  posteriors <- c()
+  outlier_types <- c()
+  observed_types <- c()
+  # Fully observed case
+  indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,s,te",3))
+  # TE unobserved
+  indices <- !is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,s",3))
+
+  # ase unobserved
+  indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("s,te",3))
+  # splice unobserved
+  indices <- is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,te",3))
+  # ase observed
+  indices <- is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase",3))
+  # splicing observed
+  indices <- !is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("s",3))
+  # TE observed
+  indices <- is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("te",3))
+
+  df <- data.frame(posterior=posteriors, outlier_type=factor(outlier_types,levels=c("ase","splice","total expression")), observed_type=factor(observed_types, levels=c("ase","s","te","ase,s","s,te","ase,te","ase,s,te")))
+
+  p_7 <- ggplot(data=df, aes(x=observed_type, y=posterior, fill=outlier_type)) +
+        geom_bar(stat="identity", color="black", position=position_dodge())+
+        theme(text = element_text(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+        labs(x="Observed outlier type", y=paste0("% posterior >= ", thresh), fill="Outlier type")
+
+  thresh=.9
+  #################################################
+  #### First part is to put data in correct format
+  #################################################
+  # Initialize arrays
+  posteriors <- c()
+  outlier_types <- c()
+  observed_types <- c()
+  # Fully observed case
+  indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,s,te", 3))
+  # TE unobserved
+  indices <- !is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,s",3))
+
+  # ase unobserved
+  indices <- !is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("s,te",3))
+  # splice unobserved
+  indices <- is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase,te",3))
+  # ase observed
+  indices <- is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & !is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("ase",3))
+  # splicing observed
+  indices <- !is.nan(data$splicing_outlier_pvalue) & is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("s",3))
+  # TE observed
+  indices <- is.nan(data$splicing_outlier_pvalue) & !is.nan(data$total_expression_outlier_pvalue) & is.nan(data$ase_outlier_pvalue)
+  posteriors <- c(posteriors, sum(data[indices,]$splicing_watershed_posterior >= thresh)/sum(indices) , sum(data[indices,]$total_expression_watershed_posterior >= thresh)/sum(indices), sum(data[indices,]$ase_watershed_posterior >= thresh)/sum(indices))
+  outlier_types <- c(outlier_types, "splice", "total expression", "ase")
+  observed_types <- c(observed_types, rep("te",3))
+
+  df <- data.frame(posterior=posteriors, outlier_type=factor(outlier_types,levels=c("ase","splice","total expression")), observed_type=factor(observed_types, levels=c("ase","s","te","ase,s","s,te","ase,te","ase,s,te")))
+  p_9 <- ggplot(data=df, aes(x=observed_type, y=posterior, fill=outlier_type)) +
+        geom_bar(stat="identity", color="black", position=position_dodge())+
+        theme(text = element_text(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+        labs(x="Observed outlier type", y=paste0("% posterior >= ", thresh), fill="Outlier type")
+
+
+  combined <- plot_grid(p_5,p_7,p_9,ncol=1)
+
+  ggsave(combined, file=output_file, width=19,height=20,units="cm")
+
+
+
+}
+
+missing_gam_outlier_scatterplot_in_one_dimension <- function(df, outlier_type) {
+  #PLOT!
+  scatter <-  ggplot(df,aes(gam,outlier)) + geom_point(size=.1,aes(colour=watershed)) + theme(text = element_text(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black")) 
+  scatter <- scatter + scale_color_gradient(low="pink",high="blue")
+  scatter <- scatter +  labs(x = "GAM posterior", y = "mean[-log10(outlier)]", colour="Watershed posterior", title=outlier_type) 
+  scatter <- scatter + theme(legend.position="right")
+  return(scatter)
+}
+
+
+# Limit to missing cases for each outlier type
+# Have one plot per outlier type showing:
+### x-axis median outlier pvalue across observed tisssues
+### Y-axis GAM Posterior
+### Colored by watershed score
+########################################
+missing_gam_outlier_scatterplot_comparison_colored_by_watershed_score <- function(data, output_file) {
+   options(bitmapType = 'cairo', device = 'pdf')
+
+  data$total_expression_outlier_pvalue <- abs(data$total_expression_outlier_pvalue)
+
+  outlier_means <- rowMeans(-log10(1e-6 + data[,2:4]), na.rm=TRUE)
+
+
+
+  missing_splice_indices <- is.nan(data$splicing_outlier_pvalue)
+  missing_ase_indices <- is.nan(data$ase_outlier_pvalue)
+  missing_te_indices <- is.nan(data$total_expression_outlier_pvalue)
+
+
+  te_df <- data.frame(watershed=data[missing_te_indices,]$total_expression_watershed_posterior, gam=data[missing_te_indices,]$total_expression_gam_crf_posterior, outlier=outlier_means[missing_te_indices])
+  ase_df <- data.frame(watershed=data[missing_ase_indices,]$ase_watershed_posterior, gam=data[missing_ase_indices,]$ase_gam_crf_posterior, outlier=outlier_means[missing_ase_indices])
+  splice_df <- data.frame(watershed=data[missing_splice_indices,]$splicing_watershed_posterior, gam=data[missing_splice_indices,]$splicing_gam_crf_posterior, outlier=outlier_means[missing_splice_indices])
+
+
+  ase_plot <- missing_gam_outlier_scatterplot_in_one_dimension(ase_df, "ase")
+  te_plot <- missing_gam_outlier_scatterplot_in_one_dimension(te_df, "total expression")
+  splice_plot <- missing_gam_outlier_scatterplot_in_one_dimension(splice_df, "splice")
+
+  combined_plot <- plot_grid(ase_plot, splice_plot, te_plot, ncol=1)
+
+
+  ggsave(combined_plot, file=output_file, width=19,height=20,units="cm")
+
+}
+
+
 
 ######################
 # Command Line args
@@ -254,6 +620,8 @@ pseudocount <- as.numeric(args[4])
 fully_observed_input_file <- args[5]
 all_variants_input_file <- args[6]
 output_stem <- args[7]
+
+if (FALSE) {
 
 #######################################
 ## Load in data
@@ -282,19 +650,21 @@ training_binary_outliers <- training_data$outliers_binary
 #watershed_ind_object <- readRDS("/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/watershed_three_class_roc/fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_outlier_fraction_.01_pseudocount_30_exact_inference_roc_object_ind.rds")
 phi_init <- initialize_phi(3, number_of_dimensions) 
 costs= c(.1, .01, 1e-3, 1e-4)
-nfolds <- 2
+nfolds <- 4
 lambda_singleton <- 0
 lambda_pair <- 0
 
 independent_variables="false"
-gam_data <- genomic_annotation_model_cv(training_feat, training_binary_outliers, nfolds, costs, independent_variables)
-watershed_model <- integratedEM(training_feat, training_discretized_outliers, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudocount, gam_data$lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables)
+tied_gam_data <- genomic_annotation_model_cv(training_feat, training_binary_outliers, nfolds, costs, independent_variables)
+watershed_model <- integratedEM(training_feat, training_discretized_outliers, phi_init, tied_gam_data$gam_parameters$theta_pair, tied_gam_data$gam_parameters$theta_singleton, tied_gam_data$gam_parameters$theta, pseudocount, tied_gam_data$lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables)
 saveRDS(watershed_model, file=paste0(output_stem, "_watershed_model.rds"))
+saveRDS(tied_gam_data, file=paste0(output_stem, "_tied_gam_model.rds"))
 
 independent_variables="true"
 gam_data <- genomic_annotation_model_cv(training_feat, training_binary_outliers, nfolds, costs, independent_variables)
 river_model <- integratedEM(training_feat, training_discretized_outliers, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudocount, gam_data$lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables)
 saveRDS(river_model, file=paste0(output_stem, "_river_model.rds"))
+saveRDS(gam_data, file=paste0(output_stem, "_independent_gam_model.rds"))
 
 
 #######################################
@@ -307,11 +677,93 @@ watershed_posteriors <- watershed_posterior_list$probability
 river_posterior_list <- update_marginal_probabilities_exact_inference_cpp(predictions_feat, predictions_discretized_outliers, river_model$theta_singleton, river_model$theta_pair, river_model$theta, river_model$phi$inlier_component, river_model$phi$outlier_component, river_model$number_of_dimensions, choose(river_model$number_of_dimensions, 2), TRUE)
 river_posteriors <- river_posterior_list$probability
 
+# Tied GAM model
+tied_gam_posterior_test <- update_marginal_probabilities_exact_inference_cpp(predictions_feat, predictions_discretized_outliers, tied_gam_data$gam_parameters$theta_singleton, tied_gam_data$gam_parameters$theta_pair, tied_gam_data$gam_parameters$theta, river_model$phi$outlier_component, river_model$phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+tied_gam_posteriors <- tied_gam_posterior_test$probability
+
+# Tied GAM model
+gam_posterior_test <- update_marginal_probabilities_exact_inference_cpp(predictions_feat, predictions_discretized_outliers, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, river_model$phi$outlier_component, river_model$phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+gam_posteriors <- gam_posterior_test$probability
+
 #######################################
 ## Save predictions to output file
 #######################################
 
-posterior_mat <- cbind(rownames(predictions_feat), predictions_pvalues_outliers, river_posteriors, watershed_posteriors)
-colnames(posterior_mat) = c("sample_names","splicing_outlier_pvalue", "total_expression_outlier_pvalue", "ase_outlier_pvalue", "splicing_river_posterior", "total_expression_river_posterior", "ase_river_posterior", "splicing_watershed_posterior", "total_expression_watershed_posterior", "ase_watershed_posterior")
+posterior_mat <- cbind(rownames(predictions_feat), predictions_pvalues_outliers, gam_posteriors, tied_gam_posteriors, river_posteriors, watershed_posteriors)
+colnames(posterior_mat) = c("sample_names","splicing_outlier_pvalue", "total_expression_outlier_pvalue", "ase_outlier_pvalue", "splicing_gam_posterior", "total_expression_gam_posterior", "ase_gam_posterior", "splicing_gam_crf_posterior", "total_expression_gam_crf_posterior", "ase_gam_crf_posterior", "splicing_river_posterior", "total_expression_river_posterior", "ase_river_posterior", "splicing_watershed_posterior", "total_expression_watershed_posterior", "ase_watershed_posterior")
 
 write.table(posterior_mat,file=paste0(output_stem,"_posteriors.txt"), sep="\t", quote=FALSE, row.names=FALSE)
+}
+
+
+#######################################
+## Visualize Predictions
+#######################################
+
+data <- read.table(paste0(output_stem,"_posteriors.txt"), header=TRUE)
+
+
+
+# Look at distribution of watershed posteriors depending on:
+#### Which outlier signals are observed (x-axis)
+#### which outlier posterior we are looking at (y-axis)
+########################################
+output_file <- paste0(output_stem, "_watershed_posterior_distributions.pdf")
+#visualize_watershed_posterior_distributions(data, output_file)
+
+
+# Limit to fully observed cases
+# Have one plot per outlier type showing:
+### x-axis River score
+### Y-axis watershed score
+### Colored by classes independent-GAM score
+########################################
+output_file <- paste0(output_stem, "_fully_observed_watershed_river_scatterplot_comparison_colored_by_classes_independent_gam_score.pdf")
+#fully_observed_watershed_river_scatterplot_comparison_colored_by_classes_independent_gam_score(data, output_file)
+
+# Limit to fully observed cases
+# Have one plot per outlier type showing:
+### x-axis River score
+### Y-axis watershed score
+### Colored by average outlier score
+########################################
+output_file <- paste0(output_stem, "_fully_observed_watershed_river_scatterplot_comparison_colored_by_classes_outlier_score.pdf")
+#fully_observed_watershed_river_scatterplot_comparison_colored_by_classes_outlier_score(data, output_file)
+
+# Limit to fully observed cases
+# Have one plot per outlier type showing:
+### x-axis River score
+### Y-axis watershed score
+### Colored by median outlier score
+########################################
+output_file <- paste0(output_stem, "_fully_observed_watershed_river_scatterplot_comparison_colored_by_median_outlier_score.pdf")
+#fully_observed_watershed_river_scatterplot_comparison_colored_by_median_outlier_score(data, output_file)
+
+# Limit to fully observed cases
+# Have one plot per outlier type showing:
+### x-axis River score
+### Y-axis watershed score
+### Colored by classes outlier score
+########################################
+output_file <- paste0(output_stem, "_fully_observed_watershed_river_scatterplot_comparison_colored_by_average_outlier_score.pdf")
+#fully_observed_watershed_river_scatterplot_comparison_colored_by_average_outlier_score(data, output_file)
+
+
+# Limit to fully observed cases
+# Have one plot per outlier type showing:
+### x-axis median outlier pvalue across observed tissues
+### Y-axis GAM posterior
+### Colored by watershed posterior
+########################################
+output_file <- paste0(output_stem, "_fully_observed_gam_outlier_scatterplot_comparison_colored_by_watershed_score.pdf")
+fully_observed_gam_outlier_scatterplot_comparison_colored_by_watershed(data, output_file)
+
+# Limit to missing cases for each outlier type
+# Have one plot per outlier type showing:
+### x-axis median outlier pvalue across observed tisssues
+### Y-axis GAM Posterior
+### Colored by watershed score
+########################################
+output_file <- paste0(output_stem, "_missing_gam_outlier_scatterplot_comparison_colored_by_watershed score.pdf")
+missing_gam_outlier_scatterplot_comparison_colored_by_watershed_score(data, output_file)
+

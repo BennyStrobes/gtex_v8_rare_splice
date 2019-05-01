@@ -61,7 +61,7 @@ watershed_3_class_score_run_dir=$output_root"watershed_three_class_scores/"
 
 
 ###############################################
-# Scripts
+# Scripts GTEX-ZYFD ENSG00000069696.6
 ###############################################
 if false; then
 sbatch prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
@@ -71,17 +71,32 @@ if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
-
-
 pseudocount="30"
 pvalue_fraction=".01"
-sh watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction
-
-
-
-pseudocount="30"
-pvalue_fraction=".01"
+gradient_descent_threshold=".005"
+theta_pair_init="4"
 if false; then
-sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
+sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+
+pseudocount="30"
+pvalue_fraction=".02"
+sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+
+pseudocount="30"
+pvalue_fraction=".03"
+sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+
+pseudocount="30"
+pvalue_fraction=".04"
+sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+
+pseudocount="30"
+pvalue_fraction=".05"
+sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
 fi
 
+if false; then
+pseudocount="30"
+pvalue_fraction=".01"
+sh watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
+fi
