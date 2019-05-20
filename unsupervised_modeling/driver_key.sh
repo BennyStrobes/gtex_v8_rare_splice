@@ -77,11 +77,11 @@ gradient_descent_threshold=".005"
 theta_pair_init="4"
 if false; then
 sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
-
+fi
 pseudocount="30"
 pvalue_fraction=".02"
-sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
-
+sh watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+if false; then
 pseudocount="30"
 pvalue_fraction=".03"
 sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init

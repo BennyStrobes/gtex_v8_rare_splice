@@ -620,6 +620,76 @@ plot_pr_river_watershed_comparison_curve <- function(roc_object_exact, roc_objec
 }
 
 
+plot_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_object_ind, number_of_dimensions, output_file) {
+	options(bitmapType = 'cairo', device = 'pdf')
+	precision <- c()
+	recall <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object_exact[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed (exact inference)
+		precision <- c(precision, dimension_roc_object$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("watershed", length(dimension_roc_object$evaROC$watershed_precision)))
+
+
+		# GAM
+		precision <- c(precision, dimension_roc_object$evaROC$GAM_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$GAM_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$GAM_precision)))
+		prediction_type <- c(prediction_type, rep("GAM", length(dimension_roc_object$evaROC$GAM_precision)))
+
+
+		# Indepdent
+		precision <- c(precision, dimension_roc_object_ind$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object_ind$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object_ind$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("river", length(dimension_roc_object_ind$evaROC$watershed_precision)))
+
+	}
+	df <- data.frame(precision, recall, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type, levels=c("watershed","river", "GAM")))
+  
+
+	outlier_type <- "ase"
+	outlier_name <- "ASE"
+  	plotter_ase <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=recall, y=precision, colour=prediction_type)) + geom_line() + 
+                labs(x="Recall", y="Precision", colour="", title=outlier_name) +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
+
+	outlier_type <- "splicing"
+	outlier_name <- "Splice"
+  	plotter_splice <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=recall, y=precision, colour=prediction_type)) + geom_line() + 
+                labs(x="Recall", y="Precision", colour="", title=outlier_name) +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
+
+	outlier_type <- "total_expression"
+	outlier_name <- "Total expression"
+  	plotter_te <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=recall, y=precision, colour=prediction_type)) + geom_line() + 
+                labs(x="Recall", y="Precision", colour="", title=outlier_name) +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
+
+    legend <- get_legend(plotter_ase + theme(legend.position="right"))
+    combined_plots <- plot_grid(plotter_te+ theme(legend.position="none"),plotter_ase + theme(legend.position="none"), plotter_splice+ theme(legend.position="none"), legend, rel_widths=c(1,1,1,.26), nrow=1)
+
+
+	ggsave(combined_plots, file=output_file,width = 40,height=9,units="cm")
+}
 
 plot_pr_watershed_watershed_edge_comparison_curve <- function(roc_object, roc_object_ind, number_of_dimensions, output_file) {
 	options(bitmapType = 'cairo', device = 'pdf')
@@ -706,9 +776,9 @@ data_input <- load_watershed_data(input_file, number_of_dimensions, pvalue_fract
 independent_variables = "false"
 inference_method = "vi"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_vi <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init)
-saveRDS(roc_object_vi, paste0(output_root, "_roc_object.rds"))
-# roc_object_vi <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_vi <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init)
+#saveRDS(roc_object_vi, paste0(output_root, "_roc_object.rds"))
+roc_object_vi <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with exact inference
@@ -716,9 +786,9 @@ saveRDS(roc_object_vi, paste0(output_root, "_roc_object.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init)
-saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
-#roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_exact <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init)
+#saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
+roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 
@@ -728,12 +798,18 @@ saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init)
-saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
-#roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_independent <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init)
+#saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
+roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 
+
+#######################################
+## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)
+#######################################
+plot_pr_gam_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_river_gam_comparison_pr.pdf"))
+print("DONE")
 
 #######################################
 ## Visualize precision-recall curves for river, watershed-vi, watershed-exact comparison and all three outlier types (te, splice, ase)

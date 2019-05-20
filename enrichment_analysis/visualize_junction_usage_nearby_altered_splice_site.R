@@ -19,11 +19,11 @@ odds_ratio_concensus_boxplot_across_tissues <- function(aa, output_file) {
 	df <- data.frame(odds_ratio=log(orat), type=as.factor(type))
 	plotter <- ggplot(df, aes(x=type, y=odds_ratio, fill=type)) + geom_boxplot() + 
 		theme(text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=12), legend.title = element_text(size=11)) +
-		labs(x="", y="ln(Odds Ratio)", fill="") + 
+		labs(x="", y="log(Enrichment)", fill="") + 
 		scale_fill_manual(values=c("dodgerblue", "violetred1")) +
 		theme(legend.position="none") + 
 		geom_hline(yintercept=0)
-	ggsave(plotter, file=output_file,width = 16,height=12,units="cm")
+	ggsave(plotter, file=output_file,width = 16,height=7,units="cm")
 
 }
 
@@ -39,11 +39,11 @@ odds_ratio_ppt_boxplot_across_tissues <- function(aa, output_file) {
 	df <- data.frame(odds_ratio=log(orat), type=as.factor(type))
 	plotter <- ggplot(df, aes(x=type, y=odds_ratio, fill=type)) + geom_boxplot() + 
 		theme(text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=12), legend.title = element_text(size=11)) +
-		labs(x="", y="ln(Odds Ratio)", fill="") + 
+		labs(x="", y="log(Enrichment)", fill="") + 
 		scale_fill_manual(values=c("dodgerblue", "violetred1")) +
 		theme(legend.position="none") + 
 		geom_hline(yintercept=0)
-	ggsave(plotter, file=output_file,width = 16,height=12,units="cm")
+	ggsave(plotter, file=output_file,width = 16,height=7,units="cm")
 
 }
 
