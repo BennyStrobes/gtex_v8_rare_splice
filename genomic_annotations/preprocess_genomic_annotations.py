@@ -723,6 +723,24 @@ def add_observed_ss_genomic_annotations(input_file, output_file,exon_file, clust
 	f.close()
 	t.close()
 
+def clean_up_gene_level_real_valued_genomic_annotations(input_file, output_file):
+	f = open(input_file)
+	t = open(output_file,'w')
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write(data[0] + '\t' + data[1] + '\t' + '\t'.join(data[5:]) + '\n')
+			continue
+		indi_id = data[0].split('_')[0] + '-' + data[0].split('_')[1]
+		d1 = str(abs(float(data[5])))
+		d2 = str(abs(float(data[6])))
+		t.write(indi_id + '\t' + data[1] + ':' + data[4] + '\t' + d1 + '\t' + d2 + '\t' + '\t'.join(data[7:]) + '\n')
+	f.close()
+	t.close()
+
 
 raw_genomic_annotation_file = sys.argv[1]
 variant_bed_file = sys.argv[2]
@@ -756,11 +774,17 @@ compress_annotations_from_transcript_level_to_gene_level(filtered_genomic_annota
 gene_level_genomic_annotation_and_ss_file = genomic_annotation_dir + 'filtered_raw_gene_level_and_ss_genomic_annotations.txt'
 add_observed_ss_genomic_annotations(gene_level_genomic_annotation_file, gene_level_genomic_annotation_and_ss_file,exon_file, cluster_info_file)
 
-# STEP 4
+# STEP 4a
 # Make genomic annotations real valued
 # Many of the genomic annotations are categorical. Convert these categorical variables to sets of binary variables.
 gene_level_real_valued_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_genomic_annotations.txt'
 make_real_valued_genomic_annotations(gene_level_genomic_annotation_and_ss_file, gene_level_real_valued_genomic_annotation_file)
+
+# STEP 4b
+# Make file that has line for each variant in the same format as step 5.
+gene_level_real_valued_clean_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_clean_genomic_annotations.txt'
+clean_up_gene_level_real_valued_genomic_annotations(gene_level_real_valued_genomic_annotation_file, gene_level_real_valued_clean_genomic_annotation_file)
+
 
 # STEP 5
 # Compress multiple variants onto same gene

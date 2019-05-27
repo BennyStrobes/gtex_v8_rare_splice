@@ -58,10 +58,7 @@ visualization_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/gen
 ##########################
 # Part 1: Preprocess genomic annotations from Xin
 # Essentially compress genomic annotation lines from transcript level to the gene level
-if false; then
 sh preprocess_genomic_annotations.sh $raw_genomic_annotation_file $variant_bed_file $rare_variant_to_gene_file $genomic_annotation_dir $exon_file $cluster_info_file
-fi
-
 
 Rscript visualize_genomic_variants.R $num_variants_file $visualization_dir
 

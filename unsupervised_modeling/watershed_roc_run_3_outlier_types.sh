@@ -29,4 +29,4 @@ echo $gene_thresh
 echo $gradient_descent_threshold
 echo $theta_pair_init
 
-Rscript watershed_roc.R $pvalue_fraction $input_file $output_stem $number_of_dimensions $pseudocount $gradient_descent_threshold $theta_pair_init
+Rscript watershed_roc_3_outlier_types.R $pvalue_fraction $input_file $output_stem $number_of_dimensions $pseudocount $gradient_descent_threshold $theta_pair_init

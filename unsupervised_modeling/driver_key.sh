@@ -35,8 +35,17 @@ genomic_annotation_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicin
 # File containing genomic annotations
 genomic_annotation_file=$genomic_annotation_dir"filtered_real_valued_gene_level_variant_compressed_genomic_annotations.txt"
 
+# File containing genomic annotations for each variant
+variant_level_genomic_annotation_file=$genomic_annotation_dir"filtered_real_valued_gene_level_clean_genomic_annotations.txt"
+
 # File containing mapping from (gene, individual) to rare variants mapped within 10KB of the gene
 gene_individual_to_variant_mapping_file=$genomic_annotation_dir"variants_compressed_onto_genes.txt"
+
+# Ordered list of GTEx v8 tissue names
+tissue_names_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtex_v8_tissues.txt"
+
+# Directory containing splicing outlier calls
+splicing_outlier_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/splicing_outlier_calls/"
 
 #############################################################
 #Used Directories (directories need to be created and empty before starting)
@@ -55,16 +64,19 @@ river_run_dir=$output_root"river/"
 # Directory containing results from watershed ROC analysis
 watershed_3_class_roc_run_dir=$output_root"watershed_three_class_roc/"
 
+# Directory containing results from watershed tbt ROC analysis
+watershed_tbt_roc_run_dir=$output_root"watershed_tbt_roc/"
+
 # Directory containing results from watershed analysis applied to all variants
 watershed_3_class_score_run_dir=$output_root"watershed_three_class_scores/"
 
 
 
 ###############################################
-# Scripts GTEX-ZYFD ENSG00000069696.6
+# Scripts 
 ###############################################
 if false; then
-sbatch prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file
+sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $variant_level_genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file $splicing_outlier_dir $tissue_names_file
 fi
 
 if false; then
@@ -76,27 +88,47 @@ pvalue_fraction=".01"
 gradient_descent_threshold=".005"
 theta_pair_init="4"
 if false; then
-sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
-fi
+
+sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+
 pseudocount="30"
 pvalue_fraction=".02"
-sh watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
-if false; then
+sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+
 pseudocount="30"
 pvalue_fraction=".03"
-sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
 
 pseudocount="30"
 pvalue_fraction=".04"
-sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
+sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
 
 pseudocount="30"
 pvalue_fraction=".05"
-sbatch watershed_roc_run.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
-fi
+sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init
 
-if false; then
+
 pseudocount="30"
 pvalue_fraction=".01"
-sh watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
+sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
 fi
+
+
+
+#####################
+# TBT Model
+#####################
+pseudocount="30"
+pvalue_fraction=".01"
+# gradient_descent_threshold=".005"
+gradient_descent_threshold=".0005"
+# gradient_descent_threshold=".0001"
+theta_pair_init="0"
+lambda_pair="0"
+if false; then
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init $lambda_pair
+fi
+
+sh watershed_roc_run_tbt_debug.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init $lambda_pair
+
+

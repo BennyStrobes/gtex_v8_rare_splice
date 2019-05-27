@@ -15,6 +15,7 @@ NumericMatrix extract_all_binary_combinations(int n) {
 
 	NumericMatrix combo_mat(nTemp + 1, n);
 
+
 	for (int i = 0; i <= nTemp; i++)
 	{
 		for (int k = 0; k < n; k++)

@@ -78,7 +78,7 @@ double compute_elbo(NumericMatrix mu, int sample_num, int number_of_dimensions, 
 List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int number_of_pairs, double step_size, double convergence_thresh, NumericMatrix probability_init, bool posterior_bool) {
 	std::random_device rd;
     std::mt19937 g(rd());
-	// Rcpp::Rcout << discrete_outliers(0,1) << std::endl;  
+	//Rcpp::Rcout << discrete_outliers(0,1) << std::endl;  
 	// bool temp = discrete_outliers(0,1) == discrete_outliers(0,1);
 	// Rcpp::Rcout << temp << std::endl;  
 
@@ -94,6 +94,7 @@ List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix disc
 	double elbo_end = 0;
 	// Loop through samples
 	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
+		//Rcpp::Rcout << sample_num << std::endl;  
 
 		// Initialize posterior prob
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
@@ -103,10 +104,12 @@ List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix disc
 		iteration_counter = 0;
 
 		elbo_start = compute_elbo(probabilities, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);
-
 		while (convergence == 0) {
 			diff_prob = 0;
-			std::vector<int> v = {0, 1, 2};
+			std::vector<int> v(number_of_dimensions);
+			for (int dimension=0; dimension < number_of_dimensions; dimension++) {
+				v[dimension] = dimension;
+			}
  			std::shuffle(v.begin(), v.end(), g);
 
 			for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
@@ -126,7 +129,6 @@ List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix disc
 				Rcpp::Rcout << "SKIPPED" << std::endl;  
 				convergence = 1;
 			}
-
 			iteration_counter += 1;
 		}
 		elbo_end = compute_elbo(probabilities, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);

@@ -98,6 +98,7 @@ def remove_no_variance_features(input_file, fully_observed_input_file):
 					good_columns.append(i)
 			good_columns = np.asarray(good_columns)
 			head_count = head_count + 1
+
 			new_data = np.asarray(data)[good_columns]
 			t.write('\t'.join(new_data) + '\tN2pair\n')
 			continue
@@ -159,11 +160,13 @@ def remove_fully_missing(input_file, output_file):
 	t.close()
 
 genomic_annotation_file = sys.argv[1]
-total_expression_outlier_file = sys.argv[2]
-ase_outlier_file = sys.argv[3]
-splicing_outlier_file = sys.argv[4]
-unsupervised_learning_input_dir = sys.argv[5]
+variant_level_genomic_annotation_file = sys.argv[2]
+total_expression_outlier_file = sys.argv[3]
+ase_outlier_file = sys.argv[4]
+splicing_outlier_file = sys.argv[5]
+unsupervised_learning_input_dir = sys.argv[6]
 
+print("START")
 
 fully_observed_input_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
 
@@ -171,8 +174,12 @@ splicing_outliers = get_splicing_and_ase_outliers(splicing_outlier_file)
 ase_outliers = get_splicing_and_ase_outliers(ase_outlier_file)
 total_expression_outliers = get_total_expression_outliers(total_expression_outlier_file)
 
+print_outlier_output_file(splicing_outliers, total_expression_outliers, ase_outliers, variant_level_genomic_annotation_file, unsupervised_learning_input_dir + 'all_availibile_samples_variant_level.txt', fully_observed_input_file)
+remove_fully_missing(unsupervised_learning_input_dir + 'all_availibile_samples_variant_level_features_filter.txt', unsupervised_learning_input_dir + 'all_availibile_samples_variant_level_features_filter_partially_observed_expression.txt')
+
 
 print_outlier_output_file(splicing_outliers, total_expression_outliers, ase_outliers, genomic_annotation_file, unsupervised_learning_input_dir + 'all_availibile_samples.txt', fully_observed_input_file)
-
-
 remove_fully_missing(unsupervised_learning_input_dir + 'all_availibile_samples_features_filter.txt', unsupervised_learning_input_dir + 'all_availibile_samples_features_filter_partially_observed_expression.txt')
+
+
+
