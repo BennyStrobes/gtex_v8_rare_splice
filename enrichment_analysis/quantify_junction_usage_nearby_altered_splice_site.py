@@ -314,7 +314,6 @@ def extract_cases_where_outlier_individuals_has_concensus_variant(tissue_names, 
 
 	# Loop through tissues
 	for tissue in tissue_names:
-		print(tissue)
 		# In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
 		# Extract list of individuals for this tissue
 		# Use outlier file to get list of individuals we have RNA-seq for
@@ -387,7 +386,6 @@ def extract_cases_where_outlier_individuals_has_ppt_variant(tissue_names, cluste
 
 	# Loop through tissues
 	for tissue in tissue_names:
-		print(tissue)
 		# In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
 		# Extract list of individuals for this tissue
 		# Use outlier file to get list of individuals we have RNA-seq for
@@ -499,7 +497,6 @@ def add_read_count_contingency_table(input_file, output_file, tissue_names, filt
 	t = open(output_file, 'w')
 	# Loop through tissues
 	for i, tissue_name in enumerate(tissue_names):
-		print(tissue_name)
 		# Extract object containing junction counts
 		jxn_file = filtered_cluster_dir + tissue_name + '_filtered_jxns_cross_tissue_clusters_gene_mapped.txt'
 		junction_counts_object, indi_arr = extract_junction_counts_object(jxn_file)

@@ -5,6 +5,747 @@ library(RColorBrewer)
 library(plyr)
 library(cowplot)
 
+
+make_variant_allele_odds_ratio_plot <- function(distance, inlier_distance_file, outlier_distance_file, output_file, ss_type, position,title) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+	print(paste0(ss_type, " ", position))
+
+	position_outlier_distances <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance == position,]
+	position_inlier_distances <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance == position,]
+
+	alleles <- c("A", "C", "T", "G")
+
+	variant_types <- c()
+	outlier_status <- c()
+	counts <- c()
+	# Loop through all possible variants
+	for (iter1 in 1:length(alleles)) {
+		for (iter2 in 1:length(alleles)) {
+			major_allele = alleles[iter1]
+			variant_allele = alleles[iter2]
+			if (major_allele != variant_allele) {
+				variant_type <- paste0(major_allele, "->",variant_allele)
+				a <- sum(position_outlier_distances$major_allele == major_allele & position_outlier_distances$variant_allele == variant_allele) 
+				c <- sum(position_inlier_distances$major_allele == major_allele & position_inlier_distances$variant_allele == variant_allele) 
+
+				# Add outliers
+				variant_types <- c(variant_types, variant_type)
+				outlier_status <- c(outlier_status, "outlier")
+				counts <- c(counts, a)
+				# Add inliers
+				variant_types <- c(variant_types, variant_type)
+				outlier_status <- c(outlier_status, "inlier")
+				counts <- c(counts, c)
+
+			}
+
+		}
+	}
+
+	df <- data.frame(variant_types=factor(variant_types), outlier_status = factor(outlier_status), counts=counts)
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	outlier_counts <- dim(position_outlier_distances)[1] 
+	inlier_counts <- dim(position_inlier_distances)[1]
+	
+
+	plotter <- ggplot(df,aes(x=outlier_status, y=counts, fill=variant_types)) + 
+    	geom_bar(stat="identity", position="fill") +
+    	labs(x="",y="proportion",fill="", title=paste0(title,"\n")) + 
+    	scale_fill_manual(values=c("dodgerblue4", "dodgerblue3", "deepskyblue2", "palegreen4", "palegreen3", "palegreen1","violetred4", "violetred3","violetred1", "goldenrod4", "goldenrod3", "goldenrod1")) + 
+    	theme(text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=12), legend.title = element_text(size=11)) 
+
+    	#y,x
+    plotter <- ggdraw(plotter) + draw_label(as.character(inlier_counts), x=.31,y=.85) + draw_label(as.character(outlier_counts), x=.61,y=.85)
+
+	ggsave(plotter, file=output_file,width = 15,height=10,units="cm")
+
+}
+
+mutation_type_bar_plot <- function(inlier_distances, outlier_distances, ss_type, position, title, y_axis) {
+	position_outlier_distances <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance == position,]
+	position_inlier_distances <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance == position,]
+	alleles <- c("A", "C", "T", "G")
+	# Initialize output arrays
+	variant_types <- c()
+	outlier_status <- c()
+	counts <- c()
+	# Loop through all possible variants
+	for (iter1 in 1:length(alleles)) {
+		for (iter2 in 1:length(alleles)) {
+			major_allele = alleles[iter1]
+			variant_allele = alleles[iter2]
+			if (major_allele != variant_allele) {
+				variant_type <- paste0(major_allele, "->",variant_allele)
+				a <- sum(position_outlier_distances$major_allele == major_allele & position_outlier_distances$variant_allele == variant_allele) 
+				c <- sum(position_inlier_distances$major_allele == major_allele & position_inlier_distances$variant_allele == variant_allele) 
+
+				# Add outliers
+				variant_types <- c(variant_types, variant_type)
+				outlier_status <- c(outlier_status, "outlier")
+				counts <- c(counts, a)
+				# Add inliers
+				variant_types <- c(variant_types, variant_type)
+				outlier_status <- c(outlier_status, "inlier")
+				counts <- c(counts, c)
+			}
+		}
+	}
+
+	# Organize into compact data frame
+	df <- data.frame(variant_types=factor(variant_types), outlier_status = factor(outlier_status), counts=counts)
+	# Count number of outliers
+	outlier_counts <- dim(position_outlier_distances)[1] 
+	# Count number of inliers
+	inlier_counts <- dim(position_inlier_distances)[1]
+
+	plotter <- ggplot(df,aes(x=outlier_status, y=counts, fill=variant_types)) + 
+    	geom_bar(stat="identity", position="fill") +
+    	labs(x="",y="proportion",fill="", title="") + 
+    	scale_fill_manual(values=c("dodgerblue4", "dodgerblue3", "deepskyblue2", "palegreen4", "palegreen3", "palegreen1","violetred4", "violetred3","violetred1", "goldenrod4", "goldenrod3", "goldenrod1")) + 
+    	gtex_v8_figure_theme()
+    	#y,x
+    x_pos_1 = .61
+    x_pos_2 = .84
+    x_pos_3 = .74
+    if (y_axis == FALSE) {
+    	plotter <- plotter + theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.line.y=element_blank(),
+        axis.ticks.y=element_blank())
+        x_pos_1 = .32
+        x_pos_2 = .76
+        x_pos_3 = .55
+    }
+    plotter <- ggdraw(plotter + theme(plot.margin = unit(c(0, 0, 0, 0), "cm")) + theme(legend.position="none")) +
+     		   draw_label(as.character(inlier_counts), x=x_pos_1,y=.87,size=6) + 
+     		   draw_label(as.character(outlier_counts), x=x_pos_2,y=.87,size=6) + 
+     		   draw_label(title, x=x_pos_3, y=.12, size=9)
+    return(plotter)
+}
+
+get_mutation_bar_plot_legend <- function(inlier_distances, outlier_distances, ss_type, position, title, y_axis) {
+	position_outlier_distances <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance == position,]
+	position_inlier_distances <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance == position,]
+	alleles <- c("A", "C", "T", "G")
+	# Initialize output arrays
+	variant_types <- c()
+	outlier_status <- c()
+	counts <- c()
+	# Loop through all possible variants
+	for (iter1 in 1:length(alleles)) {
+		for (iter2 in 1:length(alleles)) {
+			major_allele = alleles[iter1]
+			variant_allele = alleles[iter2]
+			if (major_allele != variant_allele) {
+				variant_type <- paste0(major_allele, "->",variant_allele)
+				a <- sum(position_outlier_distances$major_allele == major_allele & position_outlier_distances$variant_allele == variant_allele) 
+				c <- sum(position_inlier_distances$major_allele == major_allele & position_inlier_distances$variant_allele == variant_allele) 
+
+				# Add outliers
+				variant_types <- c(variant_types, variant_type)
+				outlier_status <- c(outlier_status, "outlier")
+				counts <- c(counts, a)
+				# Add inliers
+				variant_types <- c(variant_types, variant_type)
+				outlier_status <- c(outlier_status, "inlier")
+				counts <- c(counts, c)
+			}
+		}
+	}
+
+	# Organize into compact data frame
+	df <- data.frame(variant_types=factor(variant_types), outlier_status = factor(outlier_status), counts=counts)
+	# Count number of outliers
+	outlier_counts <- dim(position_outlier_distances)[1] 
+	# Count number of inliers
+	inlier_counts <- dim(position_inlier_distances)[1]
+
+	plotter <- ggplot(df,aes(x=outlier_status, y=counts, fill=variant_types)) + 
+    	geom_bar(stat="identity", position="fill") +
+    	labs(x="",y="proportion",fill="", title=paste0(title,"\n")) + 
+    	scale_fill_manual(values=c("dodgerblue4", "dodgerblue3", "deepskyblue2", "palegreen4", "palegreen3", "palegreen1","violetred4", "violetred3","violetred1", "goldenrod4", "goldenrod3", "goldenrod1")) + 
+    	gtex_v8_figure_theme()
+    	#y,x
+ 	legend <- get_legend(plotter + theme(plot.title=element_text(margin=margin(0,0,0,0)), legend.text = element_text(size=6),legend.key.size = unit(0.1, "cm")))
+    return(legend)
+}
+
+
+
+gtex_v8_figure_theme <- function() {
+	return(theme(plot.title = element_text(face="plain",size=8), text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)))
+}
+
+
+mutation_type_bar_plot_across_concensus_sites <- function(inlier_distance_file, outlier_distance_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+	ss_type <- "donor"
+	position <- -6
+	ss_name <- "D+6"
+	d_6_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "donor"
+	position <- -5
+	ss_name <- "D+5"
+	d_5_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "donor"
+	position <- -4
+	ss_name <- "D+4"
+	d_4_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "donor"
+	position <- -3
+	ss_name <- "D+3"
+	d_3_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "donor"
+	position <- -2
+	ss_name <- "D+2"
+	d_2_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "donor"
+	position <- -1
+	ss_name <- "D+1"
+	d_1_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "donor"
+	position <- 0
+	ss_name <- "D-1"
+	d_minus_1_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, TRUE)
+
+	ss_type <- "acceptor"
+	position <- -2
+	ss_name <- "A-2"
+	a_minus_2_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "acceptor"
+	position <- -1
+	ss_name <- "A-1"
+	a_minus_1_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	ss_type <- "acceptor"
+	position <- 0
+	ss_name <- "A+1"
+	a_1_plot <- mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, FALSE)
+
+	mutation_bar_plot_legend <- get_mutation_bar_plot_legend(inlier_distances, outlier_distances, "acceptor", 0, "A+1", TRUE)
+
+	gg <- plot_grid(d_minus_1_plot, d_1_plot, d_2_plot, d_3_plot, d_4_plot, d_5_plot, d_6_plot, a_minus_2_plot, a_minus_1_plot, a_1_plot,mutation_bar_plot_legend, nrow=1, rel_widths=c(1.7,1, 1, 1, 1, 1, 1, 1, 1, 1, .58))
+
+	return(gg)
+
+}
+
+broad_mutation_type_bar_plot <- function(inlier_distances, outlier_distances, ss_type, position, title,concensus_allele, y_axis) {
+	position_outlier_distances <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance == position,]
+	position_inlier_distances <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance == position,]
+	# Initialize output arrays
+	variant_types <- c()
+	outlier_status <- c()
+	counts <- c()
+
+	###############
+	# Variant changes to concensus allele
+	###############
+	variant_type <- "to_concensus"
+	a <- sum(position_outlier_distances$variant_allele == concensus_allele) 
+	c <- sum(position_inlier_distances$variant_allele == concensus_allele) 
+	# Add outliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "outlier")
+	counts <- c(counts, a)
+	# Add inliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "inlier")
+	counts <- c(counts, c)
+
+	###############
+	# Variant changes from concensus allele
+	###############
+	variant_type <- "from_concensus"
+	a <- sum(position_outlier_distances$major_allele == concensus_allele) 
+	c <- sum(position_inlier_distances$major_allele == concensus_allele) 
+	# Add outliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "outlier")
+	counts <- c(counts, a)
+	# Add inliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "inlier")
+	counts <- c(counts, c)
+
+	###############
+	# Variant changes neither to or from concensus allele
+	###############
+	variant_type <- "neither"
+	a <- sum(position_outlier_distances$major_allele != concensus_allele & position_outlier_distances$variant_allele != concensus_allele) 
+	c <- sum(position_inlier_distances$major_allele != concensus_allele & position_inlier_distances$variant_allele != concensus_allele) 
+	# Add outliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "outlier")
+	counts <- c(counts, a)
+	# Add inliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "inlier")
+	counts <- c(counts, c)
+
+
+
+	
+	# Organize into compact data frame
+	df <- data.frame(variant_types=factor(variant_types,levels=c("to_concensus", "from_concensus", "neither")), outlier_status = factor(outlier_status), counts=counts)
+	# Count number of outliers
+	outlier_counts <- dim(position_outlier_distances)[1] 
+	# Count number of inliers
+	inlier_counts <- dim(position_inlier_distances)[1]
+
+	plotter <- ggplot(df,aes(x=outlier_status, y=counts, fill=variant_types)) + 
+    	geom_bar(stat="identity", position="fill") +
+    	labs(x="",y="proportion",fill="", title="") + 
+    	scale_fill_manual(values=c("dodgerblue3", "violetred3","grey")) + 
+    	gtex_v8_figure_theme()
+    	#y,x
+    x_pos_1 = .61
+    x_pos_2 = .84
+    x_pos_3 = .74
+    if (y_axis == FALSE) {
+    	plotter <- plotter + theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.line.y=element_blank(),
+        axis.ticks.y=element_blank())
+        x_pos_1 = .32
+        x_pos_2 = .76
+        x_pos_3 = .55
+    }
+    plotter <- ggdraw(plotter + theme(plot.margin = unit(c(0, 0, 0, 0), "cm")) + theme(legend.position="none")) +
+     		   draw_label(as.character(inlier_counts), x=x_pos_1,y=.87,size=6) + 
+     		   draw_label(as.character(outlier_counts), x=x_pos_2,y=.87,size=6) + 
+     		   draw_label(title, x=x_pos_3, y=.12, size=9)
+    return(plotter)
+}
+
+
+get_broad_mutation_type_bar_plot_legend <- function(inlier_distances, outlier_distances, ss_type, position, title,concensus_allele, y_axis) {
+	position_outlier_distances <- outlier_distances[outlier_distances$splice_site_type==ss_type & outlier_distances$distance == position,]
+	position_inlier_distances <- inlier_distances[inlier_distances$splice_site_type==ss_type & inlier_distances$distance == position,]
+	# Initialize output arrays
+	variant_types <- c()
+	outlier_status <- c()
+	counts <- c()
+
+	###############
+	# Variant changes to concensus allele
+	###############
+	variant_type <- "to_concensus"
+	a <- sum(position_outlier_distances$variant_allele == concensus_allele) 
+	c <- sum(position_inlier_distances$variant_allele == concensus_allele) 
+	# Add outliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "outlier")
+	counts <- c(counts, a)
+	# Add inliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "inlier")
+	counts <- c(counts, c)
+
+	###############
+	# Variant changes from concensus allele
+	###############
+	variant_type <- "from_concensus"
+	a <- sum(position_outlier_distances$major_allele == concensus_allele) 
+	c <- sum(position_inlier_distances$major_allele == concensus_allele) 
+	# Add outliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "outlier")
+	counts <- c(counts, a)
+	# Add inliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "inlier")
+	counts <- c(counts, c)
+
+	###############
+	# Variant changes neither to or from concensus allele
+	###############
+	variant_type <- "neither"
+	a <- sum(position_outlier_distances$major_allele != concensus_allele & position_outlier_distances$variant_allele != concensus_allele) 
+	c <- sum(position_inlier_distances$major_allele != concensus_allele & position_inlier_distances$variant_allele != concensus_allele) 
+	# Add outliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "outlier")
+	counts <- c(counts, a)
+	# Add inliers
+	variant_types <- c(variant_types, variant_type)
+	outlier_status <- c(outlier_status, "inlier")
+	counts <- c(counts, c)
+
+
+
+	
+	# Organize into compact data frame
+	df <- data.frame(variant_types=factor(variant_types,levels=c("to_concensus", "from_concensus", "neither")), outlier_status = factor(outlier_status), counts=counts)
+	# Count number of outliers
+	outlier_counts <- dim(position_outlier_distances)[1] 
+	# Count number of inliers
+	inlier_counts <- dim(position_inlier_distances)[1]
+
+	plotter <- ggplot(df,aes(x=outlier_status, y=counts, fill=variant_types)) + 
+    	geom_bar(stat="identity", position="fill") +
+    	labs(x="",y="proportion",fill="", title="") + 
+    	scale_fill_manual(values=c("dodgerblue3", "violetred3","grey")) + 
+    	gtex_v8_figure_theme()
+    	#y,x
+
+    return(get_legend(plotter + theme(legend.text = element_text(size=7),legend.key.size = unit(0.1, "cm"), legend.position="bottom")))
+}
+
+
+
+broad_mutation_type_bar_plot_across_concensus_sites <- function(inlier_distance_file, outlier_distance_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+	ss_type <- "donor"
+	position <- -6
+	ss_name <- "D+6"
+	concensus <- "T"
+	d_6_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name, concensus,  FALSE)
+
+	ss_type <- "donor"
+	position <- -5
+	ss_name <- "D+5"
+	concensus <- "G"
+	d_5_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	ss_type <- "donor"
+	position <- -4
+	ss_name <- "D+4"
+	concensus <- "A"
+	d_4_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	ss_type <- "donor"
+	position <- -3
+	ss_name <- "D+3"
+	concensus <- "A"
+	d_3_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	ss_type <- "donor"
+	position <- -2
+	ss_name <- "D+2"
+	concensus <- "T"
+	d_2_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	ss_type <- "donor"
+	position <- -1
+	ss_name <- "D+1"
+	concensus <- "G"
+	d_1_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	ss_type <- "donor"
+	position <- 0
+	ss_name <- "D-1"
+	concensus <- "G"
+	d_minus_1_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, TRUE)
+
+	ss_type <- "acceptor"
+	position <- -2
+	ss_name <- "A-2"
+	concensus <- "A"
+	a_minus_2_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	ss_type <- "acceptor"
+	position <- -1
+	ss_name <- "A-1"
+	concensus <- "G"
+	a_minus_1_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	ss_type <- "acceptor"
+	position <- 0
+	ss_name <- "A+1"
+	concensus <- "G"
+	a_1_plot <- broad_mutation_type_bar_plot(inlier_distances, outlier_distances, ss_type, position, ss_name,concensus, FALSE)
+
+	mutation_bar_plot_legend <- get_broad_mutation_type_bar_plot_legend(inlier_distances, outlier_distances, "acceptor", 0, "A+1", "G", TRUE)
+
+	gg <- plot_grid(d_minus_1_plot, d_1_plot, d_2_plot, d_3_plot, d_4_plot, d_5_plot, d_6_plot, a_minus_2_plot, a_minus_1_plot, a_1_plot, nrow=1, rel_widths=c(1.7,1, 1, 1, 1, 1, 1, 1, 1, 1))
+
+	return(plot_grid(gg, mutation_bar_plot_legend, nrow=2, rel_heights=c(1,.1)))
+
+}
+
+
+extract_positional_odds_ratio_data_for_all_positions_in_window <- function(outlier_distances, inlier_distances, distance_window) {
+	dist_to_ss <- c()
+	odds_ratios <- c()
+	upper_bounds <- c()
+	lower_bounds <- c()
+	for (distance_iter in -distance_window:(distance_window-1)) {
+		rv_outlier <- sum(outlier_distances[,1] == distance_iter)
+		rv_inlier <- sum(inlier_distances[,1] == distance_iter)
+		no_rv_outlier <- sum(outlier_distances[,1] != distance_iter)
+		no_rv_inlier <- sum(inlier_distances[,1] != distance_iter)
+		# odds_ratio_old <- (rv_outlier/rv_inlier)/(no_rv_outlier/no_rv_inlier)
+		a <- rv_outlier  + 1
+		b <- rv_outlier + no_rv_outlier + 2
+		c <- rv_inlier +1
+		d <- rv_inlier + no_rv_inlier + 2
+		orat <- (a/b)/(c/d)
+
+		log_bounds <- 1.96*sqrt((1.0/a) - (1.0/b) + (1.0/c) - (1.0/d))
+		#upper_bound <- exp(log_orat + log_bounds)
+		#lower_bound <- exp(log_orat - log_bounds) 
+		upper_bound <- orat*exp(log_bounds)
+		lower_bound <- orat*exp(-log_bounds)
+		if (orat == 0) {
+			upper_bound = 0
+			lower_bound = 0
+		}
+
+		# Add data to array
+		odds_ratios <- c(odds_ratios, orat)
+		dist_to_ss <- c(dist_to_ss, distance_iter)
+		upper_bounds <- c(upper_bounds, upper_bound)
+		lower_bounds <- c(lower_bounds, lower_bound)
+	}
+	df <- data.frame(odds_ratio=odds_ratios, dist_to_ss=dist_to_ss, lower_bounds=lower_bounds, upper_bounds=upper_bounds)
+
+	return(df)
+
+}
+
+# Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites) using odds ratios of real vs background
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+make_positional_odds_ratio_plot_seperated_by_ss_type <- function(inlier_distance_file, outlier_distance_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+	outlier_donor_distances <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor",]
+	outlier_acceptor_distances <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor",]
+	inlier_donor_distances <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor",]
+	inlier_acceptor_distances <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor",]
+
+
+
+	donor_df <- extract_positional_odds_ratio_data_for_all_positions_in_window(outlier_donor_distances, inlier_donor_distances, 7)
+	acceptor_df <- extract_positional_odds_ratio_data_for_all_positions_in_window(outlier_acceptor_distances, inlier_acceptor_distances, 7)
+
+
+
+	#Combine outliers and non-outliers into a compact data frame
+	odds_ratio <- c(donor_df$odds_ratio, acceptor_df$odds_ratio)
+	dist_to_ss <- c(donor_df$dist_to_ss, acceptor_df$dist_to_ss)
+	ss_type <- c(rep("donor",length(donor_df$dist_to_ss)), rep("acceptor", length(acceptor_df$dist_to_ss)))
+	lower_bounds <- c(donor_df$lower_bounds, acceptor_df$lower_bounds)
+	upper_bounds <- c(donor_df$upper_bounds, acceptor_df$upper_bounds)
+
+	df <- data.frame(odds_ratio=odds_ratio, dist_to_ss=dist_to_ss, lower_bound=lower_bounds, upper_bound=upper_bounds, ss_type=factor(ss_type, levels=c("donor","acceptor")))
+
+	df_acceptor <- df[as.character(df$ss_type) == "acceptor",]
+	df_donor <- df[as.character(df$ss_type) == "donor", ]
+
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	acceptor_plot <-  ggplot() + geom_errorbar(data=df_acceptor, mapping=aes(x=dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="darkorchid") +
+					geom_point(data=df_acceptor, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Relative risk") +
+					geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					gtex_v8_figure_theme() +
+					theme(axis.text.x=element_text(angle=45,hjust=1)) +
+					scale_x_continuous(breaks=-7:6, labels=c("A-7","A-6","A-5","A-4","A-3","A-2","A-1","A+1","A+2","A+3","A+4","A+5","A+6", "A+7"))
+
+
+	donor_plot <-  ggplot() + geom_errorbar(data=df_donor, mapping=aes(x=-dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="darkorchid") +
+					geom_point(data=df_donor, mapping=aes(x=-dist_to_ss, y=odds_ratio), color="darkorchid") +
+					labs(x = "Distance from splice site (BP)", y = "Relative risk") +
+					geom_vline(xintercept = 2.5, size=.00001,linetype="dashed") +
+					geom_vline(xintercept = .5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					gtex_v8_figure_theme() + 
+					theme(axis.text.x=element_text(angle=45,hjust=1)) +
+					scale_x_continuous(breaks=-6:7, labels=c("D-7", "D-6", "D-5", "D-4", "D-3", "D-2", "D-1", "D+1", "D+2", "D+3","D+4", "D+5", "D+6", "D+7"))
+
+
+	error_bar_plot <- plot_grid(donor_plot,acceptor_plot, ncol=2)
+
+	return(error_bar_plot)
+
+
+}
+
+
+odds_ratio_concensus_boxplot_across_tissues <- function(aa) {
+	df_to_concensus <- aa[as.character(aa$to_or_from_concensus) == "to_concensus",]
+	df_from_concensus <- aa[as.character(aa$to_or_from_concensus) == "from_concensus",]
+	orat <- c()
+	type <- c()
+	orat <- c(orat, df_to_concensus$odds_ratio, df_from_concensus$odds_ratio)
+	type <- c(type, rep("Consensus Created", length(df_to_concensus$odds_ratio)), rep("Consensus Destroyed", length(df_from_concensus$odds_ratio)))
+	df <- data.frame(odds_ratio=log(orat), type=as.factor(type))
+	plotter <- ggplot(df, aes(x=type, y=odds_ratio, fill=type)) + geom_boxplot() + 
+		labs(x="", y="log(Enrichment)", fill="") + 
+		scale_fill_manual(values=c("dodgerblue", "violetred1")) +
+		theme(legend.position="none") + 
+		geom_hline(yintercept=0) + 
+		gtex_v8_figure_theme()
+	return(plotter)
+}
+
+odds_ratio_ppt_boxplot_across_tissues <- function(aa) {
+	df_to_concensus <- aa[as.character(aa$variant_type) == "purine->pyrimidine",]
+	df_from_concensus <- aa[as.character(aa$variant_type) == "pyrimidine->purine",]
+	orat <- c()
+	type <- c()
+	orat <- c(orat, df_to_concensus$odds_ratio, df_from_concensus$odds_ratio)
+	type <- c(type, rep("Purine -> Pyrimidine", length(df_to_concensus$odds_ratio)), rep("Pyrimidine -> Purine", length(df_from_concensus$odds_ratio)))
+	df <- data.frame(odds_ratio=log(orat), type=as.factor(type))
+	plotter <- ggplot(df, aes(x=type, y=odds_ratio, fill=type)) + geom_boxplot() + 
+		theme(text = element_text(size=12),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=12), legend.title = element_text(size=11)) +
+		labs(x="", y="log(Enrichment)", fill="") + 
+		scale_fill_manual(values=c("dodgerblue", "violetred1")) +
+		theme(legend.position="none") + 
+		geom_hline(yintercept=0) +
+		gtex_v8_figure_theme()
+	return(plotter)
+}
+
+#######################
+# Command Line args
+#######################
+variant_position_enrichment_dir <- args[1]  # Input dir with positional enrichments
+jxn_usage_nearby_altered_ss_enrichment_dir <- args[2]  # Second input dir with read count enrichments
+visualize_variant_position_enrichment_dir <- args[3]  # Output dir
+
+options(bitmapType = 'cairo', device = 'pdf')
+
+
+
+#######################
+#Make plot showing read count enrichments for rare variants in concensus sites
+#########################
+# Load in data
+input_file <- paste0(jxn_usage_nearby_altered_ss_enrichment_dir, "tissue_by_tissue_outliers_with_rv_in_concensus_sites_outlier_individuals_1e-05_inlier_individuals_0.5_with_read_counts.txt")
+enrichment_data <- read.table(input_file, header=TRUE)
+
+# Visualize enrichment distribution (data aggregrated) tissues
+output_file <- paste0(visualize_variant_position_enrichment_dir, "concensus_jxn_usage_enrichment_across_tissues.pdf")
+concensus_read_count_boxplot <- odds_ratio_concensus_boxplot_across_tissues(enrichment_data)
+ggsave(concensus_read_count_boxplot, file=output_file, width=7.2, height=3,units="in")
+
+
+#######################
+#Make plot showing read count enrichments for rare variants in PPTs
+#########################
+
+# Load in data
+input_file <- paste0(jxn_usage_nearby_altered_ss_enrichment_dir, "tissue_by_tissue_outliers_with_rv_in_ppt_sites_outlier_individuals_1e-05_inlier_individuals_0.5_with_read_counts.txt")
+enrichment_data <- read.table(input_file, header=TRUE)
+
+# Visualize enrichment distribution (data aggregrated) tissues
+output_file <- paste0(visualize_variant_position_enrichment_dir, "ppt_jxn_usage_enrichment_across_tissues.pdf")
+ppt_read_count_boxplot <- odds_ratio_ppt_boxplot_across_tissues(enrichment_data)
+ggsave(ppt_read_count_boxplot, file=output_file, width=7.2, height=3,units="in")
+
+
+#######################
+#Make plot showing broad mutation types across the splice concensus sites
+#########################
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_broad_variant_type_across_splice_site_positions.pdf" )
+# broad_mutation_type_bar_plot <- broad_mutation_type_bar_plot_across_concensus_sites(inlier_distance_file, outlier_distance_file)
+# ggsave(broad_mutation_type_bar_plot, file=output_file, width=7.2, height=1.5,units="in")
+
+
+#######################
+# Positional odds ratio plots for RV seperated by donor vs acceptor splice sites
+#########################
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_ss_type_seperated_positional_odds_ratio.pdf")
+# positional_odds_ratio_plot <- make_positional_odds_ratio_plot_seperated_by_ss_type(inlier_distance_file, outlier_distance_file)
+# ggsave(positional_odds_ratio_plot, file=output_file, width=7.2, height=3,units="in")
+
+
+#######################
+#Make plot showing mutation types across the splice concensus sites
+#########################
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, "_variant_type_across_splice_site_positions.pdf" )
+# mutation_type_bar_plot <- mutation_type_bar_plot_across_concensus_sites(inlier_distance_file, outlier_distance_file)
+# ggsave(mutation_type_bar_plot, file=output_file, width=7.2, height=1.5,units="in")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####################################
+# OLD/RETIRED SCRIPTS
+#####################################
+
+if (FALSE) {
 extract_data_no_splice_site_type <- function(distance_object, distance_window) {
 	dist_to_ss <- c()
 	density <- c()
@@ -1361,5 +2102,6 @@ output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",
 title <- paste0("pvalue=", pvalue_threshold, " / version=", version)
 make_distance_odds_ratio_density_plot_seperated_by_ss_type_and_ss_class_mutually_exclusive(as.numeric(distance), inlier_distance_file, outlier_distance_file, title, output_file)
 
+}
 
 
