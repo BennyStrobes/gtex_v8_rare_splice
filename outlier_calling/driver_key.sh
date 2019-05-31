@@ -143,18 +143,17 @@ fi
 # Part 4: Merge outlier calls (across parallelization runs)
 # get gene level pvalues (accounting for the number of clusters we are taking the minimum over)
 # visualize outlier calls (in each tissue seperately)
-if false; then
 sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list $filtered_cluster_dir
-fi
+
 
 
 #################
 # Part 5: Make outlier calls in each tissue using heuristic approach from Cummings et. al
-
+if false; then
 while read tissue_type; do
 	echo $tissue_type
 	tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
 	output_root=$heuristic_outlier_dir$tissue_type"_heuristic_approach_"
 	sh call_heuristic_outliers.sh $tissue_type $tissue_specific_junction_file $output_root $gencode_gene_annotation_file $gene_list
 done<$tissue_names_file
-
+fi

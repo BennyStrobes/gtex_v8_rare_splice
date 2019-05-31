@@ -76,6 +76,5 @@ fi
 
 #################
 # Visualize distribution of outier calls
-if false; then 
 Rscript visualize_outlier_calls.R $tissue_names_file $covariate_method $splicing_outlier_dir $splicing_outlier_visualization_dir
-fi
+

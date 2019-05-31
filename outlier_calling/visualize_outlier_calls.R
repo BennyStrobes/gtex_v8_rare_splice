@@ -3,6 +3,7 @@ library(ggplot2)
 library(ggthemes)
 library(RColorBrewer)
 library(plyr)
+library(cowplot)
 
 
 
@@ -45,21 +46,20 @@ bar_plot_showing_number_of_multi_tissue_outliers_at_various_pvalue_thresholds <-
 
 }
 
-corrected_vs_uncorrected_gene_level_pvalue_scatter_plot <- function(pvalue_comparison_file, output_file, tissue_type) {
+corrected_vs_uncorrected_gene_level_pvalue_scatter_plot <- function(pvalue_comparison_file, tissue_type) {
 	df <- read.table(pvalue_comparison_file,header=TRUE)
 	df$corrected_pvalue <- -log10(df$corrected_pvalue + .0000001)
 	df$uncorrected_pvalue <- -log10(df$uncorrected_pvalue + .0000001)
 
 	df <- df[sample(nrow(df), 100000),]
-	print(summary(df))
 
 	scatter <- ggplot(df, aes(x=uncorrected_pvalue, y=corrected_pvalue, colour=number_of_clusters)) + geom_point() + 
-				labs(x = "-log10(uncorrected pvalue)", y = "-log10(corrected pvalue)", colour="Number clusters", title=tissue_type) +
-				theme(text = element_text(size=10),axis.text=element_text(size=9), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=9), legend.title = element_text(size=10)) 
-	ggsave(scatter, file=output_file, width=15,height=10.5,units="cm")
+				labs(x = "-log10(uncorrected pvalue)", y = "-log10(corrected pvalue)", colour="Number clusters") +
+				gtex_v8_figure_theme()
+	return(scatter)
 }
 
-corrected_vs_uncorrected_gene_level_pvalue_histogram <- function(pvalue_comparison_file, output_file, tissue_type) {
+corrected_vs_uncorrected_gene_level_pvalue_histogram <- function(pvalue_comparison_file, tissue_type) {
 	df <- read.table(pvalue_comparison_file,header=TRUE)
 	#df <- df[sample(nrow(df), 100000),]
 
@@ -73,15 +73,17 @@ corrected_vs_uncorrected_gene_level_pvalue_histogram <- function(pvalue_comparis
 
 
 	df2 <- data.frame(pvalue=pvalues, version=factor(version))
-	print(summary(df2))
 
 	histo <- ggplot(df2, aes(x=pvalue, fill=version)) + geom_histogram(alpha=.35,position="identity",breaks = seq(0,1,.01)) + 
-				labs(x = "pvalue", colour="", title=tissue_type) + 
-				theme(text = element_text(size=10),axis.text=element_text(size=9), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=9), legend.title = element_text(size=10)) 
-	ggsave(histo, file=output_file, width=15,height=10.5,units="cm")
+				labs(x = "pvalue", colour="", fill="") + 
+				gtex_v8_figure_theme()
+	return(histo)
 }
 
 
+gtex_v8_figure_theme <- function() {
+	return(theme(plot.title = element_text(face="plain",size=8), text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)))
+}
 
 #######################
 # Command line args
@@ -91,6 +93,8 @@ tissue_names_file = args[1]
 covariate_method = args[2]
 splicing_outlier_dir = args[3]
 splicing_outlier_visualization_dir = args[4]
+
+options(bitmapType = 'cairo', device = 'pdf')
 
 # Extract vector tissue names
 tissue_names <- as.character(unlist(read.table(tissue_names_file,header=FALSE), use.names=FALSE))
@@ -117,18 +121,22 @@ number_of_outliers_file <- paste0(splicing_outlier_dir, "number_of_multi_tissue_
 output_file <- paste0(splicing_outlier_visualization_dir, "number_of_multi_tissue_outliers_histogram.pdf")
 #histogram_showing_number_of_multi_tissue_outlier_calls(number_of_outliers_file, output_file)
 
-
+###############################
+# Cowplot supplementary figure describing gene level correction in Muscle
+###############################
 
 # Scatter plot showing corrected and uncorrected -log10(pvalues) at gene level colored by number of clusters mapped to the gene
 tissue_type="Muscle_Skeletal"
 pvalue_comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_covariate_method_", covariate_method,"_gene_level_method_comparison.txt")
-output_file <- paste0(splicing_outlier_visualization_dir, "corrected_vs_uncorrected_gene_level_pvalues_", tissue_type, "_scatter_plot.pdf")
-#corrected_vs_uncorrected_gene_level_pvalue_scatter_plot(pvalue_comparison_file, output_file, tissue_type)
+cluster_correction_scatter <- corrected_vs_uncorrected_gene_level_pvalue_scatter_plot(pvalue_comparison_file, tissue_type)
 
 # histogram showing corrected and uncorrected pvalues at gene level
 tissue_type="Muscle_Skeletal"
 pvalue_comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_covariate_method_", covariate_method,"_gene_level_method_comparison.txt")
-output_file <- paste0(splicing_outlier_visualization_dir, "corrected_vs_uncorrected_gene_level_pvalues_", tissue_type, "_histogram.pdf")
-corrected_vs_uncorrected_gene_level_pvalue_histogram(pvalue_comparison_file, output_file, tissue_type)
+clustter_correction_histogram <- corrected_vs_uncorrected_gene_level_pvalue_histogram(pvalue_comparison_file, tissue_type)
+
+output_file <- paste0(splicing_outlier_visualization_dir, "corrected_vs_uncorrected_gene_level_pvalues_", tissue_type, "_joint.pdf")
+joint_correction_plot <- plot_grid(cluster_correction_scatter, clustter_correction_histogram, ncol=1, labels=c("A","B"))
+ggsave(joint_correction_plot, file=output_file, width=7.2, height=5, units="in")
 
 
