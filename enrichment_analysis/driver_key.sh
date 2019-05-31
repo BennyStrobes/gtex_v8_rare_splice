@@ -136,20 +136,9 @@ sh map_variants_to_junctions.sh $variant_bed_file $heuristic_outlier_dir $heuris
 fi
 
 
-#################
-# Part 2: Compute enrichment of rare variants within spliding outlier calls
-# Do this enrichments:
-#    1. For each of the tissues, independently
-#    2. For cross tissue outliers (median pvalue)
-# Compute enrichments of rare variants within heuristic outilers
-# Then visualize enrichments
-if false; then
-sh variant_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $splicing_outlier_include_global_outliers_suffix $european_ancestry_individual_list $tissue_names_file $visualize_variant_enrichment_dir $tissue_colors_file $heuristic_outlier_dir $heuristic_outlier_suffix
-fi
-
 
 #################
-# Part 3: Positional variant enrichments
+# Part 2: Positional variant enrichments
 #### A. Compute enrichments of rare variants within splicing outliers for both TBT and cross tissue outliers (median pvalue)
 #### B. Compare distances between variants and splice sites for outliers vs non-outliers
 #### C. Also compare jxn usage nearby A: altered splice sites and B: altered PPT regions in outliers and non-outliers
@@ -160,7 +149,7 @@ fi
 
 
 #################
-# Part 5: Visualize cluster distributions for outliers compared to non-outliers
+# Part 3: Visualize cluster distributions for outliers compared to non-outliers
 if false; then
 sh visualize_cluster_distribution_shell.sh $rare_variant_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $cluster_info_file $exon_file $visualize_cluster_distribution_dir $tissue_names_file $filtered_cluster_dir
 fi
