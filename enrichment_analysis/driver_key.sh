@@ -78,7 +78,8 @@ liftover_directory="/work-zfs/abattle4/bstrober/tools/liftOver_x86/"
 # Downloaded from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE19323 on 1/8/19
 ptbp_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/GSE19323_ptb_peak_cluster.bed"
 
-
+# PDF file containing cartoon of splice sites
+splice_site_cartoon="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/splice_site_cartoon.png"
 
 
 #############################################################
@@ -94,9 +95,6 @@ rare_variant_dir=$output_root"processed_rare_variants/"
 # Directory containing results of enrichments of rare variants within outlier calls
 variant_enrichment_dir=$output_root"variant_enrichment/"
 
-# Directory containing visualizations of results of enrichments of rare variants within outlier calls
-visualize_variant_enrichment_dir=$output_root"visualize_variant_enrichment/"
-
 # Directory containing results of variant position analysis (ie distance between RV and splice sites)
 variant_position_enrichment_dir=$output_root"variant_position_enrichment/"
 
@@ -105,9 +103,6 @@ visualize_variant_position_enrichment_dir=$output_root"visualize_variant_positio
 
 # Directory containing comparison of jxn usage nearby altered splice sites in outliers and non-outliers
 jxn_usage_nearby_altered_ss_enrichment_dir=$output_root"jxn_usage_nearby_altered_ss_enrichment/"
-
-# Directory containing visualizations of comparison of jxn usage nearby altered splice sites in outliers and non-outliers
-visualize_jxn_usage_nearby_altered_ss_enrichment_dir=$output_root"visualize_jxn_usage_nearby_altered_ss_enrichment/"
 
 # Directory containing visualizations of cluster distributions for outliers compared to non-outliers
 visualize_cluster_distribution_dir=$output_root"visualize_cluster_distribution/"
@@ -154,18 +149,15 @@ fi
 
 
 #################
-# Part 3: Compare distances between variants and splice sites for outliers vs non-outliers
-# Also compare jxn usage nearby A: altered splice sites and B: altered PPT regions in outliers and non-outliers
-# Then visualize results
-sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir
-
-
-#################
-# Part 4: Compare jxn usage nearby altered splice sites in outliers and non-outliers
+# Part 3: Positional variant enrichments
+#### A. Compute enrichments of rare variants within splicing outliers for both TBT and cross tissue outliers (median pvalue)
+#### B. Compare distances between variants and splice sites for outliers vs non-outliers
+#### C. Also compare jxn usage nearby A: altered splice sites and B: altered PPT regions in outliers and non-outliers
 # Then visualize results
 if false; then
-sh junction_usage_nearby_altered_splice_site_enrichment_shell.sh $rare_variant_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $visualize_jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir
+sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir $tissue_colors_file $heuristic_outlier_dir $heuristic_outlier_suffix $splice_site_cartoon
 fi
+
 
 #################
 # Part 5: Visualize cluster distributions for outliers compared to non-outliers
