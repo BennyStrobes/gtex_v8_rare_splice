@@ -3,6 +3,7 @@ library(ggplot2)
 library(ggthemes)
 library(RColorBrewer)
 library(plyr)
+library(cowplot)
 
 
 get_number_of_clusters <- function(jxn_names) {
@@ -62,12 +63,14 @@ barplot_showing_number_of_clusters_per_tissue <- function(tissue_names, filtered
 
 	bar_plot <- ggplot(data=df, aes(x=tissue_names,y=number_of_clusters)) + geom_bar(stat="identity",fill="mediumpurple") + coord_flip() +
 				labs(x = "Tissue", y = "Number of clusters") +
-				theme(text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)) 
+				gtex_v8_figure_theme()
 
 
-	ggsave(bar_plot, file=output_file,width = 15,height=12.5,units="cm")
+	return(bar_plot)
 
-
+}
+gtex_v8_figure_theme <- function() {
+	return(theme(plot.title = element_text(face="plain",size=8), text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)))
 }
 
 barplot_showing_number_of_genes_per_tissue <- function(tissue_names, filtered_cluster_dir, output_file) {
@@ -94,12 +97,11 @@ barplot_showing_number_of_genes_per_tissue <- function(tissue_names, filtered_cl
 
 	bar_plot <- ggplot(data=df, aes(x=tissue_names,y=number_of_clusters)) + geom_bar(stat="identity",fill="darkcyan") + coord_flip() +
 				labs(x = "Tissue", y = "Number of genes") +
+				gtex_v8_figure_theme()
 				#scale_y_discrete(limits = rev(levels(tissue_names))) +
-				theme(text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)) 
 
 
-	ggsave(bar_plot, file=output_file,width = 15,height=12.5,units="cm")
-
+	return(bar_plot)
 
 }
 
@@ -126,11 +128,10 @@ barplot_showing_number_of_jxns_per_tissue <- function(tissue_names, filtered_clu
 
 	bar_plot <- ggplot(data=df, aes(x=tissue_names,y=number_of_junctions)) + geom_bar(stat="identity",fill="steelblue3") + coord_flip() +
 				labs(x = "Tissue", y = "Number of junctions") +
-				theme(text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)) 
+				gtex_v8_figure_theme()
 
 
-	ggsave(bar_plot, file=output_file,width = 15,height=12.5,units="cm")
-
+	return(bar_plot)
 
 }
 
@@ -231,6 +232,7 @@ tissue_names_file <- args[1]
 filtered_cluster_dir <- args[2]
 cluster_visualization_dir <- args[3]
 
+options(bitmapType = 'cairo', device = 'pdf')
 
 
 ###################################################
@@ -239,17 +241,18 @@ cluster_visualization_dir <- args[3]
 # Using exons for gene mapping
 cluster_info_file <- paste0(filtered_cluster_dir, "cluster_info.txt")
 output_file <- paste0(cluster_visualization_dir, "number_of_genes_per_cluster.pdf")
-histogram_showing_number_of_genes_per_cluster(cluster_info_file, output_file)
+#histogram_showing_number_of_genes_per_cluster(cluster_info_file, output_file)
 
 # Using whole gene for gene mapping
 cluster_info_file <- paste0(filtered_cluster_dir, "cluster_info_full_gene_mapped.txt")
 output_file <- paste0(cluster_visualization_dir, "number_of_genes_per_cluster_full_gene_mapped.pdf")
-histogram_showing_number_of_genes_per_cluster(cluster_info_file, output_file)
+#histogram_showing_number_of_genes_per_cluster(cluster_info_file, output_file)
 
 
 # Extract vector tissue names
 tissue_names <- as.character(unlist(read.table(tissue_names_file,header=FALSE), use.names=FALSE))
 
+if (FALSE) {
 ##################################################################
 # Histogram showing fraction of samples w > $min_reads reads summed across all junctions
 ##################################################################
@@ -262,27 +265,34 @@ for (iter_num in 1:length(tissue_names)) {
 	histogram_showing_fraction_of_expressed_samples(tissue_name, min_reads, input_file, output_file)
 }
 
+}
 ###################################################
 # Barplot showing number of genes per tissue
 ###################################################
-output_file <- paste0(cluster_visualization_dir, "number_of_genes_bar_plot.pdf")
-barplot_showing_number_of_genes_per_tissue(tissue_names, filtered_cluster_dir, output_file)
+print("A")
 
+genes_per_tissue <- barplot_showing_number_of_genes_per_tissue(tissue_names, filtered_cluster_dir)
+print("A")
 ###################################################
 # Barplot showing number of clusters per tissue
 ###################################################
-output_file <- paste0(cluster_visualization_dir, "number_of_clusters_bar_plot.pdf")
-barplot_showing_number_of_clusters_per_tissue(tissue_names, filtered_cluster_dir, output_file)
-
+clusters_per_tissue <- barplot_showing_number_of_clusters_per_tissue(tissue_names, filtered_cluster_dir)
+print("A")
 
 ###################################################
 # Barplot showing number of jxns per tissue
 ###################################################
-output_file <- paste0(cluster_visualization_dir, "number_of_jxns_bar_plot.pdf")
-barplot_showing_number_of_jxns_per_tissue(tissue_names, filtered_cluster_dir, output_file)
+jxns_per_tissue <- barplot_showing_number_of_jxns_per_tissue(tissue_names, filtered_cluster_dir)
+print("A")
+
+combined_per_tissue <- plot_grid(jxns_per_tissue, clusters_per_tissue, genes_per_tissue, labels=c("A","B","C"), ncol=3)
+ggsave(combined_per_tissue, file=paste0(cluster_visualization_dir, "combined_number_per_tissue_supplementary.pdf"),width=7.2, height=5, units="in")
+
+combined_per_tissue <- plot_grid(jxns_per_tissue, clusters_per_tissue, genes_per_tissue, labels=c("A","B","C"), ncol=1)
+ggsave(combined_per_tissue, file=paste0(cluster_visualization_dir, "combined_number_per_tissue_supplementary2.pdf"),width=7.2, height=7, units="in")
 
 
-
+if (FALSE) {
 ###################################################
 # Boxplot showing number of junctions per cluster per tissue
 ###################################################
@@ -298,5 +308,5 @@ for (iter_num in 1:length(tissue_names)) {
 	output_file <- paste0(cluster_visualization_dir, "number_of_jxns_per_cluster_", tissue_name, "_histogram.pdf")
 	histogram_showing_number_of_jxns_per_cluster_per_tissue(tissue_name, filtered_cluster_dir, output_file)
 }
-
+}
 

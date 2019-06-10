@@ -113,9 +113,8 @@ fi
 ######## 1. Generate clusters that are consistent across tissues (ie Cluster 1 in tissue 1 corresponds to the same set of junctions in all other tissues)
 ######## 2. Map Clusters to genes
 ######## 3. Visualize clusters
-if false; then
 sbatch generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir $gene_list
-fi
+
 
 
 #################
@@ -143,8 +142,9 @@ fi
 # Part 4: Merge outlier calls (across parallelization runs)
 # get gene level pvalues (accounting for the number of clusters we are taking the minimum over)
 # visualize outlier calls (in each tissue seperately)
+if false; then
 sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list $filtered_cluster_dir
-
+fi
 
 
 #################

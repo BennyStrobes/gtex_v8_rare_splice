@@ -149,6 +149,8 @@ remove_na <- function(x) {
 #######################################
 compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_posteriors, binary_outliers_test2) {
 	roc_object_across_dimensions <- list()
+	pos_list <- c()
+	neg_list <- c()
   	# Loop through dimensions
   	for (dimension in 1:number_of_dimensions) {
   		# Name of dimension
@@ -157,8 +159,11 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
   		test_outlier_status <- binary_outliers_test2[,dimension]
   		# river predictions
   		# roc_obj <- roc(test_outlier_status, posterior_prob_test[,dimension])
-  		roc_obj <- roc.curve(scores.class0 = remove_na(posterior_prob_test[,dimension][test_outlier_status==1]), scores.class1 = remove_na(posterior_prob_test[,dimension][test_outlier_status==0]), curve = T)
-  		pr_obj <- pr.curve(scores.class0 = remove_na(posterior_prob_test[,dimension][test_outlier_status==1]), scores.class1 = remove_na(posterior_prob_test[,dimension][test_outlier_status==0]), curve = T)
+  		roc_obj <- roc.curve(scores.class0 = remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
+  		pr_obj <- pr.curve(scores.class0 = remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
+  		
+  		pos_list <- c(pos_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]))
+  		neg_list <- c(neg_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]))
   		# Predictions with only RNA
   		#rna_only_roc_obj <- roc(test_outlier_status, real_valued_outliers_test1[,dimension])
   		rna_only_roc_obj <- roc.curve(scores.class0 = remove_na(real_valued_outliers_test1[,dimension][test_outlier_status==1]), scores.class1 = remove_na(real_valued_outliers_test1[,dimension][test_outlier_status==0]), curve = T)
@@ -166,8 +171,8 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
 
   		# predictions with only genomic annotations
   		#gam_roc_obj <- roc(test_outlier_status, gam_posteriors[,dimension])
-   		gam_roc_obj <- roc.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0]), curve = T)
-   		gam_pr_obj <- pr.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0]), curve = T)
+   		gam_roc_obj <- roc.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
+   		gam_pr_obj <- pr.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
 
 
 		evaROC <-	
@@ -189,12 +194,22 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
               rna_only_sens=rna_only_roc_obj$curve[,2],
               rna_only_spec=1-rna_only_roc_obj$curve[,1],
               rna_only_auc=rna_only_roc_obj$auc,
-              num_positive_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==1])),
-              num_negative_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==0])))
+              num_positive_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])])),
+              num_negative_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])])))
 
 
 		 roc_object_across_dimensions[[dimension]] <- list(name=dimension_name, evaROC=evaROC)
 	}
+
+		pr_obj <- pr.curve(scores.class0=pos_list, scores.class1=neg_list, curve = T)
+
+		evaROC <-	
+		 list(watershed_pr_auc=pr_obj$auc.integral,
+         	  watershed_recall=pr_obj$curve[,1],
+         	  watershed_precision=pr_obj$curve[,2])
+
+		roc_object_across_dimensions[[(number_of_dimensions + 1)]] <- list(name="joint", evaROC=evaROC)
+
 	return(roc_object_across_dimensions)
 }
 

@@ -117,18 +117,34 @@ fi
 
 #####################
 # TBT Model
+# running.0005 should do .0001
 #####################
-pseudocount="30"
+
+pseudocount=".001"
 pvalue_fraction=".01"
 # gradient_descent_threshold=".005"
-gradient_descent_threshold=".0005"
+gradient_descent_threshold=".0001"
 # gradient_descent_threshold=".0001"
+gradient_descent_stepsize="1"
+vi_step_size=".5"
+vi_thresh=".00001"
 theta_pair_init="0"
+lambda="0.01"
 lambda_pair="0"
-if false; then
-sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init $lambda_pair
-fi
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init $lambda $lambda_pair $gradient_descent_stepsize $vi_step_size $vi_thresh
 
-sh watershed_roc_run_tbt_debug.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init $lambda_pair
 
+
+pseudocount=".001"
+pvalue_fraction=".01"
+# gradient_descent_threshold=".005"
+gradient_descent_threshold=".0001"
+# gradient_descent_threshold=".0001"
+gradient_descent_stepsize="1"
+vi_step_size=".5"
+vi_thresh=".000001"
+theta_pair_init="0"
+lambda="0.01"
+lambda_pair="0"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init $lambda $lambda_pair $gradient_descent_stepsize $vi_step_size $vi_thresh
 

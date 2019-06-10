@@ -448,7 +448,7 @@ plot_pr_watershed_watershed_edge_comparison_curve <- function(roc_object, roc_ob
 }
 
 
-roc_analysis <- function(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init, lambda_pair_inity) {
+roc_analysis <- function(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init, lambda_pair_inity, gradient_descent_stepsize, seed_number, lambda_inity, vi_step_size, vi_thresh) {
 	#info <- readRDS(file_name)
 	#watershed_model <- info$model_params
 	#gam_data <- info$gam_params
@@ -490,10 +490,11 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, lambda_cost
  	#######################################
 	## Fit Genomic Annotation Model (GAM)
 	#######################################
-	nfolds <- 2
+	nfolds <- 10
+
 
 	#gam_data <- genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_pair_costs, independent_variables, inference_method, gradient_descent_threshold, theta_pair_init)
-	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_pair_costs, independent_variables, inference_method, gradient_descent_threshold, theta_pair_init)
+	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_pair_costs, independent_variables, inference_method, gradient_descent_threshold, theta_pair_init, seed_number, lambda_inity)
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda, " and optimal lambda pair of ", gam_data$lambda_pair))
 	# place holder variable
 
@@ -507,7 +508,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, lambda_cost
 		gam_posteriors <- gam_posterior_test$probability
 	} else if (inference_method == "vi") {
 		mu_init = matrix(.5, dim(feat_test)[1], number_of_dimensions)
-		gam_posterior_test <- update_marginal_probabilities_vi_cpp(feat_test, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, phi_init$inlier_component, phi_init$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), 0.5, 1e-5, mu_init, FALSE)
+		gam_posterior_test <- update_marginal_probabilities_vi_cpp(feat_test, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, phi_init$inlier_component, phi_init$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), vi_step_size, vi_thresh, mu_init, FALSE)
 		gam_posteriors <- gam_posterior_test$probability
 	}
 	
@@ -518,7 +519,7 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, lambda_cost
   	lambda_pair <- lambda_pair_inity
   	lambda <- gam_data$lambda
 
-  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, gradient_descent_threshold)
+  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, gradient_descent_threshold, gradient_descent_stepsize, vi_step_size, vi_thresh)
 
  	#######################################
 	## Get test data watershed posterior probabilities
@@ -526,6 +527,8 @@ roc_analysis <- function(data_input, number_of_dimensions, phi_init, lambda_cost
  	posterior_info_test <- update_marginal_posterior_probabilities(feat_test, discrete_outliers_test1, watershed_model)
   	posterior_prob_test <- posterior_info_test$probability  # Marginal posteriors
   	posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise  # Pairwise posteriors
+
+
 
  	#######################################
 	# Extract ROC curves and precision recall curves for test set (in each dimension seperately) using:
@@ -683,25 +686,31 @@ pseudoc <- as.numeric(args[5])
 gradient_descent_threshold <- as.numeric(args[6])
 theta_pair_init <- as.numeric(args[7])
 lambda_pair_inity <- as.numeric(args[8])
+gradient_descent_stepsize <- as.numeric(args[9])
+lambda_inity <- as.numeric(args[10])
+vi_step_size <- as.numeric(args[11])
+vi_thresh <- as.numeric(args[12])
 
 #####################
 # Parameters
 #####################
 #lambda_costs <- c(1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4)
 #lambda_pair_costs= c(.1, .01, 1e-3, 1e-4, 0, .1, .01, 1e-3, 1e-4,0)
-lambda_costs <- c(.1,.01,1e-3, 1e-4)
+lambda_costs <- c(.1,.01,1e-3)
 lambda_pair_costs= c(0,0,0, 0)
 
 
 
-phi_init <- initialize_phi_tbt_te(3, number_of_dimensions) 
+phi_init <- initialize_phi_tbt(3, number_of_dimensions) 
 
 
+seed_number <- sample(1000,1)
+
+print(seed_number)
 #######################################
 ## Load in data
 #######################################
 data_input <- load_watershed_data(input_file, number_of_dimensions, pvalue_fraction)
-
 print("start watershed")
 
 #######################################
@@ -710,9 +719,9 @@ print("start watershed")
 independent_variables = "false"
 inference_method = "vi"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_vi <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init, lambda_pair_inity)
-saveRDS(roc_object_vi, paste0(output_root, "_roc_object2.rds"))
-#oc_object_vi <- readRDS(paste0(output_root, "_roc_object2.rds"))
+roc_object_vi <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init, lambda_pair_inity, gradient_descent_stepsize, seed_number, lambda_inity, vi_step_size, vi_thresh)
+saveRDS(roc_object_vi, paste0(output_root, "_roc_object.rds"))
+#roc_object_vi <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 print("start river")
 #######################################
@@ -721,8 +730,8 @@ print("start river")
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init, lambda_pair_inity)
-saveRDS(roc_object_independent, paste0(output_root, "_roc_object2.rds"))
+roc_object_independent <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init, lambda_pair_inity, gradient_descent_stepsize, seed_number, lambda_inity, vi_step_size, vi_thresh)
+saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
 #roc_object_independent <- readRDS(paste0(output_root, "_roc_object2.rds"))
 
 
@@ -747,13 +756,16 @@ output_file <- paste0(output_stem, "tissue_by_tissue_expression_overlap_heatmap.
 ######################################
 # Make Precision recall for each tissue
 ######################################
-#for (tissue_num in 1:number_of_dimensions) {
-#	tissue_name <- tissue_names[tissue_num]
-#	tissue_roc_vi <- roc_object_vi$roc[[tissue_num]]$evaROC
-#	tissue_roc_independent <- roc_object_independent$roc[[tissue_num]]$evaROC
-#	output_file <- paste0(output_stem, tissue_name, "_precision_recall_curves.pdf")
-#	pr_curve_in_one_tissue(tissue_name, tissue_roc_vi, tissue_roc_independent, output_file)
-#}
+for (tissue_num in 1:(number_of_dimensions+1)) {
+	tissue_name <- tissue_names[tissue_num]
+	tissue_roc_vi <- roc_object_vi$roc[[tissue_num]]$evaROC
+	tissue_roc_independent <- roc_object_independent$roc[[tissue_num]]$evaROC
+	auc_vi <- tissue_roc_vi$watershed_pr_auc
+	auc_independent <- tissue_roc_independent$watershed_pr_auc
+	print(paste0(tissue_name, ": ", auc_vi, " ", auc_independent))
+	#output_file <- paste0(output_stem, tissue_name, "_precision_recall_curves.pdf")
+	#pr_curve_in_one_tissue(tissue_name, tissue_roc_vi, tissue_roc_independent, output_file)
+}
 
 
 #######################################
