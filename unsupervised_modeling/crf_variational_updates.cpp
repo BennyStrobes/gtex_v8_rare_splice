@@ -105,7 +105,7 @@ NumericMatrix variational_optimization(NumericMatrix probabilities, int sample_n
 		if (diff_prob/((double)number_of_dimensions) < convergence_thresh) {
 			convergence = 1;
 		}
-		if (iteration_counter > 1500) {
+		if (iteration_counter > 15000) {
 			Rcpp::Rcout << "SKIPPED" << std::endl;  
 			convergence = 1;
 		}
@@ -149,8 +149,8 @@ List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix disc
 
 	// Initialize output matrices
 	NumericMatrix probabilities(feat.nrow(), number_of_dimensions);
-	NumericMatrix probabilities_rand(feat.nrow(), number_of_dimensions);
-	NumericMatrix probabilities_prev(feat.nrow(), number_of_dimensions);
+	//NumericMatrix probabilities_rand(feat.nrow(), number_of_dimensions);
+	//NumericMatrix probabilities_prev(feat.nrow(), number_of_dimensions);
 	// NumericMatrix probabilities_log_reg_init(feat.nrow(), number_of_dimensions);
 	NumericMatrix probabilities_pairwise(feat.nrow(), number_of_pairs);
 
@@ -159,21 +159,21 @@ List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix disc
 	double diff_prob = 0;
 	int convergence = 0;
 	int iteration_counter = 0;
-	double elbo_start = 0;
-	double elbo = 0;
-	double elbo_rand = 0;
-	double elbo_prev = 0;
-	double elbo_total = 0;
+	//double elbo_start = 0;
+	//double elbo = 0;
+	//double elbo_rand = 0;
+	//double elbo_prev = 0;
+	//double elbo_total = 0;
 	// double elbo_log_reg_init = 0;
-	double hit_counter = 0;
+	//double hit_counter = 0;
 	// Loop through samples
 	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
 		//Rcpp::Rcout << sample_num << std::endl;  
 
 		// Initialize posterior prob
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
-			probabilities_prev(sample_num, dimension) = probability_init(sample_num, dimension);
-			probabilities_rand(sample_num, dimension) = ((double) rand() / (RAND_MAX));
+			//probabilities_prev(sample_num, dimension) = probability_init(sample_num, dimension);
+			probabilities(sample_num, dimension) = ((double) rand() / (RAND_MAX));
 			// probabilities_log_reg_init(sample_num, dimension) = logistic_regression_initialization(sample_num, dimension, feat, discrete_outliers, theta_singleton, theta, phi_inlier, phi_outlier, posterior_bool);
 		}
 
@@ -183,23 +183,15 @@ List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix disc
 		iteration_counter = 0;
 
 
-		probabilities_rand = variational_optimization(probabilities_rand, sample_num, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, posterior_bool, step_size, convergence_thresh, g);
-		elbo_rand = compute_elbo(probabilities_rand, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);
+		probabilities = variational_optimization(probabilities, sample_num, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, posterior_bool, step_size, convergence_thresh, g);
+		// probabilities = compute_elbo(probabilities, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);
 
-		probabilities_prev = variational_optimization(probabilities_prev, sample_num, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, posterior_bool, step_size, convergence_thresh, g);
-		elbo_prev = compute_elbo(probabilities_prev, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);
+		//probabilities_prev = variational_optimization(probabilities_prev, sample_num, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, posterior_bool, step_size, convergence_thresh, g);
+		//elbo_prev = compute_elbo(probabilities_prev, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);
 
 
 		// Compute pairwise probabilities (just product of marginals here)
 		int dimension_counter = 0;
-		for (int dimension1 = 0; dimension1 < number_of_dimensions; dimension1++) {
-			if (elbo_rand > elbo_prev) {
-				probabilities(sample_num, dimension1) = probabilities_rand(sample_num, dimension1);
-			} else {
-				probabilities(sample_num, dimension1) = probabilities_prev(sample_num, dimension1);
-			}
-
-		}
 		for (int dimension1 = 0; dimension1 < number_of_dimensions; dimension1++) {
 			for (int dimension2=dimension1; dimension2 < number_of_dimensions; dimension2++) {
 				if (dimension1 != dimension2) {
@@ -208,8 +200,8 @@ List update_marginal_probabilities_vi_cpp(NumericMatrix feat, NumericMatrix disc
 				}
 			}
 		}
-		elbo = compute_elbo(probabilities, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);
-		elbo_total = elbo_total + elbo;
+		// elbo = compute_elbo(probabilities, sample_num, number_of_dimensions, feat, theta_singleton, theta_pair, theta);
+		// elbo_total = elbo_total + elbo;
 
 	}
 	//Rcpp::Rcout << elbo_total << std::endl;  

@@ -337,6 +337,56 @@ plot_pr_river_watershed_comparison_curve <- function(roc_object_exact, roc_objec
 	ggsave(plot_grid(combined_plots, legend,ncol=1, rel_heights=c(1,.1)), file=output_file,width = 34,height=11,units="cm")
 }
 
+plot_beta_difference_scatter_between_exact_and_vi <- function(model_params_exact, model_params_approximate, output_file) {
+	options(bitmapType = 'cairo', device = 'pdf')
+	exact_betas <- c()
+	approximate_betas <- c()
+	outlier_class <- c()
+
+	exact_betas <- c(model_params_exact$theta[,1], model_params_exact$theta[,2], model_params_exact$theta[,3])
+	approximate_betas <- c(model_params_approximate$theta[,1], model_params_approximate$theta[,2], model_params_approximate$theta[,3])
+	outlier_class <- c(rep("splice", length(model_params_approximate$theta[,1])), rep("total expression", length(model_params_approximate$theta[,2])), rep("ase", length(model_params_approximate$theta[,3])))
+
+	df <- data.frame(exact_betas=exact_betas, approximate_betas=approximate_betas, outlier_class=factor(outlier_class))
+
+	plotter <- ggplot(df, aes(x=exact_betas, y=approximate_betas, colour=outlier_class)) + geom_point() +
+			geom_abline() + 
+			theme(text = element_text(size=11),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=11)) +
+			labs(x="Beta (exact inference)", y="Beta (approximate inference)",colour="")
+	ggsave(plotter, file=output_file, width=14, height=8, units="cm")
+}
+
+plot_theta_pair_term <- function(theta_pair, output_file) {
+	options(bitmapType = 'cairo', device = 'pdf')
+	mat <- matrix(0, 3, 3)
+	mat[1,2] <- theta_pair[1,1]
+	mat[2,1] <- theta_pair[1,1]
+	mat[1,3] <- theta_pair[1,2]
+	mat[3,1] <- theta_pair[1,2]
+	mat[3,2] <- theta_pair[1,3]
+	mat[2,3] <- theta_pair[1,3]
+
+	melted_corr <- melt(mat)
+
+	
+    # Axis labels are factors
+    melted_corr$X1 <- factor(melted_corr$X1)
+    melted_corr$X2 <- factor(melted_corr$X2)
+
+    #  PLOT!
+    heatmap <- ggplot(data=melted_corr, aes(x=X1, y=X2)) + geom_tile(aes(fill=value)) #+ scale_fill_gradient(low="grey",high="plum2")
+
+    heatmap <- heatmap + scale_fill_distiller(palette = "Blues", direction=1)
+
+    heatmap <- heatmap + theme(text = element_text(size=12),axis.text=element_text(size=12), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=11), axis.text.x = element_text(angle = 0, vjust=.5)) 
+    heatmap <- heatmap + labs(fill="Theta pair",x = "", y="")
+
+    heatmap <- heatmap + scale_x_discrete(breaks=c("1", "2", "3"),labels=c("Splice", "TE", "ASE"))
+    heatmap <- heatmap + scale_y_discrete(breaks=c("1", "2", "3"),labels=c("Splice", "TE", "ASE"))
+
+	ggsave(heatmap,file=output_file, width=13, height=8, units="cm")
+}
+
 
 plot_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_object_ind, number_of_dimensions, output_file) {
 	options(bitmapType = 'cairo', device = 'pdf')
@@ -712,8 +762,6 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	lambda_singleton <- 0
   	lambda_pair <- gam_data$lambda
   	lambda <- gam_data$lambda
-  	vi_step_size=.8
-  	vi_threshold=1e-6
 
   	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold)
 
@@ -815,9 +863,9 @@ data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pval
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
-saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
-#roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+#saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
+roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 
@@ -827,9 +875,9 @@ saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
-saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
-#roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+#saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
+roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 
@@ -839,28 +887,42 @@ saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
-saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
-# roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+#saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
+roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
+#######################################
+## Visualize theta pair terms for exact inference
+#######################################
+plot_theta_pair_term(roc_object_exact$model_params$theta_pair, paste0(output_stem, "_exact_inference_theta_pair_heatmap.pdf"))
+
+#######################################
+## Visualize theta pair terms for exact inference
+#######################################
+plot_theta_pair_term(roc_object_pseudo$model_params$theta_pair, paste0(output_stem, "_approximate_inference_theta_pair_heatmap.pdf"))
+
+#######################################
+## Visualize beta differences for exact vs inference
+#######################################
+#plot_beta_difference_scatter_between_exact_and_vi(roc_object_exact$model_params, roc_object_pseudo$model_params, paste0(output_stem, "_watershed_exact_vs_approximate_beta_estimate_scatter.pdf"))
 
 #######################################
 ## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)
 #######################################
-plot_pr_gam_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_river_gam_comparison_pr.pdf"))
+# plot_pr_gam_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_river_gam_comparison_pr.pdf"))
 
 #######################################
 ## Visualize precision-recall curves for river, watershed-vi, watershed-exact comparison and all three outlier types (te, splice, ase)
 #######################################
-plot_pr_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_pseudo$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_watershed_vi_river_comparison_pr.pdf"))
+# plot_pr_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_pseudo$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_watershed_vi_river_comparison_pr.pdf"))
 
 
 
 #######################################
 ## Visualize Confusion matrix for both RIVER and Watershed (exact and vi)
 #######################################
-visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_exact_watershed_vi_comparison.pdf"))
+# visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_exact_watershed_vi_comparison.pdf"))
 
 
 

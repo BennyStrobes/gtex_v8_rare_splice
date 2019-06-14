@@ -26,4 +26,4 @@ echo $n2_pair_pvalue_fraction
 echo $gene_thresh
 echo $binary_pvalue_threshold
 
-Rscript watershed_roc_3_outlier_types.R $input_file $output_stem $number_of_dimensions $pseudocount $lambda_pair_init $n2_pair_pvalue_fraction $binary_pvalue_threshold
+Rscript watershed_roc_3_outlier_types.R $input_file $output_stem $number_of_dimensions $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold

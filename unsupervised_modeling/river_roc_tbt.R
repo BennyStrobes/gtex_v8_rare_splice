@@ -422,7 +422,7 @@ remove_na <- function(x) {
 #### 2. GAM
 #### 3. RNA-only
 #######################################
-compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_posteriors, binary_outliers_test2, median_river_prob) {
+compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_posteriors, binary_outliers_test2) {
 	roc_object_across_dimensions <- list()
 	pos_list <- c()
 	neg_list <- c()
@@ -439,7 +439,6 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
   		
   		pos_list <- c(pos_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]))
   		neg_list <- c(neg_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]))
-  	
   		# Predictions with only RNA
   		#rna_only_roc_obj <- roc(test_outlier_status, real_valued_outliers_test1[,dimension])
   		rna_only_roc_obj <- roc.curve(scores.class0 = remove_na(real_valued_outliers_test1[,dimension][test_outlier_status==1]), scores.class1 = remove_na(real_valued_outliers_test1[,dimension][test_outlier_status==0]), curve = T)
@@ -450,8 +449,6 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
    		gam_roc_obj <- roc.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
    		gam_pr_obj <- pr.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
 
-   		median_river_roc_obj <- roc.curve(scores.class0 = remove_na(median_river_prob[,1][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(median_river_prob[,1][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
-   		median_river_pr_obj <- pr.curve(scores.class0 = remove_na(median_river_prob[,1][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(median_river_prob[,1][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
 
 		evaROC <-	
 		 list(watershed_sens=roc_obj$curve[,2],
@@ -472,12 +469,6 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
               rna_only_sens=rna_only_roc_obj$curve[,2],
               rna_only_spec=1-rna_only_roc_obj$curve[,1],
               rna_only_auc=rna_only_roc_obj$auc,
-              median_river_sens=median_river_roc_obj$curve[,2],
-              median_river_spec=1-median_river_roc_obj$curve[,1],
-              median_river_auc=median_river_roc_obj$auc,
-              median_river_pr_auc=median_river_pr_obj$auc.integral,
-              median_river_recall=median_river_pr_obj$curve[,1],
-              median_river_precision=median_river_pr_obj$curve[,2],
               num_positive_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])])),
               num_negative_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])])))
 
@@ -499,7 +490,8 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
 
 
 
-roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_init, lambda_init, lambda_pair_init, output_root, watershed_model, gam_data) {
+
+roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_init, lambda_init, lambda_pair_init, output_root) {
 	#######################################
 	# Load in all data (training and test)
 	#######################################
@@ -541,7 +533,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	nfolds <- 8
 
-	#gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
+	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
 	# saveRDS(gam_data,"gam.RDS")
 	#gam_data <- readRDS("gam.RDS")
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
@@ -555,24 +547,24 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	gam_posterior_train_obj <- update_independent_marginal_probabilities_exact_inference_cpp(feat_train, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, matrix(0,2,2), matrix(0,2,2), number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
 	gam_train_posteriors <- gam_posterior_train_obj$probability
-	#pseudoc_vec <- pseudoc*as.vector(colSums(!is.na(discrete_outliers_train)))
+	pseudoc_vec <- pseudoc*as.vector(colSums(!is.na(discrete_outliers_train)))
 	#phi_init <- map_phi_initialization(discrete_outliers_train, gam_train_posteriors, number_of_dimensions, pseudoc)
 	if (phi_init == "smart") {
 		phi_init <- initialize_phi_tbt(3,49)
 	} else if (phi_init == "data") {
-		phi_init <- map_phi_initialization(discrete_outliers_train, gam_train_posteriors, number_of_dimensions, pseudoc)
+		phi_init <- map_phi_initialization(discrete_outliers_train, gam_train_posteriors, number_of_dimensions, pseudoc_vec)
 	}
 
  	#######################################
 	## Fit Watershed Model (using training data)
 	#######################################
 	lambda_singleton <- 0
-  	lambda_pair <- lambda_pair_init
-  	lambda <- lambda_init
+  	lambda_pair <- lambda_init
+  	lambda <- lambda_pair_init
 
-  	#watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold, output_root)
+  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc_vec, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold, output_root)
 
-  	#saveRDS(watershed_model, paste0(output_root,"watershed.RDS"))
+  	saveRDS(watershed_model, paste0(output_root,"watershed.RDS"))
 
  	#######################################
 	## Get test data watershed posterior probabilities
@@ -590,14 +582,11 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#### 3. RNA-only
 	#######################################
 	dimension_labels <- colnames(data_input$outliers_binary)
-	median_tissue_river_model <- readRDS("/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/watershed_three_class_roc/fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_30_inference_exact_independent_true_roc_object.rds")
-
-	roc_object_across_dimensions <- compute_roc_across_dimensions(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_test_posteriors, binary_outliers_test2,median_tissue_river_model$watershed_predictions)
+	roc_object_across_dimensions <- compute_roc_across_dimensions(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_test_posteriors, binary_outliers_test2)
 
   	return(list(gam_params=gam_data, model_params=watershed_model,roc=roc_object_across_dimensions))
 
 }
-
 
 
 make_theta_pair_heatmap <- function(theta_pair, number_of_dimensions,tissue_names, output_file) {
@@ -614,24 +603,9 @@ make_theta_pair_heatmap <- function(theta_pair, number_of_dimensions,tissue_name
 				dimension_counter = dimension_counter + 1
 			}
 		}
-		theta_pair_mat[dimension1, dimension1] = NA
 	}
-	corr_mat = matrix(0, number_of_dimensions, number_of_dimensions)
-	dimension_counter = 1
-	for (dimension1 in 1:number_of_dimensions) {
-		for (dimension2 in dimension1:number_of_dimensions) {
-			if (dimension1 != dimension2) {
-				corr_mat[dimension1, dimension2] = cor(theta_pair_mat[dimension1,], theta_pair_mat[dimension2,], use="pairwise.complete.obs", method="spearman")
-				corr_mat[dimension2, dimension1] = cor(theta_pair_mat[dimension1,], theta_pair_mat[dimension2,], use="pairwise.complete.obs", method="spearman")
-				dimension_counter = dimension_counter + 1
-			}
-		}
-		corr_mat[dimension1, dimension1] = NA
-	}
-
 	# Cluster tissues based on similarity of theta_pairs
-	#order <- hclust( as.dist(1- abs(corr_mat)), method = "ward.D" )$order
-	order <- hclust( dist(theta_pair_mat, method = "euclidean"), method = "ward.D" )$order
+	order <- hclust( dist(scale(theta_pair_mat), method = "euclidean"), method = "ward.D" )$order
 
 	rownames(theta_pair_mat) <- tissue_names
 	colnames(theta_pair_mat) <- tissue_names
@@ -656,6 +630,7 @@ make_theta_pair_heatmap <- function(theta_pair, number_of_dimensions,tissue_name
 
     ggsave(heatmap, file=output_file,width=7.2, height=6.0, units="in")
 }
+
 
 
 make_expression_overlap_heatmap <- function(pvalues, number_of_dimensions,tissue_names, output_file) {
@@ -742,54 +717,6 @@ pr_curve_in_one_tissue <- function(tissue_name, roc_vi, roc_independent, output_
 
 }
 
-make_tbt_auc_lolipop_plot <- function(roc_object_vi, roc_object_exact, tissue_names, output_file) {
-	options(bitmapType = 'cairo', device = 'pdf')
-	auc_vi <- c()
-	auc_exact <- c()
-	for (tissue_num in length(tissue_names):1) {
-		tissue_name <- tissue_names[tissue_num]
-		tissue_auc_vi <- roc_object_vi[[tissue_num]]$evaROC$watershed_pr_auc
-		tissue_auc_independent <- roc_object_exact[[tissue_num]]$evaROC$watershed_pr_auc
-		auc_vi <- c(auc_vi, tissue_auc_vi)
-		auc_exact <- c(auc_exact, tissue_auc_independent)
-	}
-
-	df <- data.frame(auc_watershed = auc_vi, auc_river=auc_exact, tissue=tissue_names, tissues_position=1:length(tissue_names))
-	plotter <- ggplot(df) +
-  			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
-  			   geom_point( aes(x=tissues_position, y=auc_vi), color=rgb(0.2,0.7,0.1,0.5), size=3 ) +
-               geom_point( aes(x=tissues_position, y=auc_exact), color=rgb(0.7,0.2,0.1,0.5), size=3 ) +
-               coord_flip()+
-                xlab("") +
-               ylab("AUC (PR)") + 
-               scale_x_continuous(breaks=1:49,labels=rev(tissue_names))
-    ggsave(plotter, file=output_file, width=8.8, height=7.0, units="in")
-}
-
-make_tbt_auc_lolipop_plot_with_median_river <- function(roc_object, tissue_names, output_file) {
-	options(bitmapType = 'cairo', device = 'pdf')
-	auc_vi <- c()
-	auc_exact <- c()
-	for (tissue_num in length(tissue_names):1) {
-		tissue_name <- tissue_names[tissue_num]
-		tissue_auc_vi <- roc_object[[tissue_num]]$evaROC$watershed_pr_auc
-		tissue_auc_independent <- roc_object[[tissue_num]]$evaROC$median_river_pr_auc
-		auc_vi <- c(auc_vi, tissue_auc_vi)
-		auc_exact <- c(auc_exact, tissue_auc_independent)
-	}
-
-	df <- data.frame(auc_watershed = auc_vi, auc_river=auc_exact, tissue=tissue_names, tissues_position=1:length(tissue_names))
-	plotter <- ggplot(df) +
-  			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
-  			   geom_point( aes(x=tissues_position, y=auc_vi), color=rgb(0.2,0.7,0.1,0.5), size=3 ) +
-               geom_point( aes(x=tissues_position, y=auc_exact), color="dodgerblue4", size=3 ) +
-               coord_flip()+
-                xlab("") +
-               ylab("AUC (PR)") + 
-               scale_x_continuous(breaks=1:49,labels=rev(tissue_names))
-    ggsave(plotter, file=output_file, width=8.8, height=7.0, units="in")
-}
-
 
 
 #########################################
@@ -813,6 +740,7 @@ lambda_pair_init <- as.numeric(args[9])
 lambda_costs <- c(.1,.01,1e-3,1e-4)
 vi_step_size=.8
 vi_threshold=1e-5
+pseudoc <- .001
 
 #######################################
 ## Load in data
@@ -826,11 +754,10 @@ data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pval
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference
 #######################################
-independent_variables = "false"
-inference_method = "pseudolikelihood"
+independent_variables = "true"
+inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-aa <- readRDS(paste0(output_root, "_roc_object.rds"))
-roc_object_vi <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_init, lambda_init, lambda_pair_init, output_root, aa$model_params, aa$gam_params)
+roc_object_vi <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_init, lambda_init, lambda_pair_init, output_root)
 saveRDS(roc_object_vi, paste0(output_root, "_roc_object.rds"))
 #roc_object_vi <- readRDS(paste0(output_root, "_roc_object.rds"))
 
@@ -843,32 +770,19 @@ inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
 #roc_object_independent <- roc_analysis(data_input, number_of_dimensions, phi_init, lambda_costs, lambda_pair_costs, pseudoc, inference_method, independent_variables, gradient_descent_threshold, theta_pair_init, lambda_pair_inity, gradient_descent_stepsize, seed_number, lambda_inity, vi_step_size, vi_thresh)
 #saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
-file_name <- "/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/watershed_tbt_roc/splicing_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_30_smart_.001_.001_inference_exact_independent_true_roc_object.rds"
-roc_object_independent <- readRDS(file_name)
+#roc_object_independent <- readRDS(paste0(output_root, "_roc_object2.rds"))
+
+
+#tissue_names <- get_tissue_names(roc_object_vi, number_of_dimensions)
 
 
 
-tissue_names <- get_tissue_names(roc_object_vi, number_of_dimensions)
-
-
-
+if (FALSE) {
 ######################################
 # Visualize theta-pair heatmap to look at correlation structure across tissues
 ######################################
 output_file <- paste0(output_stem, "tissue_by_tissue_theta_pair_heatmap.pdf")
-make_theta_pair_heatmap(roc_object_vi$model_params$theta_pair, number_of_dimensions, tissue_names, output_file)
-
-######################################
-# Visualize tbt pr auc curves between watershed and river
-######################################
-output_file <- paste0(output_stem, "tissue_by_tissue_pr_auc_between_river_watershed_lolipop.pdf")
-make_tbt_auc_lolipop_plot(roc_object_vi$roc, roc_object_independent$roc, tissue_names, output_file)
-
-######################################
-# Visualize tbt pr auc curves between watershed and river
-######################################
-output_file <- paste0(output_stem, "tissue_by_tissue_pr_auc_between_median_river_watershed_lolipop.pdf")
-make_tbt_auc_lolipop_plot_with_median_river(roc_object_vi$roc, tissue_names, output_file)
+#make_theta_pair_heatmap(roc_object_vi$model_params$theta_pair, number_of_dimensions, tissue_names, output_file)
 
 ######################################
 # Visualize num overlap heatmap to look at missingness structure across tissues
@@ -876,7 +790,7 @@ make_tbt_auc_lolipop_plot_with_median_river(roc_object_vi$roc, tissue_names, out
 output_file <- paste0(output_stem, "tissue_by_tissue_expression_overlap_heatmap.pdf")
 #make_expression_overlap_heatmap(data_input$outlier_pvalues, number_of_dimensions, tissue_names, output_file)
 
-if (FALSE) {
+
 ######################################
 # Make Precision recall for each tissue
 ######################################
@@ -890,6 +804,7 @@ for (tissue_num in 1:(number_of_dimensions+1)) {
 	#output_file <- paste0(output_stem, tissue_name, "_precision_recall_curves.pdf")
 	#pr_curve_in_one_tissue(tissue_name, tissue_roc_vi, tissue_roc_independent, output_file)
 }
+
 }
 #######################################
 ## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)

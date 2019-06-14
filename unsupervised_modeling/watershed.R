@@ -236,7 +236,7 @@ compute_logistic_regression_gradient <- function(x, y, feat, lambda) {
 	return(-grad)
 }
 
-logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfolds, lambda_costs) {
+logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init) {
   number_of_dimensions <- dim(binary_outliers_train)[2]
 	number_of_features <- dim(feat_train)[2]
 
@@ -248,6 +248,7 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
 	feat_train_shuff <- feat_train[random_shuffling_indices,]
 	binary_outliers_train_shuff <- binary_outliers_train[random_shuffling_indices,]
 
+  if (FALSE) {
 	#Create nfolds equally size folds
 	folds <- cut(seq(1,nrow(feat_train_shuff)),breaks=nfolds,labels=FALSE)
 
@@ -304,7 +305,8 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
 	print(avg_aucs)
 	best_index <- which(avg_aucs==max(avg_aucs))[1]  # [1] for tie breakers
 	best_lambda <- lambda_costs[best_index]
-
+  }
+  best_lambda = lambda_init
 	# Initialize output variables
   pair_value = 0
   theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
@@ -999,7 +1001,7 @@ make_vector_to_matrix <- function(theta_pair, number_of_dimensions) {
   return(theta_pair_mat)
 }
 
-integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh) {
+integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh, output_root) {
   model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, vi_step_size, vi_thresh)
 
 
@@ -1007,7 +1009,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 	# Start loop here
 	##################
 
-	for (iter in 1:65) {
+	for (iter in 1:100) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
 
@@ -1038,6 +1040,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 		model_params <- map_crf(feat, discrete_outliers, model_params)
 		# Compute MAP estimates of the coefficients defined by P(outlier_status| FR)
 		model_params <- map_phi(discrete_outliers, model_params)
+    saveRDS(model_params, paste0(output_root, "_iter_",iter,".rds"))
 	}
 	return(model_params)
 }

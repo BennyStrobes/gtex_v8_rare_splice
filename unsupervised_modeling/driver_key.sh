@@ -83,11 +83,11 @@ if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
+if false; then
 pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
-if false; then
-sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
+sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
 fi
 
 
@@ -97,24 +97,50 @@ pvalue_fraction=".01"
 sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
 fi
 
-
-
+if false; then
+pseudocount="30"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+sh watershed_roc_run_tbt2.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
+fi
 #####################
 # TBT Model
-# running.0005 should do .0001
 #####################
+pseudocount="30"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_init="smart"  # also could be "data"
+lambda_init=".001"
+lambda_pair_init=".001"
+if false; then
+sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_init $lambda_init $lambda_pair_init
+fi
 
-pseudocount=".001"
-pvalue_fraction=".01"
-# gradient_descent_threshold=".005"
-gradient_descent_threshold=".0001"
-# gradient_descent_threshold=".0001"
-gradient_descent_stepsize="1"
-vi_step_size=".5"
-vi_thresh=".00001"
-theta_pair_init="0"
-lambda="0.01"
-lambda_pair="0"
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $pvalue_fraction $gradient_descent_threshold $theta_pair_init $lambda $lambda_pair $gradient_descent_stepsize $vi_step_size $vi_thresh
+if false; then
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_init="data"  # also could be "data"
+lambda_init=".001"
+lambda_pair_init=".001"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_init $lambda_init $lambda_pair_init
+fi
 
+
+if false; then
+pseudocount="30"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_init="smart"  # also could be "data"
+lambda_init=".001"
+lambda_pair_init=".001"
+sbatch river_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_init $lambda_init $lambda_pair_init
+fi
+
+if false; then
+pseudocount="30"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+sh watershed_roc_run_tbt_te.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
+fi
 
