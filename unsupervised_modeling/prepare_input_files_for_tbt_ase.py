@@ -14,7 +14,8 @@ def get_tissues(tissue_names_file):
 	f = open(tissue_names_file)
 	for line in f:
 		line = line.rstrip()
-		tissues.append(line)
+		if line != "Kidney_Cortex":
+			tissues.append(line)
 	f.close()
 	return np.asarray(tissues)
 
@@ -29,7 +30,7 @@ def get_used_gene_individual_pairs(input_file, num_tissues):
 			head_count = head_count + 1
 			continue
 		indi_id = data[0]
-		gene_id = data[1]
+		gene_id = data[1].split('.')[0]
 		pair_name = indi_id + '_' + gene_id
 		if pair_name in gene_indi_pairs:
 			print('assumption error!')
@@ -38,18 +39,33 @@ def get_used_gene_individual_pairs(input_file, num_tissues):
 	f.close()
 	return gene_indi_pairs
 
-def fill_in_tissues_splicing_outlier_calls(outlier_file_name, gene_individual_pairs, tissue_num):
+def remove_quotes(arr):
+	new_arr = []
+	for ele in arr:
+		new_arr.append(ele.split('"')[1])
+	return new_arr
+
+def convert_na_to_NaN(arr):
+	new_arr = []
+	for ele in arr:
+		if ele == 'NA':
+			new_arr.append('NaN')
+		else:
+			new_arr.append(ele)
+	return new_arr
+
+def fill_in_tissues_ase_outlier_calls(outlier_file_name, gene_individual_pairs, tissue_num):
 	f = open(outlier_file_name)
 	head_count = 0
 	for line in f:
 		line = line.rstrip()
-		data = line.split()
+		data = line.split(',')
 		if head_count == 0:
 			head_count = head_count + 1
-			indiz = data[1:]
+			indiz = remove_quotes(data[1:])
 			continue
-		ensamble_id = data[0]
-		pvalues = np.asarray(data[1:]).astype(float)
+		ensamble_id = data[0].split('"')[1]
+		pvalues = np.asarray(convert_na_to_NaN(data[1:])).astype(float)
 		for index, pvalue in enumerate(pvalues):
 			indi = indiz[index]
 			pair_name = indi + '_' + ensamble_id
@@ -88,23 +104,25 @@ def print_tbt_to_output_file(input_file, output_file, gene_individual_pairs, tis
 		features = data[:num_features]
 		t.write('\t'.join(features) + '\t')
 		indi_id = data[0]
-		gene_id = data[1]
+		gene_id = data[1].split('.')[0]
 		test_name = indi_id + '_' + gene_id
 		pvalue_arr = np.asarray(gene_individual_pairs[test_name]).astype(str)
+		if sum(np.isnan(gene_individual_pairs[test_name])) > 44:
+			pdb.set_trace()
 		t.write('\t'.join(pvalue_arr) + '\t' + data[-1] + '\n')
 	f.close()
 	t.close()
 
 unsupervised_learning_input_dir = sys.argv[1]  # Input/outptu dir
 pvalue = float(sys.argv[2]) # Threshold used for outlier calling
-splicing_outlier_dir = sys.argv[3]  # Directory containing splicing outlier calls in each tissue
+ase_outlier_dir = sys.argv[3]  # Directory containing ase outlier calls in each tissue
 tissue_names_file = sys.argv[4]  # File containing list of tissue names
 
 # Input file we will use to get list of test (individual, gene pairs to be used)
 input_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
 
 # Output file we will write results to
-output_file = unsupervised_learning_input_dir + 'splicing_tbt_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
+output_file = unsupervised_learning_input_dir + 'ase_tbt_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
 
 # Extract list of tissues
 tissues = get_tissues(tissue_names_file)
@@ -115,8 +133,8 @@ gene_individual_pairs = get_used_gene_individual_pairs(input_file, len(tissues))
 # Fill in gene_indiviaul_pairs with outlier pvalues
 for tissue_num, tissue_name in enumerate(tissues):
 	print(tissue_num)
-	outlier_file_name = splicing_outlier_dir + tissue_name + '_covariate_method_none_no_global_outliers_ea_only_merged_emperical_pvalue_gene_level.txt'
-	gene_individual_pairs = fill_in_tissues_splicing_outlier_calls(outlier_file_name, gene_individual_pairs, tissue_num)
+	outlier_file_name = ase_outlier_dir + 'combined.uncorrected.unfiltered.ad.scores.in.' + tissue_name + '.tsv'
+	gene_individual_pairs = fill_in_tissues_ase_outlier_calls(outlier_file_name, gene_individual_pairs, tissue_num)
 
 # Print to output file
 print_tbt_to_output_file(input_file, output_file, gene_individual_pairs, tissues)

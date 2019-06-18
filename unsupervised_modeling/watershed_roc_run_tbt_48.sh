@@ -21,7 +21,7 @@ outlier_type="${11}"
 
 
 # Parameters!
-number_of_dimensions="49"
+number_of_dimensions="48"
 
 gene_thresh="0.01"
 input_stem=$outlier_type"_tbt_outliers_"$gene_thresh"_genes_intersection_between_te_ase_splicing"

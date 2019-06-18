@@ -14,7 +14,8 @@ splicing_outlier_file="$5"
 unsupervised_learning_input_dir="$6"
 gene_individual_to_variant_mapping_file="$7"
 splicing_outlier_dir="$8"
-tissue_names_file="$9"
+ase_outlier_dir="${9}"
+tissue_names_file="${10}"
 
 
 pvalue=".01"
@@ -25,6 +26,7 @@ python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicin
 
 python prepare_input_files_for_tbt_splicing.py $unsupervised_learning_input_dir $pvalue $splicing_outlier_dir $tissue_names_file
 fi
+python prepare_input_files_for_tbt_ase.py $unsupervised_learning_input_dir $pvalue $ase_outlier_dir $tissue_names_file
 
 
 if false; then

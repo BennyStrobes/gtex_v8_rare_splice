@@ -512,6 +512,8 @@ get_discretized_outliers <- function(outlier_pvalues) {
 
 
 load_watershed_data <- function(input_file, number_of_dimensions, pvalue_fraction, pvalue_threshold) {
+  print(input_file)
+  print(number_of_dimensions)
 	raw_data <- read.table(input_file, header=TRUE)
 	# Get genomic features (first 2 columns are line identifiers and last (number_of_dimensions+1) columns are outlier status' and N2 pair
 	feat <- raw_data[,3:(ncol(raw_data)-number_of_dimensions-1)]
@@ -935,8 +937,13 @@ map_phi <- function(discrete_outliers, model_params) {
 
   # Add prior
   for (dimension_number in 1:model_params$number_of_dimensions) {
-    phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + model_params$pseudoc
-    phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + model_params$pseudoc
+    if (length(pseudoc) == 1) {
+      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc
+      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc
+    } else {
+      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc[dimension_number]
+      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc[dimension_number]
+    }
   }
 	# Add prior
 	#phi_outlier <- phi_outlier + model_params$pseudoc
@@ -968,8 +975,13 @@ map_phi_initialization <- function(discrete_outliers, posterior, number_of_dimen
 
   # Add prior
   for (dimension_number in 1:number_of_dimensions) {
-    phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc
-    phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc
+    if (length(pseudoc) == 1) {
+      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc
+      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc
+    } else {
+      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc[dimension_number]
+      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc[dimension_number]
+    }
   }
   # Add prior
   #phi_outlier <- phi_outlier + model_params$pseudoc
@@ -1009,7 +1021,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 	# Start loop here
 	##################
 
-	for (iter in 1:100) {
+	for (iter in 1:150) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
 
