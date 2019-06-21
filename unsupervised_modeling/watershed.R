@@ -15,6 +15,8 @@ library(grid)
 library(PRROC)
 library(RColorBrewer)
 library(DirichletReg)
+library(reticulate)
+source_python('dirichlet_categorical.py')
 sourceCpp("crf_exact_updates.cpp")
 sourceCpp("crf_variational_updates.cpp")
 sourceCpp("independent_crf_exact_updates.cpp")
@@ -935,23 +937,29 @@ map_phi <- function(discrete_outliers, model_params) {
     	phi_inlier[,bin_number] <- colSums(((discrete_outliers==bin_number)*(1-model_params$posterior)),na.rm=TRUE)
   }
 
-  # Add prior
-  for (dimension_number in 1:model_params$number_of_dimensions) {
-    if (length(pseudoc) == 1) {
-      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc
-      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc
-    } else {
-      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc[dimension_number]
-      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc[dimension_number]
+  if (is.na(pseudoc)) {
+    obj = dirichlet_categorical_fit(phi_outlier, phi_inlier, 1.0001, 1e-4)
+    phi_inlier = obj$phi_inlier
+    phi_outlier = obj$phi_outlier
+  } else {
+    # Add prior
+    for (dimension_number in 1:model_params$number_of_dimensions) {
+      if (length(pseudoc) == 1) {
+        phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc
+        phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc
+      } else {
+        phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc[dimension_number]
+        phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc[dimension_number]
+      }
     }
-  }
-	# Add prior
-	#phi_outlier <- phi_outlier + model_params$pseudoc
-	#phi_inlier <- phi_inlier + model_params$pseudoc
+	 # Add prior
+	 #phi_outlier <- phi_outlier + model_params$pseudoc
+	 #phi_inlier <- phi_inlier + model_params$pseudoc
 
-	# Normalize
-	phi_outlier <- phi_outlier/rowSums(phi_outlier)
-	phi_inlier <- phi_inlier/rowSums(phi_inlier)
+	 # Normalize
+	 phi_outlier <- phi_outlier/rowSums(phi_outlier)
+	 phi_inlier <- phi_inlier/rowSums(phi_inlier)
+  }
 
 	# Add to model_params
 	model_params$phi$outlier_component <- phi_outlier
@@ -969,27 +977,31 @@ map_phi_initialization <- function(discrete_outliers, posterior, number_of_dimen
   phi_inlier <- matrix(1, number_of_dimensions, num_bins)
   # Count number of times we fall into each bin
   for (bin_number in 1:num_bins) {
-      phi_outlier[,bin_number] <- colSums(((discrete_outliers==bin_number)*posterior),na.rm=TRUE)
-      phi_inlier[,bin_number] <- colSums(((discrete_outliers==bin_number)*(1-posterior)),na.rm=TRUE)
+    phi_outlier[,bin_number] <- colSums(((discrete_outliers==bin_number)*posterior),na.rm=TRUE)
+    phi_inlier[,bin_number] <- colSums(((discrete_outliers==bin_number)*(1-posterior)),na.rm=TRUE)
   }
+  if (is.na(pseudoc)) {
+    obj = dirichlet_categorical_fit(phi_outlier, phi_inlier, 1.0001, 1e-4)
+    phi_inlier = obj$phi_inlier
+    phi_outlier = obj$phi_outlier
+  } else {
+    # Count number of times we fall into each bin
 
-  # Add prior
-  for (dimension_number in 1:number_of_dimensions) {
-    if (length(pseudoc) == 1) {
-      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc
-      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc
-    } else {
-      phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc[dimension_number]
-      phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc[dimension_number]
+    # Add prior
+    for (dimension_number in 1:number_of_dimensions) {
+      if (length(pseudoc) == 1) {
+        phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc
+        phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc
+      } else {
+        phi_outlier[dimension_number,] = phi_outlier[dimension_number,] + pseudoc[dimension_number]
+        phi_inlier[dimension_number,] = phi_inlier[dimension_number,] + pseudoc[dimension_number]
+      }
     }
-  }
-  # Add prior
-  #phi_outlier <- phi_outlier + model_params$pseudoc
-  #phi_inlier <- phi_inlier + model_params$pseudoc
 
-  # Normalize
-  phi_outlier <- phi_outlier/rowSums(phi_outlier)
-  phi_inlier <- phi_inlier/rowSums(phi_inlier)
+    # Normalize
+    phi_outlier <- phi_outlier/rowSums(phi_outlier)
+    phi_inlier <- phi_inlier/rowSums(phi_inlier)
+  }
 
   # Add to model_params
   phi_init <- list(inlier_component = phi_inlier, outlier_component = phi_outlier)
@@ -1021,7 +1033,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 	# Start loop here
 	##################
 
-	for (iter in 1:150) {
+	for (iter in 1:100) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
 

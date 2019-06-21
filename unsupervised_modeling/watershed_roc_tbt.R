@@ -549,7 +549,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	nfolds <- 8
 
 	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
-	#saveRDS(gam_data,"gam.RDS")
+	saveRDS(gam_data,"gam.RDS")
 	#gam_data <- readRDS("gam.RDS")
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
 
@@ -565,6 +565,8 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 
 	if (phi_method == "sample_size") {
 		pseudoc <- .001*as.vector(colSums(!is.na(discrete_outliers_train)))
+	} else if (phi_method == "marginal") {
+		pseudoc <- NA
 	}
 	#phi_init <- map_phi_initialization(discrete_outliers_train, gam_train_posteriors, number_of_dimensions, pseudoc)
 
@@ -579,7 +581,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 
   	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold, output_root)
   	#watershed_model <- readRDS(paste0(output_root, "_iter_100.rds"))
-
+  	#watershed_model <- readRDS("/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/watershed_tbt_roc/splicing_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_0_fixed_.001_.001_inference_pseudolikelihood_independent_false_iter_98.rds")
  	#######################################
 	## Get test data watershed posterior probabilities
 	#######################################
@@ -821,7 +823,7 @@ outlier_type <- args[12]
 #lambda_costs <- c(.1,.01,1e-3, 1e-4)
 lambda_costs <- c(.1,.01,1e-3,1e-4)
 vi_step_size=.8
-vi_threshold=1e-5
+vi_threshold=1e-8
 
 #######################################
 ## Load in data

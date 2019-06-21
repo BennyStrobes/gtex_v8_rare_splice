@@ -15,7 +15,7 @@ library(grid)
 library(PRROC)
 library(cowplot)
 library(RColorBrewer)
-source("watershed.R")
+# source("watershed.R")
 
 
 
@@ -854,8 +854,10 @@ vi_threshold=1e-6
 #######################################
 ## Load in data
 #######################################
-data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
-
+#data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
+raw_data <- read.table(input_file, header=TRUE)
+feat <- raw_data[,3:(ncol(raw_data)-number_of_dimensions-1)]
+feat_names <- colnames(feat)
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference and pseudolikelihood
@@ -892,15 +894,22 @@ output_root <- paste0(output_stem,"_inference_", inference_method, "_independent
 roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
-#######################################
-## Visualize theta pair terms for exact inference
-#######################################
-plot_theta_pair_term(roc_object_exact$model_params$theta_pair, paste0(output_stem, "_exact_inference_theta_pair_heatmap.pdf"))
+#colnames(roc_object_exact$model_params$theta) = colnames(feat)
+for (anno_num in 1:length(feat_names)) {
+	anno_name = feat_names[anno_num]
+	print(paste0(anno_name, " ", roc_object_exact$model_params$theta[anno_num, 1], " ", roc_object_exact$model_params$theta[anno_num, 2], " ", roc_object_exact$model_params$theta[anno_num, 3]))
+}
+
 
 #######################################
 ## Visualize theta pair terms for exact inference
 #######################################
-plot_theta_pair_term(roc_object_pseudo$model_params$theta_pair, paste0(output_stem, "_approximate_inference_theta_pair_heatmap.pdf"))
+#plot_theta_pair_term(roc_object_exact$model_params$theta_pair, paste0(output_stem, "_exact_inference_theta_pair_heatmap.pdf"))
+
+#######################################
+## Visualize theta pair terms for approximate inference
+#######################################
+#plot_theta_pair_term(roc_object_pseudo$model_params$theta_pair, paste0(output_stem, "_approximate_inference_theta_pair_heatmap.pdf"))
 
 #######################################
 ## Visualize beta differences for exact vs inference

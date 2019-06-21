@@ -86,10 +86,10 @@ if false; then
 sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
 
-if false; then
 pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
+if false; then
 sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
 fi
 
@@ -108,15 +108,15 @@ if false; then
 pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
-phi_method="fixed"  # fixed, sample_size
+phi_method="marginal"  # fixed, sample_size, marginal
 lambda_init=".001"
 lambda_pair_init=".001"
 independent_variables="false"  # false or true
 inference_method="pseudolikelihood" # pseudolikelihood or exact
-outlier_type="total_expression"  # splicing, total_expression, ase
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
+outlier_type="splicing"  # splicing, total_expression, ase
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
 
-pseudocount="10"
+pseudocount="0"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
 phi_method="fixed"  # fixed, sample_size
@@ -124,23 +124,23 @@ lambda_init=".001"
 lambda_pair_init=".001"
 independent_variables="false"  # false or true
 inference_method="pseudolikelihood" # pseudolikelihood or exact
-outlier_type="total_expression"  # splicing, total_expression, ase
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
+outlier_type="splicing"  # splicing, total_expression, ase
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
+
 
 pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
-phi_method="sample_size"  # fixed, sample_size
+phi_method="marginal"  # fixed, sample_size
 lambda_init=".001"
 lambda_pair_init=".001"
-independent_variables="false"  # false or true
-inference_method="pseudolikelihood" # pseudolikelihood or exact
-outlier_type="total_expression"  # splicing, total_expression, ase
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
+independent_variables="true"  # false or true
+inference_method="exact" # pseudolikelihood or exact
+outlier_type="splicing"  # splicing, total_expression, ase
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
 
 
-
-pseudocount="30"
+pseudocount="0"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
 phi_method="fixed"  # fixed, sample_size
@@ -148,33 +148,9 @@ lambda_init=".001"
 lambda_pair_init=".001"
 independent_variables="true"  # false or true
 inference_method="exact" # pseudolikelihood or exact
-outlier_type="total_expression"  # splicing, total_expression, ase
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
-
-
-pseudocount="10"
-n2_pair_pvalue_fraction=".01"
-binary_pvalue_threshold=".01"
-phi_method="fixed"  # fixed, sample_size
-lambda_init=".001"
-lambda_pair_init=".001"
-independent_variables="true"  # false or true
-inference_method="exact" # pseudolikelihood or exact
-outlier_type="total_expression"  # splicing, total_expression, ase
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
-
-pseudocount="30"
-n2_pair_pvalue_fraction=".01"
-binary_pvalue_threshold=".01"
-phi_method="sample_size"  # fixed, sample_size
-lambda_init=".001"
-lambda_pair_init=".001"
-independent_variables="true"  # false or true
-inference_method="exact" # pseudolikelihood or exact
-outlier_type="total_expression"  # splicing, total_expression, ase
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
+outlier_type="splicing"  # splicing, total_expression, ase
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
 fi
-
 
 Rscript visualize_watershed_tbt_results.R $watershed_tbt_roc_run_dir
 
