@@ -235,8 +235,9 @@ input_dir <- args[1]
 # Model hyperparameters
 ############################
 pseudocount <- 30
-phi_update_method <- "marginal"
+phi_update_method <- "fixed"
 number_of_dimensions <- 49
+
 
 
 
@@ -297,7 +298,6 @@ watershed_phi_plot <- make_phi_bar_plot(splicing_watershed_obj$model_params$phi,
 river_phi_plot <- make_phi_bar_plot(splicing_river_obj$model_params$phi, splicing_tissue_names, paste0("river-",outlier_type))
 phi_plot <- plot_grid(river_phi_plot, watershed_phi_plot, ncol=2)
 ggsave(phi_plot, file=output_file, width=8.0, height=4.6, units="in")
-
 
 
 ######################################
