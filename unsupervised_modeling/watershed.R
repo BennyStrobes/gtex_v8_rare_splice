@@ -16,7 +16,7 @@ library(PRROC)
 library(RColorBrewer)
 library(DirichletReg)
 library(reticulate)
-source_python('dirichlet_categorical.py')
+#source_python('dirichlet_categorical.py')
 sourceCpp("crf_exact_updates.cpp")
 sourceCpp("crf_variational_updates.cpp")
 sourceCpp("independent_crf_exact_updates.cpp")
@@ -883,6 +883,8 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 
 	# Run LBFGS (https://cran.r-project.org/web/packages/lbfgs/lbfgs.pdf) using our gradient and likelihood functions.
 	if (model_params$inference_method == "exact") {
+    analytical_gradient <- compute_exact_crf_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
+    print(as.vector(analytical_gradient))
 		lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton, independent_variables=model_params$independent_variables, invisible=1)
 	} else if (model_params$inference_method == "vi") {
 		theta_singleton <- gradient_variable_vec[1:model_params$number_of_dimensions]
@@ -903,8 +905,9 @@ map_crf <- function(feat, discrete_outliers, model_params) {
     lbfgs_output <- lbfgs(compute_vi_crf_likelihood_for_lbfgs, compute_vi_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables,step_size=model_params$vi_step_size,convergence_thresh=model_params$vi_thresh)
 	} else if (model_params$inference_method == "pseudolikelihood") {
     #log_like <- compute_exact_crf_pseudolikelihood_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
-    #analytical_gradient <- compute_exact_crf_pseudolikelihood_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
+    analytical_gradient <- compute_exact_crf_pseudolikelihood_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
     #num_grad <- grad(compute_exact_crf_pseudolikelihood_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton, independent_variables=model_params$independent_variables)
+    print(as.vector(analytical_gradient))
     lbfgs_output <- lbfgs(compute_exact_crf_pseudolikelihood_for_lbfgs, compute_exact_crf_pseudolikelihood_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables)
 
   }

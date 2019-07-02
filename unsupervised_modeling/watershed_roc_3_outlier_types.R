@@ -15,7 +15,7 @@ library(grid)
 library(PRROC)
 library(cowplot)
 library(RColorBrewer)
-# source("watershed.R")
+source("watershed.R")
 
 
 
@@ -740,7 +740,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	nfolds <- 5
 
-	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs)
+	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, .001)
 	#saveRDS(gam_data,"gam.RDS")
 	#gam_data <- readRDS("gam.RDS")
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
@@ -854,7 +854,7 @@ vi_threshold=1e-6
 #######################################
 ## Load in data
 #######################################
-#data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
+data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
 raw_data <- read.table(input_file, header=TRUE)
 feat <- raw_data[,3:(ncol(raw_data)-number_of_dimensions-1)]
 feat_names <- colnames(feat)
@@ -865,9 +865,9 @@ feat_names <- colnames(feat)
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
 #saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
-roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 
@@ -877,7 +877,7 @@ roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
 #saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
 roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 

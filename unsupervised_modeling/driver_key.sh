@@ -89,9 +89,8 @@ fi
 pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
-if false; then
 sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
-fi
+
 
 
 if false; then
@@ -151,6 +150,6 @@ inference_method="exact" # pseudolikelihood or exact
 outlier_type="splicing"  # splicing, total_expression, ase
 sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
 fi
-
+if false; then
 Rscript visualize_watershed_tbt_results.R $watershed_tbt_roc_run_dir
-
+fi
