@@ -25,9 +25,11 @@ if false; then
 python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicing.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $pvalue $gene_individual_to_variant_mapping_file
 
 python prepare_input_files_for_tbt_splicing.py $unsupervised_learning_input_dir $pvalue $splicing_outlier_dir $tissue_names_file
-fi
-python prepare_input_files_for_tbt_ase.py $unsupervised_learning_input_dir $pvalue $ase_outlier_dir $tissue_names_file
 
+python prepare_input_files_for_tbt_ase.py $unsupervised_learning_input_dir $pvalue $ase_outlier_dir $tissue_names_file
+fi
+
+python prepare_median_brain_input_file.py $unsupervised_learning_input_dir $pvalue
 
 if false; then
 pvalue=".02"

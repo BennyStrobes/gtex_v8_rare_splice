@@ -322,6 +322,7 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
   		observed_training_outliers <- as.matrix(binary_outliers_train_shuff[observed_training_indices, dimension])
   		observed_training_feat <- feat_train_shuff[observed_training_indices,]
 
+
 		  lbfgs_output <- lbfgs(compute_logistic_regression_likelihood, compute_logistic_regression_gradient, gradient_variable_vec, y=observed_training_outliers, feat=observed_training_feat, lambda=best_lambda, invisible=1)
 		  if (lbfgs_output$convergence != 0) {
     		print("ERRROR!")
@@ -883,8 +884,8 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 
 	# Run LBFGS (https://cran.r-project.org/web/packages/lbfgs/lbfgs.pdf) using our gradient and likelihood functions.
 	if (model_params$inference_method == "exact") {
-    analytical_gradient <- compute_exact_crf_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
-    print(as.vector(analytical_gradient))
+    #analytical_gradient <- compute_exact_crf_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
+    #print(as.vector(analytical_gradient))
 		lbfgs_output <- lbfgs(compute_exact_crf_likelihood_for_lbfgs, compute_exact_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton, independent_variables=model_params$independent_variables, invisible=1)
 	} else if (model_params$inference_method == "vi") {
 		theta_singleton <- gradient_variable_vec[1:model_params$number_of_dimensions]
@@ -905,9 +906,9 @@ map_crf <- function(feat, discrete_outliers, model_params) {
     lbfgs_output <- lbfgs(compute_vi_crf_likelihood_for_lbfgs, compute_vi_crf_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables,step_size=model_params$vi_step_size,convergence_thresh=model_params$vi_thresh)
 	} else if (model_params$inference_method == "pseudolikelihood") {
     #log_like <- compute_exact_crf_pseudolikelihood_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
-    analytical_gradient <- compute_exact_crf_pseudolikelihood_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
+    #analytical_gradient <- compute_exact_crf_pseudolikelihood_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
     #num_grad <- grad(compute_exact_crf_pseudolikelihood_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton, independent_variables=model_params$independent_variables)
-    print(as.vector(analytical_gradient))
+    #print(as.vector(analytical_gradient))
     lbfgs_output <- lbfgs(compute_exact_crf_pseudolikelihood_for_lbfgs, compute_exact_crf_pseudolikelihood_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables)
 
   }
@@ -1028,7 +1029,7 @@ make_vector_to_matrix <- function(theta_pair, number_of_dimensions) {
   return(theta_pair_mat)
 }
 
-integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh, output_root) {
+integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh) {
   model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, vi_step_size, vi_thresh)
 
 
@@ -1036,7 +1037,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 	# Start loop here
 	##################
 
-	for (iter in 1:100) {
+	for (iter in 1:65) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
 
@@ -1067,7 +1068,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 		model_params <- map_crf(feat, discrete_outliers, model_params)
 		# Compute MAP estimates of the coefficients defined by P(outlier_status| FR)
 		model_params <- map_phi(discrete_outliers, model_params)
-    saveRDS(model_params, paste0(output_root, "_iter_",iter,".rds"))
+    #saveRDS(model_params, paste0(output_root, "_iter_",iter,".rds"))
 	}
 	return(model_params)
 }

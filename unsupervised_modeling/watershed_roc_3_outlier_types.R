@@ -866,7 +866,7 @@ independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
 roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
-#saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
+saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
 #roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
@@ -878,8 +878,8 @@ independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
 roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
-#saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
-roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
+saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
+#roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 
@@ -889,49 +889,49 @@ roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
-#saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
-roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
+roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
+#roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 #colnames(roc_object_exact$model_params$theta) = colnames(feat)
-for (anno_num in 1:length(feat_names)) {
-	anno_name = feat_names[anno_num]
-	print(paste0(anno_name, " ", roc_object_exact$model_params$theta[anno_num, 1], " ", roc_object_exact$model_params$theta[anno_num, 2], " ", roc_object_exact$model_params$theta[anno_num, 3]))
-}
+#for (anno_num in 1:length(feat_names)) {
+#	anno_name = feat_names[anno_num]
+#	print(paste0(anno_name, " ", roc_object_exact$model_params$theta[anno_num, 1], " ", roc_object_exact$model_params$theta[anno_num, 2], " ", roc_object_exact$model_params$theta[anno_num, 3]))
+#}
 
 
 #######################################
 ## Visualize theta pair terms for exact inference
 #######################################
-#plot_theta_pair_term(roc_object_exact$model_params$theta_pair, paste0(output_stem, "_exact_inference_theta_pair_heatmap.pdf"))
+plot_theta_pair_term(roc_object_exact$model_params$theta_pair, paste0(output_stem, "_exact_inference_theta_pair_heatmap.pdf"))
 
 #######################################
 ## Visualize theta pair terms for approximate inference
 #######################################
-#plot_theta_pair_term(roc_object_pseudo$model_params$theta_pair, paste0(output_stem, "_approximate_inference_theta_pair_heatmap.pdf"))
+plot_theta_pair_term(roc_object_pseudo$model_params$theta_pair, paste0(output_stem, "_approximate_inference_theta_pair_heatmap.pdf"))
 
 #######################################
 ## Visualize beta differences for exact vs inference
 #######################################
-#plot_beta_difference_scatter_between_exact_and_vi(roc_object_exact$model_params, roc_object_pseudo$model_params, paste0(output_stem, "_watershed_exact_vs_approximate_beta_estimate_scatter.pdf"))
+plot_beta_difference_scatter_between_exact_and_vi(roc_object_exact$model_params, roc_object_pseudo$model_params, paste0(output_stem, "_watershed_exact_vs_approximate_beta_estimate_scatter.pdf"))
 
 #######################################
 ## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)
 #######################################
-# plot_pr_gam_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_river_gam_comparison_pr.pdf"))
+plot_pr_gam_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_river_gam_comparison_pr.pdf"))
 
 #######################################
 ## Visualize precision-recall curves for river, watershed-vi, watershed-exact comparison and all three outlier types (te, splice, ase)
 #######################################
-# plot_pr_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_pseudo$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_watershed_vi_river_comparison_pr.pdf"))
+plot_pr_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_pseudo$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_watershed_vi_river_comparison_pr.pdf"))
 
 
 
 #######################################
 ## Visualize Confusion matrix for both RIVER and Watershed (exact and vi)
 #######################################
-# visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_exact_watershed_vi_comparison.pdf"))
+visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_exact_watershed_vi_comparison.pdf"))
 
 
 

@@ -143,9 +143,8 @@ fi
 #### B. Compare distances between variants and splice sites for outliers vs non-outliers
 #### C. Also compare jxn usage nearby A: altered splice sites and B: altered PPT regions in outliers and non-outliers
 # Then visualize results
-if false; then
 sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir $tissue_colors_file $heuristic_outlier_dir $heuristic_outlier_suffix $splice_site_cartoon
-fi
+
 
 
 #################

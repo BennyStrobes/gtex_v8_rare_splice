@@ -89,7 +89,19 @@ fi
 pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
+if false; then
 sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
+fi
+
+pseudocount="30"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+sh watershed_roc_run_3_brain_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
+
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+sh watershed_roc_run_3_brain_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
 
 
 
