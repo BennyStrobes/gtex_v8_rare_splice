@@ -506,7 +506,7 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
 
 
 
-roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, output_root, outlier_type) {
+roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, outlier_type) {
 	#######################################
 	# Load in all data (training and test)
 	#######################################
@@ -579,7 +579,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
   	lambda_pair <- lambda_pair_init
   	lambda <- lambda_init
 
-  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold, output_root)
+  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold)
   	#watershed_model <- readRDS(paste0(output_root, "_iter_100.rds"))
   	#watershed_model <- readRDS("/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/watershed_tbt_roc/splicing_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_0_fixed_.001_.001_inference_pseudolikelihood_independent_false_iter_98.rds")
  	#######################################
@@ -837,7 +837,7 @@ data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pval
 #######################################
 ## Run Watershed model
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, output_root, outlier_type)
+roc_object <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, outlier_type)
 saveRDS(roc_object, paste0(output_root, "_roc_object.rds"))
 #roc_object_vi <- readRDS(paste0(output_root, "_roc_object.rds"))
 

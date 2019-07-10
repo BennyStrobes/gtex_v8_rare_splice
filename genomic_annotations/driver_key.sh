@@ -32,6 +32,9 @@ cluster_info_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/out
 # Created by Xin (5/5/19)
 num_variants_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtex_v8_variant_count.txt"
 
+# Tissue specific chromhmm file
+chrom_hmm_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/tissue_specific_chromHMM_annotations/gtex_v8.core15.127_filtered_tissues.txt"
+
 # File containing CADD scores (also containing $cadd_file".tbi")
 #cadd_file="/work-zfs/abattle4/lab_data/genomic_annotation_data/hg38/whole_genome_SNVs.tsv.gz"
 
@@ -58,7 +61,8 @@ visualization_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/gen
 ##########################
 # Part 1: Preprocess genomic annotations from Xin
 # Essentially compress genomic annotation lines from transcript level to the gene level
-sh preprocess_genomic_annotations.sh $raw_genomic_annotation_file $variant_bed_file $rare_variant_to_gene_file $genomic_annotation_dir $exon_file $cluster_info_file
+sh preprocess_genomic_annotations.sh $raw_genomic_annotation_file $variant_bed_file $rare_variant_to_gene_file $genomic_annotation_dir $exon_file $cluster_info_file $chrom_hmm_file
 
+if false; then
 Rscript visualize_genomic_variants.R $num_variants_file $visualization_dir
-
+fi

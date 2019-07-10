@@ -848,7 +848,7 @@ binary_pvalue_threshold <- as.numeric(args[6])  # Pvalue threshold to call binar
 #lambda_costs <- c(.1,.01,1e-3, 1e-4)
 lambda_costs <- c(.1,.01,1e-3,1e-4)
 vi_step_size=.8
-vi_threshold=1e-6
+vi_threshold=1e-8
 
 
 #######################################

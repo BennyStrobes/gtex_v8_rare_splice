@@ -24,7 +24,7 @@ tissue_colors_file="${14}"
 heuristic_outlier_dir="${15}"
 heuristic_outlier_suffix="${16}"
 splice_site_cartoon="${17}"
-
+figure_2_ab_data="${18}"
 
 
 # Whether to take 'top_outlier' per cluster of 'all' variants per cluster
@@ -127,7 +127,7 @@ fi
 ########################
 # Visualize results
 ########################
-Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $jxn_usage_nearby_altered_ss_enrichment_dir $variant_enrichment_dir $tissue_names_file $tissue_colors_file $visualize_variant_position_enrichment_dir $splice_site_cartoon
+Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $jxn_usage_nearby_altered_ss_enrichment_dir $variant_enrichment_dir $tissue_names_file $tissue_colors_file $visualize_variant_position_enrichment_dir $splice_site_cartoon $figure_2_ab_data
 
 
 

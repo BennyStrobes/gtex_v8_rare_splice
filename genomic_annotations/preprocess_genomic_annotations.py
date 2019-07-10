@@ -328,6 +328,9 @@ def make_real_valued_genomic_annotations(input_file, output_file):
 	categoricals[16] = []
 	categoricals[18] = []
 
+	for index in range(44,71):
+		categoricals[index] = []
+
 
 	# First loop through file one time to fill in cateogricals dictionary
 	# For header
@@ -642,45 +645,49 @@ def get_gene_to_clusters_mapping(cluster_info_file):
 	return mapping
 
 def get_cluster_level_ss_feature_vector(cluster_mapping, var_pos, chrom_num, strand):
-	donor_intron = 0
-	donor_exon = 0
-	acceptor_intron = 0
-	acceptor_exon = 0
-	window = 0
+	donor_variant = 0
+	acceptor_variant = 0
+	ppt_variant = 0
+	donor_window_variant = 0
+	acceptor_window_variant = 0
 	for start_splice_site in cluster_mapping['start_splice_sites']:
 		distance = start_splice_site - var_pos
 		# Check if its a donor ss
 		if strand == '+': # Donor ss
-			if distance < 0 and distance > -6: # Intron
-				donor_intron = 1
-				window = 1
-			elif distance >= 0 and distance < 5: # Exon
-				donor_exon = 1
-				window = 1
+			if distance >= -6 and distance <= 0:
+				donor_variant = 1
+			if distance >= -10 and distance < -6:
+				donor_window_variant = 1
+			if distance > 0 and distance <= 10:
+				donor_window_variant = 1
 		elif strand == '-': # Acceptor ss
-			if distance < 0 and distance > -6: # Intron
-				acceptor_intron = 1
-				window = 1
-			elif distance >= 0 and distance < 5: # Exon
-				acceptor_exon = 1
-				window = 1
+			if distance >= -2 and distance <= 0:
+				acceptor_variant = 1
+			if distance <= -5 and distance > -35:
+				ppt_variant = 1
+			if distance >= -4 and distance < -2:
+				acceptor_window_variant = 1
+			if distance > 0 and distance <= 10:
+				acceptor_window_variant = 1
 	for end_splice_site in cluster_mapping['end_splice_sites']:
 		distance = var_pos - end_splice_site
 		if strand == '-': # Donor ss
-			if distance < 0 and distance > -6: # Intron
-				donor_intron = 1
-				window = 1
-			elif distance >= 0 and distance < 5: # Exon
-				donor_exon = 1
-				window = 1
+			if distance >= -6 and distance <= 0:
+				donor_variant = 1
+			if distance >= -10 and distance < -6:
+				donor_window_variant = 1
+			if distance > 0 and distance <= 10:
+				donor_window_variant = 1
 		elif strand == '+': # Acceptor ss
-			if distance < 0 and distance > -6: # Intron
-				acceptor_intron = 1
-				window = 1
-			elif distance >= 0 and distance < 5: # Exon
-				acceptor_exon = 1
-				window = 1
-	return np.asarray([donor_intron, donor_exon, acceptor_intron, acceptor_exon, window])
+			if distance >= -2 and distance <= 0:
+				acceptor_variant = 1
+			if distance <= -5 and distance > -35:
+				ppt_variant = 1
+			if distance >= -4 and distance < -2:
+				acceptor_window_variant = 1
+			if distance > 0 and distance <= 10:
+				acceptor_window_variant = 1
+	return np.asarray([donor_variant, acceptor_variant, ppt_variant, donor_window_variant, acceptor_window_variant])
 
 # Add observed splice site information
 def add_observed_ss_genomic_annotations(input_file, output_file,exon_file, cluster_info_file):
@@ -701,7 +708,7 @@ def add_observed_ss_genomic_annotations(input_file, output_file,exon_file, clust
 		data = line.split()
 		if head_count == 0:
 			head_count = head_count + 1
-			t.write(line + '\tobserved_intron_donor_ss\tobserved_exon_donor_ss\tobserved_intron_acceptor_ss\tobserved_exon_acceptor_ss\tobserved_ss\n')
+			t.write(line + '\tdonor_ss\tacceptor_ss\tppt_region\tdonor_ss_window\tacceptor_ss_window\n')
 			continue
 		# Extract relevent fields
 		chrom_num = data[36]
@@ -741,6 +748,70 @@ def clean_up_gene_level_real_valued_genomic_annotations(input_file, output_file)
 	f.close()
 	t.close()
 
+def convert_to_broader_chrom_hmm_state(arr, mapping):
+	new_arr = []
+	for ele in arr:
+		words = []
+		small_arr = ele.split(',')
+		for small_ele in small_arr:
+			words.append(mapping[small_ele])
+		new_arr.append(','.join(words))
+	return new_arr
+
+# STEP 3b
+# Add tissue-specic chromHMM elements
+def add_tissue_specific_chromhmm_annotations(input_file, output_file, chrom_hmm_file):
+	# Create mapping from chromHMM state to broader state
+	mapping = {}
+	for chrom_hmm_state in range(1,16):
+		if chrom_hmm_state == 6 or chrom_hmm_state == 7 or chrom_hmm_state == 12:
+			mapping[str(chrom_hmm_state)] = 'enh'
+		elif chrom_hmm_state == 1 or chrom_hmm_state == 2 or chrom_hmm_state == 10:
+			mapping[str(chrom_hmm_state)] = 'prom'
+		elif chrom_hmm_state == 11:
+			mapping[str(chrom_hmm_state)] = 'prom,enh'
+		else:
+			mapping[str(chrom_hmm_state)] = 'NA'
+	mapping['.'] = 'NA'
+	# Create dictionary mapping each variant to its broader chromHMM state
+	f = open(chrom_hmm_file)
+	head_count = 0
+	counter = 0
+	dicti = {}
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			header = []
+			for ele in data[2:]:
+				header.append('chrom_hmm_' + ele)
+			continue
+		variant_name = data[0] + '_' + data[1]
+		dicti[variant_name] = convert_to_broader_chrom_hmm_state(data[2:], mapping)
+		counter = counter + 1
+	f.close()
+	print('start')
+	null_vec = ['NA']*len(header)
+	f = open(input_file)
+	t = open(output_file, 'w')
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write(line + '\t' + '\t'.join(header) + '\n')
+			continue
+		t.write(line + '\t')
+		variant_name = data[36] + '_' + data[5]
+		if variant_name in dicti:
+			t.write('\t'.join(dicti[variant_name]) + '\n')
+		else:
+			t.write('\t'.join(null_vec) + '\n')
+	f.close()
+	t.close()
+
 
 raw_genomic_annotation_file = sys.argv[1]
 variant_bed_file = sys.argv[2]
@@ -748,6 +819,7 @@ rare_variant_to_gene_file = sys.argv[3]
 genomic_annotation_dir = sys.argv[4]
 exon_file = sys.argv[5]
 cluster_info_file = sys.argv[6]
+chrom_hmm_file = sys.argv[7]
 
 
 # Create mapping from genomic position to ensamble ids
@@ -769,23 +841,29 @@ filter_raw_genomic_annotation_file(raw_genomic_annotation_file, filtered_genomic
 gene_level_genomic_annotation_file = genomic_annotation_dir + 'filtered_raw_gene_level_genomic_annotations.txt'
 compress_annotations_from_transcript_level_to_gene_level(filtered_genomic_annotation_file, gene_level_genomic_annotation_file)
 
-# STEP 3
+# STEP 3a
 # Add observed splice site information
 gene_level_genomic_annotation_and_ss_file = genomic_annotation_dir + 'filtered_raw_gene_level_and_ss_genomic_annotations.txt'
 add_observed_ss_genomic_annotations(gene_level_genomic_annotation_file, gene_level_genomic_annotation_and_ss_file,exon_file, cluster_info_file)
+
+# STEP 3b
+# Add tissue-specic chromHMM elements
+gene_level_genomic_annotation_and_ss_and_chromhmm_file = genomic_annotation_dir + 'filtered_raw_gene_level_and_ss_and_chromHMM_genomic_annotations.txt'
+add_tissue_specific_chromhmm_annotations(gene_level_genomic_annotation_and_ss_file, gene_level_genomic_annotation_and_ss_and_chromhmm_file, chrom_hmm_file)
+
 
 # STEP 4a
 # Make genomic annotations real valued
 # Many of the genomic annotations are categorical. Convert these categorical variables to sets of binary variables.
 gene_level_real_valued_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_genomic_annotations.txt'
-make_real_valued_genomic_annotations(gene_level_genomic_annotation_and_ss_file, gene_level_real_valued_genomic_annotation_file)
+make_real_valued_genomic_annotations(gene_level_genomic_annotation_and_ss_and_chromhmm_file, gene_level_real_valued_genomic_annotation_file)
 
 # STEP 4b
 # Make file that has line for each variant in the same format as step 5.
 gene_level_real_valued_clean_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_clean_genomic_annotations.txt'
 clean_up_gene_level_real_valued_genomic_annotations(gene_level_real_valued_genomic_annotation_file, gene_level_real_valued_clean_genomic_annotation_file)
 
-
+print('mid')
 # STEP 5
 # Compress multiple variants onto same gene
 gene_level_real_valued_variant_compressed_genomic_annotation_file = genomic_annotation_dir + 'filtered_real_valued_gene_level_variant_compressed_genomic_annotations.txt'

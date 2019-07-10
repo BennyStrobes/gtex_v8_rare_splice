@@ -511,6 +511,16 @@ def merge_three_files(input_file1, input_file2, input_file3, output_file):
 	f.close()
 	t.close()
 
+# Make output file with no tissue specific genomic annotations
+def remove_tissue_specific_annotations(input_file, output_file):
+	f = open(input_file)
+	t = open(output_file, 'w')
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		t.write('\t'.join(data[0:49]) + '\t' + data[-4] + '\t' + data[-3] + '\t' + data[-2] + '\t' + data[-1] + '\n')
+	f.close()
+	t.close()
 
 
 genomic_annotation_file = sys.argv[1]
@@ -520,6 +530,7 @@ splicing_outlier_file = sys.argv[4]
 unsupervised_learning_input_dir = sys.argv[5]
 pvalue = float(sys.argv[6])
 gene_individual_to_variant_mapping_file = sys.argv[7]
+
 
 # Extract dictionary list of individuals used in all three methods
 individuals = get_list_of_individuals_used_in_all_methods(total_expression_outlier_file, ase_outlier_file, splicing_outlier_file)
@@ -572,12 +583,12 @@ ase_output_file = unsupervised_learning_input_dir + 'fully_observed_ase_outliers
 print_outlier_output_file_no_nan(ase_outliers, total_expression_outliers, splicing_outliers, genomic_annotation_file, ase_output_file, gene_individual_to_variant_mapping_file)
 
 
-
 # Merge three outlier files
 merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
-
-
+# Make output file with no tissue specific genomic annotations
+merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
+remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
 
 
