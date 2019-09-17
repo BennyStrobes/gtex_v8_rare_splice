@@ -1199,7 +1199,7 @@ for (tiss_num in 1:length(tissue_colors$tissue_id)) {
 # Load in 3 outlier type data
 ############################
 pseudocount <- 30
-input_stem <- paste0(three_class_roc_dir, "rep1_fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_",pseudocount)
+input_stem <- paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_",pseudocount)
 
 ####### input data
 roc_3_class_data_input <- readRDS(paste0(input_stem, "_data_input.rds"))
@@ -1210,7 +1210,6 @@ inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
 roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 
-input_stem <- paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_",pseudocount)
 
 ####### Pseudolikelihood approximation to watershed
 independent_variables = "false"
@@ -1218,7 +1217,6 @@ inference_method = "pseudolikelihood"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
 roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 
-input_stem <- paste0(three_class_roc_dir, "rep1_fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_",pseudocount)
 
 ####### Exact RIVER
 independent_variables = "true"
