@@ -807,10 +807,9 @@ absolute_risk_plot_with_cadd_helper <- function(gam_predictions, watershed_predi
 
 
     df <- data.frame(watershed_threshold=thresh, absolute_risk=absolute_risks, outlier_type=factor(outlier_type, levels=c("aseOutlier","sOutlier","eOutlier")), model_type=factor(model_type, levels=c("CADD", "GAM", "Watershed")))
-
 	p <- ggplot(data=df, aes(x=model_type, y=absolute_risk, fill=outlier_type)) +
 	geom_bar(stat="identity", color="black", position=position_dodge())+
-	ylim(0,.5) + 
+	ylim(0,.7) + 
   	gtex_v8_figure_theme() + 
   	labs(x="", y="Proportion of variants\nleading to outlier", fill="", title=paste0("Watershed posterior > ", watershed_threshold)) + 
   	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0")) 
@@ -1243,6 +1242,7 @@ pvalue= 0.0027
 output_file <- paste0(output_dir, "watershed_gam_3_class_roc_absolute_risk.pdf")
 roc_3_absolute_risk_bar_plot <- absolute_risk_plot(roc_object_exact$gam_predictions, roc_object_exact$watershed_predictions, roc_3_class_data_input, pvalue)
 ggsave(roc_3_absolute_risk_bar_plot, file=output_file, width=7.2, height=4.6, units="in")
+
 
 #######################################
 ## Make watershed 3-class absolute risk plot (including cadding)
