@@ -53,7 +53,7 @@ corrected_vs_uncorrected_gene_level_pvalue_scatter_plot <- function(pvalue_compa
 
 	df <- df[sample(nrow(df), 100000),]
 
-	scatter <- ggplot(df, aes(x=uncorrected_pvalue, y=corrected_pvalue, colour=number_of_clusters)) + geom_point() + 
+	scatter <- ggplot(df, aes(x=uncorrected_pvalue, y=corrected_pvalue, colour=number_of_clusters)) + geom_point(size=.1) + 
 				labs(x = "-log10(uncorrected pvalue)", y = "-log10(corrected pvalue)", colour="Number clusters") +
 				gtex_v8_figure_theme()
 	return(scatter)

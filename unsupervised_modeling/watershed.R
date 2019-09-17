@@ -250,7 +250,7 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
 	feat_train_shuff <- feat_train[random_shuffling_indices,]
 	binary_outliers_train_shuff <- binary_outliers_train[random_shuffling_indices,]
 
-  if (FALSE) {
+  if (is.na(lambda_init)) {
 	#Create nfolds equally size folds
 	folds <- cut(seq(1,nrow(feat_train_shuff)),breaks=nfolds,labels=FALSE)
 
@@ -307,8 +307,9 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
 	print(avg_aucs)
 	best_index <- which(avg_aucs==max(avg_aucs))[1]  # [1] for tie breakers
 	best_lambda <- lambda_costs[best_index]
-  }
+  } else {
   best_lambda = lambda_init
+  }
 	# Initialize output variables
   pair_value = 0
   theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
@@ -515,8 +516,6 @@ get_discretized_outliers <- function(outlier_pvalues) {
 
 
 load_watershed_data <- function(input_file, number_of_dimensions, pvalue_fraction, pvalue_threshold) {
-  print(input_file)
-  print(number_of_dimensions)
 	raw_data <- read.table(input_file, header=TRUE)
 	# Get genomic features (first 2 columns are line identifiers and last (number_of_dimensions+1) columns are outlier status' and N2 pair
 	feat <- raw_data[,3:(ncol(raw_data)-number_of_dimensions-1)]
@@ -1036,8 +1035,10 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 	#################
 	# Start loop here
 	##################
-
-	for (iter in 1:65) {
+  converged = FALSE
+  iter = 1
+  max_iter = 200
+	while (converged==FALSE) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
 
@@ -1049,18 +1050,19 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 		#model_params$observed_data_log_likelihood = observed_data_log_likelihood
 
 		print('########################')
-		print(model_params$theta)
-		print(model_params$theta_singleton)
-		print(make_vector_to_matrix(model_params$theta_pair, number_of_dimensions))
-		print(model_params$phi)
+		#print(model_params$theta)
+		#print(model_params$theta_singleton)
+		#print(make_vector_to_matrix(model_params$theta_pair, number_of_dimensions))
+		#print(model_params$phi)
 		print(paste0("ITERATION ", iter))
 		#print(paste0("observed data log likelihood: ", observed_data_log_likelihood))
 		# saveRDS(model_params, paste0(output_root, "_model_params_iteration_",iter,".rds"))
 		#  Keep track of previous iteration's parameters in order to check for convergence
 		phi_old <- model_params$phi
-		beta_old <- model_params$beta
+		theta_old <- model_params$theta
 		theta_singleton_old <- model_params$theta_singleton
 		theta_pair_old <- model_params$theta_pair
+
 
 
 		################ M Step
@@ -1068,8 +1070,47 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 		model_params <- map_crf(feat, discrete_outliers, model_params)
 		# Compute MAP estimates of the coefficients defined by P(outlier_status| FR)
 		model_params <- map_phi(discrete_outliers, model_params)
-    #saveRDS(model_params, paste0(output_root, "_iter_",iter,".rds"))
-	}
+    	#saveRDS(model_params, paste0(output_root, "_iter_",iter,".rds"))
+
+
+    	# Number of parameters per parameter variable
+   		num_theta_param = (dim(model_params$theta)[1]*dim(model_params$theta)[2])
+    	num_theta_singleton_param = (dim(as.matrix(model_params$theta_singleton))[1]*dim(as.matrix(model_params$theta_singleton))[2])
+    	num_theta_pair_param = (dim(model_params$theta_pair)[1]*dim(model_params$theta_pair)[2])
+    	num_phi_param = dim(model_params$phi$inlier_component)[1]*dim(model_params$phi$inlier_component)[2]
+    	total_params = num_theta_param + num_theta_singleton_param + num_theta_pair_param + num_phi_param + num_phi_param
+      total_params_ind = num_theta_param + num_theta_singleton_param + num_phi_param + num_phi_param
+    	# Extract norms of change in parameter estimates from last iteration to this iteration
+    	theta_norm = norm(model_params$theta - theta_old)/num_theta_param
+    	theta_singleton_norm = norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old))/num_theta_singleton_param
+    	theta_pair_norm = norm(model_params$theta_pair - theta_pair_old)/num_theta_pair_param
+    	phi_inlier_norm = norm(model_params$phi$inlier_component - phi_old$inlier_component)/num_phi_param
+		phi_outlier_norm = norm(model_params$phi$outlier_component - phi_old$outlier_component)/num_phi_param
+    if (model_params$independent_variables == "false") {
+      total_params = num_theta_param + num_theta_singleton_param + num_theta_pair_param + num_phi_param + num_phi_param
+		  total_norm = (norm(model_params$theta - theta_old) + norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old)) + norm(model_params$theta_pair - theta_pair_old) + norm(model_params$phi$inlier_component - phi_old$inlier_component) + norm(model_params$phi$outlier_component - phi_old$outlier_component))/total_params
+		} else if (model_params$independent_variables == "true") {
+      total_params = num_theta_param + num_theta_singleton_param + num_phi_param + num_phi_param
+      total_norm = (norm(model_params$theta - theta_old) + norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old)) + norm(model_params$phi$inlier_component - phi_old$inlier_component) + norm(model_params$phi$outlier_component - phi_old$outlier_component))/total_params
+    }
+    # Print norms
+    	print(paste0("Theta norm (", num_theta_param, " parameters): ", theta_norm))
+    	print(paste0("Theta singleton norm (", num_theta_singleton_param, " parameters): ", theta_singleton_norm))
+    	print(paste0("Theta pair norm (", num_theta_pair_param, " parameters): ", theta_pair_norm))
+    	print(paste0("Phi inlier norm (", num_phi_param, " parameters): ", phi_inlier_norm))
+    	print(paste0("Phi outlier norm (", num_phi_param, " parameters): ", phi_outlier_norm))
+    	print(paste0("Total norm (", total_params, " parameters): ", total_norm))
+      iter = iter+1
+      if (total_norm < 1e-4) {
+        converged=TRUE
+        print("SHOULD CONVERGE")
+      }
+      if (iter == max_iter) {
+        converged=TRUE
+        print("SHOULD CONVERGE DUE TO MAX ITER")
+      }
+
+  }
 	return(model_params)
 }
 

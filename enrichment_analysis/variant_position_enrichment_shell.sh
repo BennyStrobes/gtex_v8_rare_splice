@@ -117,7 +117,7 @@ fi
 # Compare jxn usage nearby A: altered splice sites and B: altered PPT regions in outliers and non-outliers
 ########################
 pvalue_outlier_threshold=".00001"
-pvalue_inlier_threshold=".5"
+pvalue_inlier_threshold=".00001"
 variant_bed_file=$rare_variant_dir"variant_cluster_only_bed_100.txt"
 if false; then
 python quantify_junction_usage_nearby_altered_splice_site.py $pvalue_outlier_threshold $pvalue_inlier_threshold $variant_bed_file $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir

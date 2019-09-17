@@ -146,6 +146,10 @@ def extract_outliers(outlier_file, individuals, pvalue_outlier_threshold, pvalue
 			continue
 		# Standard Line
 		cluster_id = data[0]
+		# Ignore clusters that don't have any outlier individuals
+		pvalz = np.asarray(data[1:]).astype(float)
+		if sum(pvalz < pvalue_outlier_threshold) == 0:
+			continue
 		# Add key (cluster_id) to cluster_struct object
 		cluster_struct[cluster_id] = {}
 		cluster_struct[cluster_id]['outlier_individuals'] = {}
@@ -153,12 +157,11 @@ def extract_outliers(outlier_file, individuals, pvalue_outlier_threshold, pvalue
 		cluster_struct[cluster_id]['rv_individuals'] = {}
 		# Don't limit to most extreme outlier / cluster. Just take everyone that passes a threshold
 		if enrichment_version == 'all':
-			pvalz = np.asarray(data[1:]).astype(float)
 			for position, pvalue in enumerate(pvalz):
 				indi = position_to_indi[position]
 				if indi in individuals and pvalue < pvalue_outlier_threshold and np.isnan(pvalue) == False:
 					cluster_struct[cluster_id]['outlier_individuals'][indi] = 1
-				if indi in individuals and pvalue > pvalue_inlier_threshold and np.isnan(pvalue) == False:
+				if indi in individuals and pvalue >= pvalue_inlier_threshold and np.isnan(pvalue) == False:
 					cluster_struct[cluster_id]['inlier_individuals'][indi] = 1
 		if len(cluster_struct[cluster_id]['inlier_individuals']) < 1:
 			print('low')
@@ -527,8 +530,341 @@ def add_read_count_contingency_table(input_file, output_file, tissue_names, filt
 			orat = (float(outlier_ss_counts + 1)/float(outlier_cluster_counts+1))/(float(inlier_ss_counts+1)/float(inlier_cluster_counts+1))
 			t.write(line + '\t' + str(outlier_ss_counts) + '\t' + str(outlier_cluster_counts) + '\t' + str(inlier_ss_counts) + '\t' + str(inlier_cluster_counts) + '\t' + str(orat) + '\n')
 		f.close()
-
 	t.close()
+
+# Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby ppt around splice site for that cluster
+# PPT includes (A-5)-(A-34)
+def extract_cases_where_cross_tissue_outlier_individuals_has_ppt_variant(tissue_names, cluster_to_ss_mapping, cluster_to_strand_mapping, annotated_splice_sites, pvalue_outlier_threshold, pvalue_inlier_threshold, variant_bed_file, splicing_outlier_dir, splicing_outlier_suffix, european_ancestry_individual_list, output_file):
+	valid_positions = {}
+	for position in range(5,35):
+		string_pos = 'A-' + str(position)
+		valid_positions[string_pos] = 1
+
+	# Open output file handle
+	t = open(output_file, 'w')
+	# Print header
+	t.write('cluster_id\tchrom_num\tvariant_position\tss_name\toutlier_individual\tinlier_individuals\tdistance_to_ss\tstrand\tannotated_ss\tvariant_allele\tvariant_type\n')
+
+
+	# In each tissue, extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
+	# Extract list of individuals for this tissue
+	# Use outlier file to get list of individuals we have RNA-seq for
+	outlier_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue.txt'
+	individuals = extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, european_ancestry_individual_list)
+
+	# Extract outliers in this tissue and save results in cluster_struct
+	outlier_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue.txt'
+	cluster_struct = extract_outliers(outlier_file, individuals, pvalue_outlier_threshold, pvalue_inlier_threshold, "all")
+
+	# Add RV calls to cluster_struct object
+	cluster_struct = extract_rare_variants(variant_bed_file, cluster_struct, individuals, cluster_to_strand_mapping)
+	# Loop through cluster ids
+	for cluster_id in cluster_struct.keys():
+		# dictionary containing all individuals that have a RV for this cluster
+		rv_indi = cluster_struct[cluster_id]['rv_individuals']
+		# dictionary containing all individuals that have a RV for this cluster
+		outlier_indi = cluster_struct[cluster_id]['outlier_individuals']
+
+		# Skip clusters with no outliers or no rv
+		if len(outlier_indi) == 0 or len(rv_indi) == 0:
+			continue
+
+		# Loop through outliers
+		for outlier_individual in outlier_indi.keys():
+			# Check if outlier is also a RV
+			if outlier_individual in rv_indi:
+				for tupler in rv_indi[outlier_individual]:
+					chrom_num = tupler[0]
+					var_pos = tupler[1]
+					variant_allele = tupler[2]
+
+					distance, ss_type, ss_annotated, ss_name = get_distance_to_nearest_splice_site(cluster_to_ss_mapping[cluster_id], int(var_pos), chrom_num, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
+					variant_position_around_ss_name = get_variant_position_around_ss_name(distance, ss_type)
+					if variant_position_around_ss_name not in valid_positions:
+						continue
+					strand = cluster_to_strand_mapping[cluster_id]
+					
+					variant_type = get_pyrimidine_purine_variant_classification(variant_allele)
+					inlier_string = ','.join(cluster_struct[cluster_id]['inlier_individuals'].keys())
+					# Print to output file
+					t.write(cluster_id + '\t' + chrom_num + '\t' + var_pos + '\t' + ss_name + '\t' + outlier_individual + '\t' + inlier_string + '\t' + variant_position_around_ss_name + '\t' + strand + '\t' + ss_annotated + '\t' + variant_allele + '\t' + variant_type + '\n')
+	t.close()
+
+
+# Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby concensus site around splice site for that cluster
+# Concensus sites include A-2, A-1, A+1, D-1, D+1, D+2,D+3,D+4,D+5,D+6
+def extract_cases_where_cross_tissue_outlier_individuals_has_concensus_variant(tissue_names, cluster_to_ss_mapping, cluster_to_strand_mapping, annotated_splice_sites, pvalue_outlier_threshold, pvalue_inlier_threshold, variant_bed_file, splicing_outlier_dir, splicing_outlier_suffix, european_ancestry_individual_list, output_file):
+	valid_positions = {'A-2':'A','A-1':'G', 'A+1':'G', 'D-1':'G', 'D+1':'G', 'D+2':'T', 'D+3':'A', 'D+4':'A', 'D+5':'G', 'D+6':'T'}
+	# Open output file handle
+	t = open(output_file, 'w')
+	# Print header
+	t.write('cluster_id\tchrom_num\tvariant_position\tss_name\toutlier_individual\tinlier_individuals\tdistance_to_ss\tstrand\tannotated_ss\tvariant_allele\tto_or_from_concensus\n')
+
+	# Extract list of individuals that we have RNA-seq for AND Have WGS and are european ancestry
+	# Extract list of individuals for this tissue
+	# Use outlier file to get list of individuals we have RNA-seq for
+	outlier_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue.txt'
+	individuals = extract_individuals_that_have_rna_and_are_european_ancestry(outlier_file, european_ancestry_individual_list)
+
+	# Extract outliers in this tissue and save results in cluster_struct
+	outlier_file = splicing_outlier_dir + 'cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue.txt'
+	cluster_struct = extract_outliers(outlier_file, individuals, pvalue_outlier_threshold, pvalue_inlier_threshold, "all")
+
+	# Add RV calls to cluster_struct object
+	cluster_struct = extract_rare_variants(variant_bed_file, cluster_struct, individuals, cluster_to_strand_mapping)
+	# Loop through cluster ids
+	for cluster_id in cluster_struct.keys():
+		# dictionary containing all individuals that have a RV for this cluster
+		rv_indi = cluster_struct[cluster_id]['rv_individuals']
+		# dictionary containing all individuals that have a RV for this cluster
+		outlier_indi = cluster_struct[cluster_id]['outlier_individuals']
+
+		# Skip clusters with no outliers or no rv
+		if len(outlier_indi) == 0 or len(rv_indi) == 0:
+			continue
+
+		# Loop through outliers
+		for outlier_individual in outlier_indi.keys():
+			# Check if outlier is also a RV
+			if outlier_individual in rv_indi:
+				for tupler in rv_indi[outlier_individual]:
+					chrom_num = tupler[0]
+					var_pos = tupler[1]
+					variant_allele = tupler[2]
+
+					distance, ss_type, ss_annotated, ss_name = get_distance_to_nearest_splice_site(cluster_to_ss_mapping[cluster_id], int(var_pos), chrom_num, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
+					variant_position_around_ss_name = get_variant_position_around_ss_name(distance, ss_type)
+					if variant_position_around_ss_name not in valid_positions:
+						continue
+					strand = cluster_to_strand_mapping[cluster_id]
+					
+					to_or_from_concensus = get_to_or_from_concensus(valid_positions[variant_position_around_ss_name], variant_allele)
+					inlier_string = ','.join(cluster_struct[cluster_id]['inlier_individuals'].keys())
+					# Print to output file
+					t.write(cluster_id + '\t' + chrom_num + '\t' + var_pos + '\t' + ss_name + '\t' + outlier_individual + '\t' + inlier_string + '\t' + variant_position_around_ss_name + '\t' + strand + '\t' + ss_annotated + '\t' + variant_allele + '\t' + to_or_from_concensus + '\n')
+	t.close()
+
+####################
+# Extract data structure containing cross tissue junction counts
+####################
+def extract_cross_tissue_junction_counts(input_file, tissue_names, filtered_cluster_dir):
+	###############
+	# First extract list of clusters that we are interested in
+	###############
+	f = open(input_file)
+	cluster_info = {}
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		cluster_name = data[0]
+		if cluster_name not in cluster_info:
+			cluster_info[cluster_name] = {}
+	f.close()
+	###############
+	# Fill in junction count data in each tissue
+	###############
+	for tissue_name in tissue_names:
+		# Jxn count file for this tissue
+		jxn_file = filtered_cluster_dir + tissue_name + '_filtered_jxns_cross_tissue_clusters_gene_mapped.txt'
+		f = open(jxn_file)
+		head_count = 0
+		for line in f:
+			line = line.rstrip()
+			data = line.split()
+			if head_count == 0:
+				head_count = head_count + 1
+				indiz = np.asarray(data[1:])
+				continue
+			jxn_name = data[0]
+			cluster_id = jxn_name.split(':')[3]
+			# Ignore clusters not in cluster_info
+			if cluster_id not in cluster_info:
+				continue
+			# Add tissue level to data structure
+			if tissue_name not in cluster_info[cluster_id]:
+				cluster_info[cluster_id][tissue_name] = {}
+
+			ss_name = jxn_name.split(':')[0] + ':' + jxn_name.split(':')[1] + ':' + jxn_name.split(':')[2]
+			if ss_name not in cluster_info[cluster_id][tissue_name]:
+				cluster_info[cluster_id][tissue_name][ss_name] = {}
+			else: 
+				print('assumption error')
+				pdb.set_trace()
+			# Add count data for each individual
+			counts = np.asarray(data[1:]).astype(float)
+			for i, indi_id in enumerate(indiz):
+				if indi_id in cluster_info[cluster_id][tissue_name][ss_name]:
+					print('assumption error')
+					pdb.set_trace()
+				cluster_info[cluster_id][tissue_name][ss_name][indi_id] = counts[i]
+		f.close()
+	return cluster_info
+
+
+# Part 2: Add read count contingency table for each variant-jxn pair
+def add_cross_tissue_read_count_contingency_table(input_file, output_file, tissue_names, filtered_cluster_dir):
+	####################
+	# Extract data structure containing cross tissue junction counts
+	####################
+	cluster_info = extract_cross_tissue_junction_counts(input_file, tissue_names, filtered_cluster_dir)
+	####################
+	# Compute read count enrichment ratio and print to output fiel
+	####################
+	f = open(input_file)
+	t = open(output_file, 'w')
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		### Print header
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write(line + '\toutlier_ss_counts\toutlier_cluster_counts\tinlier_ss_counts\tinlier_cluster_counts\todds_ratio\n')
+			continue
+		# Parse line
+		cluster_name = data[0]
+		ss_name = data[3]
+		outlier_indi = data[4]
+		inlier_indiz = data[5].split(',')
+		# Initialize array to keep track of read count totals ACROSS Tissues (each element of these arrays is a tissue)
+		outlier_ss_counts_vec = []
+		outlier_cluster_counts_vec = []
+		inlier_ss_counts_vec = []
+		inlier_cluster_counts_vec = []
+		# Extract read_counts in each tissue
+		for tissue in tissue_names:
+			# initialize read count tallies in this tissue
+			aa = 0
+			bb = 0
+			cc = 0
+			dd = 0
+			# Boolean variable to keep track of whether or not this tissue has measured expression in this cluster
+			outlier_passed = False
+			inlier_passed = False
+			# no info for this tissue-cluster pairing
+			if tissue not in cluster_info[cluster_name]:
+				continue
+			temp_dicti = cluster_info[cluster_name][tissue]
+			# loop through all the junctions in this tissue-cluster
+			for jxn_name in temp_dicti.keys():
+				outlier_counts = 0
+				inlier_counts = 0
+				if outlier_indi in temp_dicti[jxn_name]:
+					outlier_passed = True
+					outlier_counts = outlier_counts + temp_dicti[jxn_name][outlier_indi]
+				for inlier_indi in inlier_indiz:
+					if inlier_indi in temp_dicti[jxn_name]:
+						inlier_passed = True
+						inlier_counts = inlier_counts + temp_dicti[jxn_name][inlier_indi]
+				bb = bb + outlier_counts
+				dd = dd + inlier_counts
+				ss_name1 = jxn_name.split(':')[0] + ':' + jxn_name.split(':')[1]
+				ss_name2 = jxn_name.split(':')[0] + ':' + jxn_name.split(':')[2]
+				if ss_name1 == ss_name or ss_name2 == ss_name:  # Overlaps ss of interest
+					aa = aa + outlier_counts
+					cc = cc + inlier_counts
+			# Only consider odds ratios where the tissue-cluster pair has measured read counts in the outlier individual and a inlier individaul
+			if outlier_passed == True and inlier_passed == True:
+				# Update totals
+				outlier_ss_counts_vec.append(aa)
+				outlier_cluster_counts_vec.append(bb)
+				inlier_ss_counts_vec.append(cc)
+				inlier_cluster_counts_vec.append(dd)
+		# Aggregrate data (by summing) across tissues
+		outlier_ss_counts = sum(outlier_ss_counts_vec)
+		outlier_cluster_counts = sum(outlier_cluster_counts_vec)
+		inlier_ss_counts = sum(inlier_ss_counts_vec)
+		inlier_cluster_counts = sum(inlier_cluster_counts_vec)
+		orat = (float(outlier_ss_counts + 1)/float(outlier_cluster_counts+1))/(float(inlier_ss_counts+1)/float(inlier_cluster_counts+1))
+		t.write(line + '\t' + str(outlier_ss_counts) + '\t' + str(outlier_cluster_counts) + '\t' + str(inlier_ss_counts) + '\t' + str(inlier_cluster_counts) + '\t' + str(orat) + '\n')
+	t.close()
+	f.close()
+
+
+# Part 2: Add read count contingency table for each variant-jxn pair
+def add_cross_tissue_median_read_count_contingency_table(input_file, output_file, tissue_names, filtered_cluster_dir):
+	####################
+	# Extract data structure containing cross tissue junction counts
+	####################
+	cluster_info = extract_cross_tissue_junction_counts(input_file, tissue_names, filtered_cluster_dir)
+	####################
+	# Compute read count enrichment ratio and print to output fiel
+	####################
+	f = open(input_file)
+	t = open(output_file, 'w')
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		### Print header
+		if head_count == 0:
+			head_count = head_count + 1
+			t.write(line + '\toutlier_ss_counts\toutlier_cluster_counts\tinlier_ss_counts\tinlier_cluster_counts\todds_ratio\n')
+			continue
+		# Parse line
+		cluster_name = data[0]
+		ss_name = data[3]
+		outlier_indi = data[4]
+		inlier_indiz = data[5].split(',')
+		# Initialize array to keep track of read count totals ACROSS Tissues (each element of these arrays is a tissue)
+		outlier_ss_counts_vec = []
+		outlier_cluster_counts_vec = []
+		inlier_ss_counts_vec = []
+		inlier_cluster_counts_vec = []
+		# Extract read_counts in each tissue
+		for tissue in tissue_names:
+			# initialize read count tallies in this tissue
+			aa = 0
+			bb = 0
+			cc = 0
+			dd = 0
+			# Boolean variable to keep track of whether or not this tissue has measured expression in this cluster
+			outlier_passed = False
+			inlier_passed = False
+			# no info for this tissue-cluster pairing
+			if tissue not in cluster_info[cluster_name]:
+				continue
+			temp_dicti = cluster_info[cluster_name][tissue]
+			# loop through all the junctions in this tissue-cluster
+			for jxn_name in temp_dicti.keys():
+				outlier_counts = 0
+				inlier_counts = 0
+				if outlier_indi in temp_dicti[jxn_name]:
+					outlier_passed = True
+					outlier_counts = outlier_counts + temp_dicti[jxn_name][outlier_indi]
+				for inlier_indi in inlier_indiz:
+					if inlier_indi in temp_dicti[jxn_name]:
+						inlier_passed = True
+						inlier_counts = inlier_counts + temp_dicti[jxn_name][inlier_indi]
+				bb = bb + outlier_counts
+				dd = dd + inlier_counts
+				ss_name1 = jxn_name.split(':')[0] + ':' + jxn_name.split(':')[1]
+				ss_name2 = jxn_name.split(':')[0] + ':' + jxn_name.split(':')[2]
+				if ss_name1 == ss_name or ss_name2 == ss_name:  # Overlaps ss of interest
+					aa = aa + outlier_counts
+					cc = cc + inlier_counts
+			# Only consider odds ratios where the tissue-cluster pair has measured read counts in the outlier individual and a inlier individaul
+			if outlier_passed == True and inlier_passed == True:
+				# Update totals
+				outlier_ss_counts_vec.append(aa)
+				outlier_cluster_counts_vec.append(bb)
+				inlier_ss_counts_vec.append(cc)
+				inlier_cluster_counts_vec.append(dd)
+		# Aggregrate data (by taking median odds ratio) across tissues
+		orats = []
+		for i, outlier_ss_counts in enumerate(outlier_ss_counts_vec):
+			outlier_cluster_counts = outlier_cluster_counts_vec[i]
+			inlier_ss_counts = inlier_ss_counts_vec[i]
+			inlier_cluster_counts = inlier_cluster_counts_vec[i]
+			orat = (float(outlier_ss_counts + 1)/float(outlier_cluster_counts+1))/(float(inlier_ss_counts+1)/float(inlier_cluster_counts+1))
+			orats.append(orat)
+		t.write(line + '\t' + 'NA' + '\t' + 'NA' + '\t' + 'NA' + '\t' + 'NA' + '\t' + str(np.median(orats)) + '\n')
+	t.close()
+	f.close()
 
 
 
@@ -554,9 +890,39 @@ annotated_splice_sites = get_dictionary_of_annotated_splice_sites(exon_file)
 # Extract array of tissue names
 tissue_names = get_tissue_names(tissue_names_file)
 
+##############################
+# Cross-tissue analysis
+##############################
+# Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby concensus site around splice site for that cluster
+# Concensus sites include A-2, A-1, A+1, D-1, D+1, D+2,D+3,D+4,D+5,D+6
+output_file = output_dir + 'cross_tissue_outliers_with_rv_in_concensus_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '.txt'
+extract_cases_where_cross_tissue_outlier_individuals_has_concensus_variant(tissue_names, cluster_to_ss_mapping, cluster_to_strand_mapping, annotated_splice_sites, pvalue_outlier_threshold, pvalue_inlier_threshold, variant_bed_file, splicing_outlier_dir, splicing_outlier_suffix, european_ancestry_individual_list, output_file)
+
+# Part 2a: Add read count contingency table for each variant-jxn pair
+output_file2 = output_dir + 'cross_tissue_outliers_with_rv_in_concensus_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '_with_read_counts.txt'
+add_cross_tissue_read_count_contingency_table(output_file, output_file2, tissue_names, filtered_cluster_dir)
+
+# Part 2b: Add read count contingency table for each variant-jxn pair
+output_file2 = output_dir + 'cross_tissue_outliers_with_rv_in_concensus_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '_with_median_read_counts.txt'
+add_cross_tissue_median_read_count_contingency_table(output_file, output_file2, tissue_names, filtered_cluster_dir)
+
+# Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby ppt around splice site for that cluster
+# PPT includes (A-5)-(A-34)
+output_file = output_dir + 'cross_tissue_outliers_with_rv_in_ppt_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '.txt'
+extract_cases_where_cross_tissue_outlier_individuals_has_ppt_variant(tissue_names, cluster_to_ss_mapping, cluster_to_strand_mapping, annotated_splice_sites, pvalue_outlier_threshold, pvalue_inlier_threshold, variant_bed_file, splicing_outlier_dir, splicing_outlier_suffix, european_ancestry_individual_list, output_file)
+
+# Part 2a: Add read count contingency table for each variant-jxn pair
+output_file2 = output_dir + 'cross_tissue_outliers_with_rv_in_ppt_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '_with_read_counts.txt'
+add_cross_tissue_read_count_contingency_table(output_file, output_file2, tissue_names, filtered_cluster_dir)
+
+# Part 2b: Add read count contingency table for each variant-jxn pair
+output_file2 = output_dir + 'cross_tissue_outliers_with_rv_in_ppt_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '_with_median_read_counts.txt'
+add_cross_tissue_median_read_count_contingency_table(output_file, output_file2, tissue_names, filtered_cluster_dir)
 
 
-
+##############################
+# Tissue by tissue analysis
+##############################
 # Part 1: Extract file containing cases where outlier (individual, cluster) has rare variant in nearby concensus site around splice site for that cluster
 # Concensus sites include A-2, A-1, A+1, D-1, D+1, D+2,D+3,D+4,D+5,D+6
 output_file = output_dir + 'tissue_by_tissue_outliers_with_rv_in_concensus_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '.txt'
@@ -578,6 +944,4 @@ extract_cases_where_outlier_individuals_has_ppt_variant(tissue_names, cluster_to
 # Part 2: Add read count contingency table for each variant-jxn pair
 output_file2 = output_dir + 'tissue_by_tissue_outliers_with_rv_in_ppt_sites_outlier_individuals_' + str(pvalue_outlier_threshold) + '_inlier_individuals_' + str(pvalue_inlier_threshold) + '_with_read_counts.txt'
 add_read_count_contingency_table(output_file, output_file2, tissue_names, filtered_cluster_dir)
-
-
 

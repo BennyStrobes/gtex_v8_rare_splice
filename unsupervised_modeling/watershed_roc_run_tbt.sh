@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=30:00:00
+#SBATCH --time=38:00:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 
@@ -18,11 +18,10 @@ lambda_pair_init="$8"
 independent_variables="$9"
 inference_method="${10}"
 outlier_type="${11}"
+number_of_dimensions="${12}"
 
 
 # Parameters!
-number_of_dimensions="49"
-
 gene_thresh="0.01"
 input_stem=$outlier_type"_tbt_outliers_"$gene_thresh"_genes_intersection_between_te_ase_splicing"
 input_file=$unsupervised_learning_input_dir$input_stem"_features_filter_N2_pairs.txt"

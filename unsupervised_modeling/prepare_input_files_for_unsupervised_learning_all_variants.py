@@ -3,6 +3,7 @@ import os
 import sys
 import pdb
 import scipy.stats
+import gzip
 
 
 def convert_na_to_nan(data_input):
@@ -14,7 +15,37 @@ def convert_na_to_nan(data_input):
 			data_output.append(ele)
 	return data_output
 
-def get_splicing_and_ase_outliers(splicing_outlier_file):
+def get_ase_outliers(splicing_outlier_file):
+	outlier_dicti = {}
+	head_count = 0
+	if splicing_outlier_file.endswith('.gz'):
+		f = gzip.open(splicing_outlier_file)
+	else:
+		f = open(splicing_outlier_file)
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		# Header
+		if head_count == 0:
+			head_count = head_count + 1
+			indiz = np.asarray(data[1:])
+			continue
+		# Skip genes not in genes dicti
+		ensamble = data[0].split('.')[0]
+
+		# get pvalue vector
+		pvalues = np.asarray(convert_na_to_nan(data[1:])).astype(float)
+		# Remove columns not in individuals
+		# pvalues_filtered = pvalues[good_columns]
+		# Add to global pvalue_array
+		for i,pvalue in enumerate(pvalues):
+			indi_id = indiz[i]
+			sample_name = indi_id + '_' + ensamble
+			outlier_dicti[sample_name] = pvalue
+	f.close()
+	return outlier_dicti
+
+def get_splicing_outliers(splicing_outlier_file):
 	outlier_dicti = {}
 	head_count = 0
 	f = open(splicing_outlier_file)
@@ -114,14 +145,15 @@ def print_outlier_output_file(splicing_outlier_dicti, te_outlier_dicti, ase_outl
 	for line in f:
 		line = line.rstrip()
 		data = line.split()
+		line_short = '\t'.join(data[:56])
 		if head_count == 0:
 			head_count = head_count + 1
-			t.write(line + '\t' + 'splicing_pvalue\ttotal_expression_pvalue\tase_pvalue\n')
+			t.write(line_short + '\t' + 'splicing_pvalue\ttotal_expression_pvalue\tase_pvalue\n')
 			continue
 		indi_id = data[0]
 		gene_id = data[1].split('.')[0]
 		sample_name = indi_id + '_' + gene_id
-		t.write(line)
+		t.write(line_short)
 		if sample_name in splicing_outlier_dicti:
 			t.write('\t' + str(splicing_outlier_dicti[sample_name]))
 		else:
@@ -167,16 +199,16 @@ splicing_outlier_file = sys.argv[5]
 unsupervised_learning_input_dir = sys.argv[6]
 
 print("START")
+fully_observed_input_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
 
-fully_observed_input_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
-
-splicing_outliers = get_splicing_and_ase_outliers(splicing_outlier_file)
-ase_outliers = get_splicing_and_ase_outliers(ase_outlier_file)
+splicing_outliers = get_splicing_outliers(splicing_outlier_file)
+ase_outliers = get_ase_outliers(ase_outlier_file)
 total_expression_outliers = get_total_expression_outliers(total_expression_outlier_file)
+
+print("START2")
 
 print_outlier_output_file(splicing_outliers, total_expression_outliers, ase_outliers, variant_level_genomic_annotation_file, unsupervised_learning_input_dir + 'all_availibile_samples_variant_level.txt', fully_observed_input_file)
 remove_fully_missing(unsupervised_learning_input_dir + 'all_availibile_samples_variant_level_features_filter.txt', unsupervised_learning_input_dir + 'all_availibile_samples_variant_level_features_filter_partially_observed_expression.txt')
-
 
 print_outlier_output_file(splicing_outliers, total_expression_outliers, ase_outliers, genomic_annotation_file, unsupervised_learning_input_dir + 'all_availibile_samples.txt', fully_observed_input_file)
 remove_fully_missing(unsupervised_learning_input_dir + 'all_availibile_samples_features_filter.txt', unsupervised_learning_input_dir + 'all_availibile_samples_features_filter_partially_observed_expression.txt')

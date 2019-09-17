@@ -42,7 +42,7 @@ get_number_of_jxns_per_cluster <- function(jxn_names) {
 	return(count(clusters)$freq)
 }
 
-barplot_showing_number_of_clusters_per_tissue <- function(tissue_names, filtered_cluster_dir, output_file) {
+barplot_showing_number_of_clusters_per_tissue <- function(tissue_names, tissue_names_spaces, filtered_cluster_dir) {
 	num_cluster_vec <- c()
 
 	# Loop through tissues
@@ -56,13 +56,13 @@ barplot_showing_number_of_clusters_per_tissue <- function(tissue_names, filtered
 		num_clusters <- get_number_of_clusters(jxn_names)
 		num_cluster_vec <- c(num_cluster_vec, num_clusters)
 	}
-	tissue_names = factor(tissue_names, levels=rev(as.character(tissue_names)))
+	tissue_names_obj = factor(tissue_names_spaces, levels=rev(as.character(tissue_names_spaces)))
 
-	df <- data.frame(tissue=tissue_names, number_of_clusters=num_cluster_vec)
+	df <- data.frame(tissue=tissue_names_obj, number_of_clusters=num_cluster_vec)
 
 
-	bar_plot <- ggplot(data=df, aes(x=tissue_names,y=number_of_clusters)) + geom_bar(stat="identity",fill="mediumpurple") + coord_flip() +
-				labs(x = "Tissue", y = "Number of clusters") +
+	bar_plot <- ggplot(data=df, aes(x=tissue,y=number_of_clusters)) + geom_bar(stat="identity",fill="mediumpurple") + coord_flip() +
+				labs(x = "", y = "Number of clusters") +
 				gtex_v8_figure_theme()
 
 
@@ -73,7 +73,7 @@ gtex_v8_figure_theme <- function() {
 	return(theme(plot.title = element_text(face="plain",size=8), text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)))
 }
 
-barplot_showing_number_of_genes_per_tissue <- function(tissue_names, filtered_cluster_dir, output_file) {
+barplot_showing_number_of_genes_per_tissue <- function(tissue_names, tissue_names_spaces, filtered_cluster_dir) {
 	num_cluster_vec <- c()
 
 	# Loop through tissues
@@ -88,15 +88,15 @@ barplot_showing_number_of_genes_per_tissue <- function(tissue_names, filtered_cl
 		num_cluster_vec <- c(num_cluster_vec, num_clusters)
 	}
 
-	tissue_names = factor(tissue_names, levels=rev(as.character(tissue_names)))
-	df <- data.frame(tissue=tissue_names, number_of_clusters=num_cluster_vec)
+	tissue_names_obj = factor(tissue_names_spaces, levels=rev(as.character(tissue_names_spaces)))
+	df <- data.frame(tissue=tissue_names_obj, number_of_clusters=num_cluster_vec)
 
 
     #melted_corr$X1 <- factor(melted_corr$X1, levels = rownames(correlation_matrix))
 
 
-	bar_plot <- ggplot(data=df, aes(x=tissue_names,y=number_of_clusters)) + geom_bar(stat="identity",fill="darkcyan") + coord_flip() +
-				labs(x = "Tissue", y = "Number of genes") +
+	bar_plot <- ggplot(data=df, aes(x=tissue,y=number_of_clusters)) + geom_bar(stat="identity",fill="darkcyan") + coord_flip() +
+				labs(x = "", y = "Number of genes") +
 				gtex_v8_figure_theme()
 				#scale_y_discrete(limits = rev(levels(tissue_names))) +
 
@@ -107,7 +107,7 @@ barplot_showing_number_of_genes_per_tissue <- function(tissue_names, filtered_cl
 
 
 
-barplot_showing_number_of_jxns_per_tissue <- function(tissue_names, filtered_cluster_dir, output_file) {
+barplot_showing_number_of_jxns_per_tissue <- function(tissue_names, tissue_names_spaces, filtered_cluster_dir) {
 	num_jxns_vec <- c()
 
 	# Loop through tissues
@@ -121,13 +121,13 @@ barplot_showing_number_of_jxns_per_tissue <- function(tissue_names, filtered_clu
 		num_jxns_vec <- c(num_jxns_vec, num_jxns)
 	}
 
-	tissue_names = factor(tissue_names, levels=rev(as.character(tissue_names)))
+	tissue_names_obj = factor(tissue_names_spaces, levels=rev(as.character(tissue_names_spaces)))
 
-	df <- data.frame(tissue=tissue_names, number_of_junctions=num_jxns_vec)
+	df <- data.frame(tissue=tissue_names_obj, number_of_junctions=num_jxns_vec)
 
 
-	bar_plot <- ggplot(data=df, aes(x=tissue_names,y=number_of_junctions)) + geom_bar(stat="identity",fill="steelblue3") + coord_flip() +
-				labs(x = "Tissue", y = "Number of junctions") +
+	bar_plot <- ggplot(data=df, aes(x=tissue,y=number_of_junctions)) + geom_bar(stat="identity",fill="steelblue3") + coord_flip() +
+				labs(x = "", y = "Number of junctions") +
 				gtex_v8_figure_theme()
 
 
@@ -251,45 +251,35 @@ output_file <- paste0(cluster_visualization_dir, "number_of_genes_per_cluster_fu
 
 # Extract vector tissue names
 tissue_names <- as.character(unlist(read.table(tissue_names_file,header=FALSE), use.names=FALSE))
+tissue_names_spaces <- gsub("_", " ", tissue_names)
 
-if (FALSE) {
-##################################################################
-# Histogram showing fraction of samples w > $min_reads reads summed across all junctions
-##################################################################
 
-for (iter_num in 1:length(tissue_names)) {
-	tissue_name <- tissue_names[iter_num]
-	min_reads <- 3
-	input_file <- paste0(filtered_cluster_dir, tissue_name, "_num_reads_per_cluster.txt")
-	output_file <- paste0(cluster_visualization_dir, "fraction_of_", min_reads,"_expressed_samples_per_cluster_", tissue_name, "_histogram.pdf")
-	histogram_showing_fraction_of_expressed_samples(tissue_name, min_reads, input_file, output_file)
-}
-
-}
 ###################################################
 # Barplot showing number of genes per tissue
 ###################################################
 print("A")
 
-genes_per_tissue <- barplot_showing_number_of_genes_per_tissue(tissue_names, filtered_cluster_dir)
+genes_per_tissue <- barplot_showing_number_of_genes_per_tissue(tissue_names, tissue_names_spaces, filtered_cluster_dir)
 print("A")
 ###################################################
 # Barplot showing number of clusters per tissue
 ###################################################
-clusters_per_tissue <- barplot_showing_number_of_clusters_per_tissue(tissue_names, filtered_cluster_dir)
+clusters_per_tissue <- barplot_showing_number_of_clusters_per_tissue(tissue_names, tissue_names_spaces, filtered_cluster_dir)
 print("A")
 
 ###################################################
 # Barplot showing number of jxns per tissue
 ###################################################
-jxns_per_tissue <- barplot_showing_number_of_jxns_per_tissue(tissue_names, filtered_cluster_dir)
+jxns_per_tissue <- barplot_showing_number_of_jxns_per_tissue(tissue_names, tissue_names_spaces, filtered_cluster_dir)
 print("A")
 
-combined_per_tissue <- plot_grid(jxns_per_tissue, clusters_per_tissue, genes_per_tissue, labels=c("A","B","C"), ncol=3)
+# 2.2 (for a) is slightly too big
+# 1.8 too small
+combined_per_tissue <- plot_grid(jxns_per_tissue, clusters_per_tissue + theme(axis.text.y=element_blank()), genes_per_tissue+ theme(axis.text.y=element_blank()), labels=c("A","B","C"), ncol=3, rel_widths=c(2.0,1.0,1.0))
 ggsave(combined_per_tissue, file=paste0(cluster_visualization_dir, "combined_number_per_tissue_supplementary.pdf"),width=7.2, height=5, units="in")
 
 combined_per_tissue <- plot_grid(jxns_per_tissue, clusters_per_tissue, genes_per_tissue, labels=c("A","B","C"), ncol=1)
-ggsave(combined_per_tissue, file=paste0(cluster_visualization_dir, "combined_number_per_tissue_supplementary2.pdf"),width=7.2, height=7, units="in")
+ggsave(combined_per_tissue, file=paste0(cluster_visualization_dir, "combined_number_per_tissue_supplementary2.pdf"),width=7.2, height=14, units="in")
 
 
 if (FALSE) {

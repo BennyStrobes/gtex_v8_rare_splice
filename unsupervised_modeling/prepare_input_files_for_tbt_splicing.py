@@ -101,7 +101,7 @@ splicing_outlier_dir = sys.argv[3]  # Directory containing splicing outlier call
 tissue_names_file = sys.argv[4]  # File containing list of tissue names
 
 # Input file we will use to get list of test (individual, gene pairs to be used)
-input_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
+input_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
 
 # Output file we will write results to
 output_file = unsupervised_learning_input_dir + 'splicing_tbt_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'

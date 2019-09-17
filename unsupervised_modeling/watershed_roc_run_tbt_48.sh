@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=30:00:00
+#SBATCH --time=32:00:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 

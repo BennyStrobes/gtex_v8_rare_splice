@@ -16,6 +16,8 @@ library(PRROC)
 library(cowplot)
 library(RColorBrewer)
 source("watershed.R")
+options(bitmapType = 'cairo', device = 'pdf')
+
 
 
 
@@ -357,7 +359,6 @@ plot_beta_difference_scatter_between_exact_and_vi <- function(model_params_exact
 }
 
 plot_theta_pair_term <- function(theta_pair, output_file) {
-	options(bitmapType = 'cairo', device = 'pdf')
 	mat <- matrix(0, 3, 3)
 	mat[1,2] <- theta_pair[1,1]
 	mat[2,1] <- theta_pair[1,1]
@@ -625,7 +626,7 @@ remove_na <- function(x) {
 #### 2. GAM
 #### 3. RNA-only
 #######################################
-compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_posteriors, binary_outliers_test2) {
+compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_posteriors, cadd_scores, binary_outliers_test2) {
 	roc_object_across_dimensions <- list()
 	pos_list <- c()
 	neg_list <- c()
@@ -652,6 +653,10 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
    		gam_roc_obj <- roc.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
    		gam_pr_obj <- pr.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
 
+  		# predictions with CADD
+   		cadd_roc_obj <- roc.curve(scores.class0 = remove_na(cadd_scores[test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(cadd_scores[test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
+   		cadd_pr_obj <- pr.curve(scores.class0 = remove_na(cadd_scores[test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(cadd_scores[test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
+
 
 		evaROC <-	
 		 list(watershed_sens=roc_obj$curve[,2],
@@ -666,6 +671,12 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
          	  GAM_pr_auc=gam_pr_obj$auc.integral,
          	  GAM_recall=gam_pr_obj$curve[,1],
          	  GAM_precision=gam_pr_obj$curve[,2],
+         	  CADD_sens=cadd_roc_obj$curve[,2],
+              CADD_spec=1-cadd_roc_obj$curve[,1],
+              CADD_auc=cadd_roc_obj$auc,
+         	  CADD_pr_auc=cadd_pr_obj$auc.integral,
+         	  CADD_recall=cadd_pr_obj$curve[,1],
+         	  CADD_precision=cadd_pr_obj$curve[,2],
          	  rna_only_pr_auc=rna_only_pr_obj$auc.integral,
          	  rna_only_recall=rna_only_pr_obj$curve[,1],
          	  rna_only_precision=rna_only_pr_obj$curve[,2],
@@ -674,7 +685,6 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
               rna_only_auc=rna_only_roc_obj$auc,
               num_positive_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])])),
               num_negative_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])])))
-
 
 		 roc_object_across_dimensions[[dimension]] <- list(name=dimension_name, evaROC=evaROC)
 	}
@@ -692,13 +702,114 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
 }
 
 
+#######################################
+## Compute absolute risk for high watershed posterior variants
+#######################################
+absolute_risk_plot <- function(gam_predictions, watershed_predictions, data_input, pvalue, output_file) {
+	#######################################
+	# Load in all data (training and test)
+	#######################################
+	N2_pairs <- data_input$N2_pairs	
+
+  	real_valued_outliers_test2 <- abs(rbind(data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),], data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),]))
+
+  	watershed_thresholds <- c(.5,.6,.7,.8,.9)
+
+  	thresh <- c()
+  	absolute_risks <- c()
+  	outlier_type <- c()
+  	model_type <- c()
+
+  	for (index in 1:length(watershed_thresholds)) {
+  		watershed_threshold <- watershed_thresholds[index]
+
+  		# splice
+  		ws_variants <- watershed_predictions[,1] > watershed_threshold
+  		risk <- sum(real_valued_outliers_test2[ws_variants,1] <= pvalue)/length(real_valued_outliers_test2[ws_variants,1])
+  		thresh <- c(thresh, watershed_threshold)
+  		absolute_risks <- c(absolute_risks, risk)
+  		outlier_type <- c(outlier_type, "Splicing")
+  		model_type <- c(model_type, "watershed")
+
+  		# TE
+  		ws_variants <- watershed_predictions[,2] > watershed_threshold
+  		risk <- sum(real_valued_outliers_test2[ws_variants,2] <= pvalue)/length(real_valued_outliers_test2[ws_variants,2])
+  		thresh <- c(thresh, watershed_threshold)
+  		absolute_risks <- c(absolute_risks, risk)
+  		outlier_type <- c(outlier_type, "TE")
+  		model_type <- c(model_type, "watershed")
+
+  		# ase
+  		ws_variants <- watershed_predictions[,3] > watershed_threshold
+  		risk <- sum(real_valued_outliers_test2[ws_variants,3] <= pvalue)/length(real_valued_outliers_test2[ws_variants,3])
+  		thresh <- c(thresh, watershed_threshold)
+  		absolute_risks <- c(absolute_risks, risk)
+  		outlier_type <- c(outlier_type, "ASE")
+  		model_type <- c(model_type, "watershed")
+
+  		 # splice
+  		ws_variants <- gam_predictions[,1] > watershed_threshold
+  		risk <- sum(real_valued_outliers_test2[ws_variants,1] <= pvalue)/length(real_valued_outliers_test2[ws_variants,1])
+  		thresh <- c(thresh, watershed_threshold)
+  		absolute_risks <- c(absolute_risks, risk)
+  		outlier_type <- c(outlier_type, "Splicing")
+  		model_type <- c(model_type, "GAM")
+
+  		# TE
+  		ws_variants <- gam_predictions[,2] > watershed_threshold
+  		risk <- sum(real_valued_outliers_test2[ws_variants,2] <= pvalue)/length(real_valued_outliers_test2[ws_variants,2])
+  		thresh <- c(thresh, watershed_threshold)
+  		absolute_risks <- c(absolute_risks, risk)
+  		outlier_type <- c(outlier_type, "TE")
+  		model_type <- c(model_type, "GAM")
+
+  		# ase
+  		ws_variants <- gam_predictions[,3] > watershed_threshold
+  		risk <- sum(real_valued_outliers_test2[ws_variants,3] <= pvalue)/length(real_valued_outliers_test2[ws_variants,3])
+  		thresh <- c(thresh, watershed_threshold)
+  		absolute_risks <- c(absolute_risks, risk)
+  		outlier_type <- c(outlier_type, "ASE")
+  		model_type <- c(model_type, "GAM")
+
+
+  	}
+  	df <- data.frame(watershed_threshold=thresh, absolute_risk=absolute_risks, outlier_type=factor(outlier_type, levels=c("ASE","Splicing","TE")), model_type=factor(model_type, levels=c("watershed", "GAM")))
+
+
+	p_watershed <- ggplot(data=df[as.character(df$model_type)=="watershed",], aes(x=watershed_threshold, y=absolute_risk, fill=outlier_type)) +
+	geom_bar(stat="identity", color="black", position=position_dodge())+
+  	gtex_v8_figure_theme() + 
+  	labs(x="Watershed posterior", y="Absolute risk", fill="") + 
+  	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0"))
+
+	p_gam <- ggplot(data=df[as.character(df$model_type)=="GAM",], aes(x=watershed_threshold, y=absolute_risk, fill=outlier_type)) +
+	geom_bar(stat="identity", color="black", position=position_dodge())+
+  	gtex_v8_figure_theme() + 
+  	labs(x="GAM posterior", y="Absolute risk", fill="") + 
+  	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0"))
+# Use custom colors
+#p + scale_fill_manual(values=c('#999999','#E69F00'))
+# Use brewer color palettes
+#p + scale_fill_brewer(palette="Blues")
+
+	p <- plot_grid(p_gam, p_watershed, ncol=1)
+
+	ggsave(p, file=output_file,width = 7.2,height=6,units="in")
+}
+
+gtex_v8_figure_theme <- function() {
+  return(theme(plot.title = element_text(face="plain",size=8), text = element_text(size=8),
+               axis.text=element_text(size=7), panel.grid.major = element_blank(), 
+               panel.grid.minor = element_blank(),panel.background = element_blank(), 
+               axis.line = element_line(colour = "black"), 
+               legend.text = element_text(size=7), legend.title = element_text(size=8)))
+}
 
 
 
-
-
-
-roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold) {
+roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init) {
+	#watershed_data <- readRDS(file_name)
+	#watershed_model <- watershed_data$model_params
 	#######################################
 	# Load in all data (training and test)
 	#######################################
@@ -740,7 +851,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	nfolds <- 5
 
-	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, .001)
+	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
 	#saveRDS(gam_data,"gam.RDS")
 	#gam_data <- readRDS("gam.RDS")
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
@@ -786,11 +897,11 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#### 2. GAM
 	#### 3. RNA-only
 	#######################################
+	cadd_scores <- as.vector(feat_test[,40])
 	dimension_labels <- colnames(data_input$outliers_binary)
-	roc_object_across_dimensions <- compute_roc_across_dimensions(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_test_posteriors, binary_outliers_test2)
+	roc_object_across_dimensions <- compute_roc_across_dimensions(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_test_posteriors, cadd_scores, binary_outliers_test2)
 
-
-	return(list(roc=roc_object_across_dimensions, confusion=confusion_matrix, model_params=watershed_model, watershed_predictions=posterior_prob_test))
+	return(list(roc=roc_object_across_dimensions, confusion=confusion_matrix, model_params=watershed_model, gam_model_params=gam_data, watershed_predictions=posterior_prob_test, gam_predictions=gam_test_posteriors, cadd_predictions=cadd_scores))
 
 }
 
@@ -849,15 +960,13 @@ binary_pvalue_threshold <- as.numeric(args[6])  # Pvalue threshold to call binar
 lambda_costs <- c(.1,.01,1e-3,1e-4)
 vi_step_size=.8
 vi_threshold=1e-8
-
-
+#lambda_init <- NA
+lambda_init <- 0.001
 #######################################
 ## Load in data
 #######################################
 data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
-raw_data <- read.table(input_file, header=TRUE)
-feat <- raw_data[,3:(ncol(raw_data)-number_of_dimensions-1)]
-feat_names <- colnames(feat)
+saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference and pseudolikelihood
@@ -865,7 +974,7 @@ feat_names <- colnames(feat)
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
 saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
 #roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 
@@ -877,7 +986,7 @@ saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
 saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
 #roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 
@@ -889,122 +998,15 @@ saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold)
+roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
 saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
 #roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
-
 
 #colnames(roc_object_exact$model_params$theta) = colnames(feat)
 #for (anno_num in 1:length(feat_names)) {
 #	anno_name = feat_names[anno_num]
 #	print(paste0(anno_name, " ", roc_object_exact$model_params$theta[anno_num, 1], " ", roc_object_exact$model_params$theta[anno_num, 2], " ", roc_object_exact$model_params$theta[anno_num, 3]))
 #}
-
-
-#######################################
-## Visualize theta pair terms for exact inference
-#######################################
-plot_theta_pair_term(roc_object_exact$model_params$theta_pair, paste0(output_stem, "_exact_inference_theta_pair_heatmap.pdf"))
-
-#######################################
-## Visualize theta pair terms for approximate inference
-#######################################
-plot_theta_pair_term(roc_object_pseudo$model_params$theta_pair, paste0(output_stem, "_approximate_inference_theta_pair_heatmap.pdf"))
-
-#######################################
-## Visualize beta differences for exact vs inference
-#######################################
-plot_beta_difference_scatter_between_exact_and_vi(roc_object_exact$model_params, roc_object_pseudo$model_params, paste0(output_stem, "_watershed_exact_vs_approximate_beta_estimate_scatter.pdf"))
-
-#######################################
-## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)
-#######################################
-plot_pr_gam_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_river_gam_comparison_pr.pdf"))
-
-#######################################
-## Visualize precision-recall curves for river, watershed-vi, watershed-exact comparison and all three outlier types (te, splice, ase)
-#######################################
-plot_pr_river_watershed_comparison_curve(roc_object_exact$roc, roc_object_pseudo$roc, roc_object_independent$roc, number_of_dimensions, paste0(output_stem, "_watershed_exact_watershed_vi_river_comparison_pr.pdf"))
-
-
-
-#######################################
-## Visualize Confusion matrix for both RIVER and Watershed (exact and vi)
-#######################################
-visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion, paste0(output_stem, "_confusion_heatmap_river_watershed_exact_watershed_vi_comparison.pdf"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#######################################
-## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference
-#######################################
-#independent_variables = "false"
-#inference_method = "vi"
-#output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_vi <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, lambda_pair_init, inference_method, independent_variables, seed_number)
-#saveRDS(roc_object_vi, paste0(output_root, "_roc_object.rds"))
-#roc_object_vi <- readRDS(paste0(output_root, "_roc_object.rds"))
-
-
-
 
 
 

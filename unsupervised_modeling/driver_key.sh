@@ -24,7 +24,8 @@ variant_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/inpu
 total_expression_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/gtexV8.outlier.controls.v8ciseQTLs.globalOutliers.removed.medz.txt"
 
 # Allele specific expression outlier file
-ase_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/median_uncorrected_DOT_scores.tsv"
+ase_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/unsupervised_learning_input/ase_v8_data_from_jonah/median.ad.scores.uncorrected.no.global.outliers.tsv.gz"
+ase_old_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/outlier_calls/median_uncorrected_DOT_scores.tsv"
 
 # Splicing outlier file
 splicing_outlier_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/splicing_outlier_calls/cross_tissue_covariate_method_none_no_global_outliers_ea_only_emperical_pvalue_gene_level.txt"
@@ -48,7 +49,19 @@ tissue_names_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/inp
 splicing_outlier_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/outlier_calling/splicing_outlier_calls/"
 
 # Directory containing tbt ase outlier calls
-ase_outlier_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/unsupervised_learning_input/ase_data_from_jonah/"
+ase_outlier_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/unsupervised_learning_input/ase_v8_data_from_jonah/"
+
+# Directory containing tbt te outlier calls
+te_outlier_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/unsupervised_learning_input/total_expression_data_from_nicole/"
+
+# File containing names of genomic annotations
+genomic_annotations_names_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/unsupervised_modeling/unsupervised_learning_input/feature_names.txt"
+
+# File containing mapping from GTEx tissue name to chromHMM cell type (provided by Nicole Ferraro)
+chrom_hmm_to_tissue_mapping_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/tissue_specific_chromHMM_annotations/roadmap_gtex_map_castel.txt"
+
+# File containing mapping from GTEx v8 tissue names to tissue colors
+tissue_colors_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtex_colors.txt"
 
 #############################################################
 #Used Directories (directories need to be created and empty before starting)
@@ -73,13 +86,18 @@ watershed_tbt_roc_run_dir=$output_root"watershed_tbt_roc/"
 # Directory containing results from watershed analysis applied to all variants
 watershed_3_class_score_run_dir=$output_root"watershed_three_class_scores/"
 
+# Directory containing visualizations
+watershed_visualization_dir=$output_root"visualize_watershed/"
+
+# Directory containing visualization to debug watershed
+watershed_debug_visualization_dir=$output_root"visualize_debug_watershed/"
 
 
 ###############################################
 # Scripts 
 ###############################################
 if false; then
-sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $variant_level_genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file $splicing_outlier_dir $ase_outlier_dir $tissue_names_file
+sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $variant_level_genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file $splicing_outlier_dir $ase_outlier_dir $te_outlier_dir $tissue_names_file $ase_old_outlier_file
 fi
 
 if false; then
@@ -94,14 +112,23 @@ sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $wa
 fi
 
 
-
-if false; then
 pseudocount="30"
 pvalue_fraction=".01"
-sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction
+binary_pvalue_threshold=".01"
+if false; then
+sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction $binary_pvalue_threshold $watershed_3_class_roc_run_dir
+
+
+
+pseudocount="30"
+pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+sbatch watershed_score_run_old.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction $binary_pvalue_threshold $watershed_3_class_roc_run_dir
 fi
 
-
+if false; then
+sh debug_watershed.sh $watershed_3_class_roc_run_dir $watershed_3_class_score_run_dir $watershed_debug_visualization_dir
+fi
 #####################
 # TBT Model
 #####################
@@ -114,8 +141,9 @@ lambda_init=".001"
 lambda_pair_init=".001"
 independent_variables="false"  # false or true
 inference_method="pseudolikelihood" # pseudolikelihood or exact
-outlier_type="ase"  # splicing, total_expression, ase
-sbatch watershed_roc_run_tbt_48.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
+outlier_type="total_expression"  # splicing, total_expression, ase
+number_of_dimensions="49"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
 
 pseudocount="10"
 n2_pair_pvalue_fraction=".01"
@@ -126,13 +154,11 @@ lambda_pair_init=".001"
 independent_variables="true"  # false or true
 inference_method="exact" # pseudolikelihood or exact
 outlier_type="ase"  # splicing, total_expression, ase
-sbatch watershed_roc_run_tbt_48.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type
-fi
+number_of_dimensions="49"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
 
-
-if false; then
-Rscript visualize_watershed_tbt_results.R $watershed_tbt_roc_run_dir
 fi
+Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
 
 
 

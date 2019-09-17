@@ -546,7 +546,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
  	#######################################
 	## Fit Genomic Annotation Model (GAM)
 	#######################################
-	nfolds <- 8
+	nfolds <- 5
 
 	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
 	saveRDS(gam_data,"gam.RDS")

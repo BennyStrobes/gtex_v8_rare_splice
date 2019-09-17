@@ -33,6 +33,9 @@ european_ancestry_individual_list="/work-zfs/abattle4/bstrober/rare_variant/gtex
 # List of rare variants across all European ancestry individuals (Created by Nicole Ferraro. Downloaded from stroberb-420@scp.nygenome.org:/data/delivery/gtex-rare/data/all_rare_variants_noWindow_SNPs.txt on 12/5/18)
 variant_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/all_rare_variants_noWindow_SNPs_refalt.txt"
 
+# File containing ctcf interactions (downloaded from https://www.embl.de/download/zaugg/mariana/README_loops.txt)
+ctcf_interaction_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/intragenic.interactions.unbiased.set.hg19.txt"
+
 # List of rare variants across all European ancestry individuals mapped to gene bodies (Created by Nicole Ferraro. Downloaded from stroberb-420@scp.nygenome.org:/data/delivery/gtex-rare/data/all_rare_variants_noWindow_SNPs.txt on 12/5/18)
 variant_bed_gene_mapped_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/variant_calls/all_rare_variants_SNPs_10kb_genebody.txt"
 
@@ -127,7 +130,7 @@ visualize_cluster_distribution_dir=$output_root"visualize_cluster_distribution/"
 # We have variant calls ($variant_bed_file) for all European Ancestry individuals
 # We now map these variant calls to clusters if that variant is in a window (of a range of sizes) around a splice site in that cluster
 if false; then
-sbatch map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir
+sh map_variants_to_clusters.sh $variant_bed_file $cluster_info_file $rare_variant_dir $ctcf_interaction_file $liftover_directory
 fi
 
 # Part 1b: Map variants to jxns
