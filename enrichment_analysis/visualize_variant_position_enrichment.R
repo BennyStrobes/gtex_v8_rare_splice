@@ -1624,8 +1624,8 @@ make_positional_odds_ratio_plot_seperated_by_ss_type <- function(inlier_distance
 
 	options(bitmapType = 'cairo', device = 'pdf')
 
-	acceptor_plot <-  ggplot() + geom_errorbar(data=df_acceptor, mapping=aes(x=dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="darkorchid",width=0.0) +
-					geom_point(data=df_acceptor, mapping=aes(x=dist_to_ss, y=odds_ratio), color="darkorchid") +
+	acceptor_plot <-  ggplot() + geom_point(data=df_acceptor, mapping=aes(x=dist_to_ss, y=odds_ratio), color="#0D324D") +
+					geom_errorbar(data=df_acceptor, mapping=aes(x=dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="#0D324D",width=0.0) +
 					labs(x = "", y = "") +
 					#geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
 					#geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
@@ -1636,8 +1636,8 @@ make_positional_odds_ratio_plot_seperated_by_ss_type <- function(inlier_distance
 					theme(axis.title.y=element_blank())
 
 
-	donor_plot <-  ggplot() + geom_errorbar(data=df_donor, mapping=aes(x=-dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="darkorchid",width=0.0) +
-					geom_point(data=df_donor, mapping=aes(x=-dist_to_ss, y=odds_ratio), color="darkorchid") +
+	donor_plot <-  ggplot() + geom_point(data=df_donor, mapping=aes(x=-dist_to_ss, y=odds_ratio), color="#0D324D") +
+					geom_errorbar(data=df_donor, mapping=aes(x=-dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="#0D324D",width=0.0) +
 					labs(x = "", y = "Relative risk") +
 					#geom_vline(xintercept = 2.5, size=.00001,linetype="dashed") +
 					#geom_vline(xintercept = .5, size=.00001,linetype="dashed") + 
@@ -2199,21 +2199,21 @@ extract_ppt_odds_ratio_data <- function(outlier_distances, inlier_distances, ppt
 make_panel_2a <- function(figure_2_ab_data) {
 	load(figure_2_ab_data)
 	dcols = c('#7F5A83', '#0D324D', '#BFCDE0')
-	dist.data$Type = sapply(dist.data$Type, function(x) ifelse(x == 'SNPs', 'SNVs', as.character(x)))
+	#dist.data$Type = sapply(dist.data$Type, function(x) ifelse(x == 'SNPs', 'SNVs', as.character(x)))
 	dist.data$Type = factor(dist.data$Type, levels=c('SNVs', 'indels', 'SVs'))
-	dist.data$DataType = sapply(dist.data$DataType, function(x) ifelse(x == 'Splicing', 'sOutlier', as.character(x)))
-	dist.data$DataType = sapply(dist.data$DataType, function(x) ifelse(x == 'ASE', 'aseOutlier', as.character(x)))
-	dist.data$DataType = sapply(dist.data$DataType, function(x) ifelse(x == 'TE', 'eOutlier', as.character(x)))
-	dist.data$DataType = factor(dist.data$DataType, levels=c('aseOutlier', 'sOutlier', 'eOutlier'))
+	dist.data$Method = sapply(dist.data$Method, function(x) ifelse(x == 'Splicing', 'sOutlier', as.character(x)))
+	dist.data$Method = sapply(dist.data$Method, function(x) ifelse(x == 'ASE', 'aseOutlier', as.character(x)))
+	dist.data$Method = sapply(dist.data$Method, function(x) ifelse(x == 'MEDZ', 'eOutlier', as.character(x)))
+	dist.data$Method = factor(dist.data$Method, levels=c('aseOutlier', 'sOutlier', 'eOutlier'))
 
 	dist.data.filtered1 = dist.data[dist.data$Riskratio > 1 & dist.data$Type=='SNVs',]
 
 
-	fig_2A1 = ggplot(dist.data.filtered1, aes(x=Window, y=Riskratio,Group=DataType)) +
-		geom_point(size=1.7,aes(color=DataType), position=position_dodge(width=0.5)) +
+	fig_2A1 = ggplot(dist.data.filtered1, aes(x=Window, y=Riskratio,Group=Method)) +
+		geom_point(size=1.7,aes(color=Method), position=position_dodge(width=0.5)) +
 		geom_errorbar(aes(ymin = Lower, ymax = Upper),size=.2, width=0,position=position_dodge(width=0.5)) +
 		theme_bw() + ylab('Relative risk') + xlab('') +
-		geom_line(aes(group=DataType),size=0.2) +
+		geom_line(aes(group=Method),size=0.2) +
 		geom_hline(yintercept=1,color='grey',size=.2) +
 		scale_color_manual(values=dcols) + guides(color=F) +
 		theme(axis.text.x=element_text(angle=45,hjust=1),strip.text.x=element_text(size=8)) +
@@ -2223,10 +2223,10 @@ make_panel_2a <- function(figure_2_ab_data) {
 		facet_wrap(Type~.,scales='free', ncol=3) + theme(strip.background = element_blank())
 
 	dist.data.filtered2 = dist.data[dist.data$Riskratio > 1 & dist.data$Type!='SNVs',]
-	fig_2A2 = ggplot(dist.data.filtered2, aes(x=Window, y=Riskratio,Group=DataType)) +
-		geom_point(size=1.7,aes(color=DataType), position=position_dodge(width=0.5)) +
+	fig_2A2 = ggplot(dist.data.filtered2, aes(x=Window, y=Riskratio,Group=Method)) +
+		geom_point(size=1.7,aes(color=Method), position=position_dodge(width=0.5)) +
 		geom_errorbar(aes(ymin = Lower, ymax = Upper),size=.2, width=0,position=position_dodge(width=0.5)) +
-		theme_bw() + ylab('') + geom_line(aes(group=DataType),size=0.2) +
+		theme_bw() + ylab('') + geom_line(aes(group=Method),size=0.2) +
 		#xlab('Distance upstream from gene (kb)') + ylab('') +
 		xlab('') + ylab('') +
 		scale_y_log10() + geom_hline(yintercept=1,size=.2,color='grey') +
@@ -2250,13 +2250,13 @@ make_panel_2a <- function(figure_2_ab_data) {
 make_panel_2b <- function(figure_2_ab_data) {
   load(figure_2_ab_data)
 
-
+plot.tss.data$promoter_motif = sapply(plot.tss.data$promoter_motif, function(x) ifelse(x == 'other_motif', 'Other motif', as.character(x)))
 ### panel B ###
 vcols = c(brewer.pal(11,'Spectral')[1:7],'grey',brewer.pal(11,'Spectral')[8:11])
 names(vcols) = unique(plot.tss.data$promoter_motif)
 plot.tss.data$ExpBin = factor(plot.tss.data$ExpBin, levels=c('Under', 'Control', 'Over'))
 plot.tss.data$promoter_motif = factor(plot.tss.data$promoter_motif, 
-                                      levels=rev(c('other_motif', 'Cmyc', 'CTCF', 'E2F4', 'E2F6', 'ELF1', 'Gabp', 'Nrf1', 'Nrsf', 'PU1', 'SP1', 'Srf', 'Tr4', 'USF1', 'Yy1')))
+                                      levels=rev(c('Other motif', 'Cmyc', 'CTCF', 'E2F4', 'E2F6', 'ELF1', 'Gabp', 'Nrf1', 'Nrsf', 'PU1', 'SP1', 'Srf', 'Tr4', 'USF1', 'Yy1')))
 fig_2B = ggplot(plot.tss.data, aes(x=ExpBin,y=NumBin)) + 
   geom_bar(aes(fill=promoter_motif),stat='identity',color='black') + theme_bw() +
   scale_fill_manual(values=vcols) + xlab('eOutlier bin') + 

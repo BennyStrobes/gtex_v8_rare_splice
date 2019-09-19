@@ -85,7 +85,7 @@ ptbp_bed_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_d
 splice_site_cartoon="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/splice_site_cartoon.png"
 
 # Data for figure 2A/B (From Nicole)
-figure_2_ab_data="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/fig2_ab_data.RData"
+figure_2_ab_data="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/fig2_ab_data_v3.RData"
 
 #############################################################
 #Used Directories (directories need to be created and empty before starting)
@@ -148,6 +148,7 @@ fi
 #### B. Compare distances between variants and splice sites for outliers vs non-outliers
 #### C. Also compare jxn usage nearby A: altered splice sites and B: altered PPT regions in outliers and non-outliers
 # Then visualize results
+
 sh variant_position_enrichment_shell.sh $rare_variant_dir $variant_enrichment_dir $variant_position_enrichment_dir $visualize_variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $exon_file $jxn_usage_nearby_altered_ss_enrichment_dir $tissue_names_file $filtered_cluster_dir $tissue_colors_file $heuristic_outlier_dir $heuristic_outlier_suffix $splice_site_cartoon $figure_2_ab_data
 
 
