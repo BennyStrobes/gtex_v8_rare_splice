@@ -7,6 +7,12 @@ import time
 import pystan
 import dirichlet_multinomial_glm as dm_glm
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
+sns.set_style("whitegrid")
 
 
 
@@ -172,18 +178,40 @@ def outlier_calling_print_helper(arr, cluster_samples, all_samples, t, cluster_i
 	t.flush()
 	return t
 
-
+def viz_outlier_call(X, outlier_samples, samples, alpha, output_file):
+	fig = plt.figure()
+	alpha_0 = np.sum(alpha)
+	N,K = X.shape
+	outlier_counts = []
+	for n in range(N):
+		counts = X[n,:]
+		total = np.sum(counts)
+		x = range(K)
+		if samples[n] not in outlier_samples:
+			plt.plot(x,np.squeeze(np.asarray(counts/total)),color='k',alpha = .15)
+		else:
+			outlier_counts.append(counts)
+	for counts_save in outlier_counts:
+		plt.plot(range(K),np.squeeze(np.asarray(counts_save/np.sum(counts_save))),color='m')
+	plt.plot(range(K),np.squeeze(np.asarray(alpha/alpha_0)),'ro')
+	tick_arr = []
+	for k in range(K):
+		tick_arr.append('jxn ' + str(k + 1))
+	plt.xticks(range(K),tick_arr)
+	plt.xlabel('Splice Junctions',size=15)
+	plt.ylabel('Normalized Read Counts',size=15)
+	fig.savefig(output_file)
 
 # Call splicing outliers for each cluster
 # Also write to output
 def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, start_number, end_number):
+	np.random.seed(1)
 	# Pystan optimizizer
 	#DM_GLM = pystan.StanModel(file = "dm_glm_multi_conc.stan")
 	DM_GLM = pickle.load(open('/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/outlier_calling/dm_glm_multi_conc.pkl', 'rb'))
 	#Initialize output files
 	t_MD = open(output_root + '_md.txt','w')  # Filehandle for matrix of mahalanobis distances
 	t_pvalue = open(output_root + '_emperical_pvalue.txt', 'w')  # Filehandle for matrix of pvalues
-
 
 
 	# Write headers for output files
@@ -203,6 +231,7 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		####################################################################
 		# Extract jxn matrix for this gene
 		X = cluster_jxn_data_structure[cluster_id]['jxn_matrix']
+		print(X.shape)
 		# Extract sample ids used in THIS cluster (NOTE: Different from all_samples)
 		cluster_samples = cluster_jxn_data_structure[cluster_id]['samples']
 		# Extract covariate matrix (dim len(cluster_samples)Xnum_cov)
@@ -223,6 +252,8 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 			t_pvalue = outlier_calling_print_helper(pvalues, cluster_samples, all_samples, t_pvalue, cluster_id)
 		except:
 			print('miss: ' + cluster_id)
+
+		# viz_outlier_call(X, cluster_samples[pvalues < .001], cluster_samples, alpha, cluster_id + '_viz.png')
 	t_MD.close()
 	t_pvalue.close()
 

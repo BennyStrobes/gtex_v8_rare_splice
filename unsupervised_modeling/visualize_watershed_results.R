@@ -1207,21 +1207,21 @@ roc_3_class_data_input <- readRDS(paste0(input_stem, "_data_input.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
+roc_object_exact <- readRDS(paste0(output_root, "_roc_object2.rds"))
 
 
 ####### Pseudolikelihood approximation to watershed
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
+roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object2.rds"))
 
 
 ####### Exact RIVER
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
+roc_object_independent <- readRDS(paste0(output_root, "_roc_object2.rds"))
 
 
 

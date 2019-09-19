@@ -74,6 +74,9 @@ splicing_outlier_visualization_dir=$output_root"visualize_splicing_outlier_calls
 # Directory containing outlier calls from heuristic approach
 heuristic_outlier_dir=$output_root"heuristic_outlier_calls/"
 
+# Directory containing processed data for github repo 
+github_repo_dir=$output_root"github_repo_data/"
+
 
 
 
@@ -113,8 +116,9 @@ fi
 ######## 1. Generate clusters that are consistent across tissues (ie Cluster 1 in tissue 1 corresponds to the same set of junctions in all other tissues)
 ######## 2. Map Clusters to genes
 ######## 3. Visualize clusters
+if false; then
 sbatch generate_cross_tissue_clusters_and_map_to_genes.sh $tissue_names_file $filtered_cluster_dir $gencode_gene_annotation_file $cluster_visualization_dir $gene_list
-
+fi
 
 
 #################
@@ -128,11 +132,15 @@ while read tissue_type; do
 	for job_number in $(seq 0 `expr $total_jobs - "1"`); do
 		tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
 		output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
+		echo $tissue_specific_junction_file
 		sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
 	done
 done<$tissue_names_file
 fi
 
+if false; then
+sh organize_data_for_github_repo.sh $filtered_cluster_dir"Muscle_Skeletal_filtered_jxns_cross_tissue_clusters_gene_mapped.txt" $splicing_outlier_dir"Muscle_Skeletal_covariate_method_none_merged_emperical_pvalue.txt" $github_repo_dir
+fi
 
 
 
