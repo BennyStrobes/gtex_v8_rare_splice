@@ -807,6 +807,8 @@ absolute_risk_plot_with_cadd_helper <- function(gam_predictions, watershed_predi
 
 
     df <- data.frame(watershed_threshold=thresh, absolute_risk=absolute_risks, outlier_type=factor(outlier_type, levels=c("aseOutlier","sOutlier","eOutlier")), model_type=factor(model_type, levels=c("CADD", "GAM", "Watershed")))
+	print(watershed_threshold)
+	print(df)
 	p <- ggplot(data=df, aes(x=model_type, y=absolute_risk, fill=outlier_type)) +
 	geom_bar(stat="identity", color="black", position=position_dodge())+
 	ylim(0,.7) + 
