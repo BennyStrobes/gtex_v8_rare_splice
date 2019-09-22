@@ -63,6 +63,9 @@ chrom_hmm_to_tissue_mapping_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_
 # File containing mapping from GTEx v8 tissue names to tissue colors
 tissue_colors_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gtex_colors.txt"
 
+# File in RIVER package containing simulated data
+river_sim_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/sim_river.txt"
+
 #############################################################
 #Used Directories (directories need to be created and empty before starting)
 #############################################################
@@ -92,6 +95,9 @@ watershed_visualization_dir=$output_root"visualize_watershed/"
 # Directory containing visualization to debug watershed
 watershed_debug_visualization_dir=$output_root"visualize_debug_watershed/"
 
+# Directory containing processed data for github repo 
+github_repo_dir=$output_root"github_repo_data/"
+
 
 ###############################################
 # Scripts 
@@ -108,8 +114,12 @@ pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
 if false; then
-sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
+sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
 fi
+
+
+sh organize_data_for_github_repo.sh $river_sim_file $github_repo_dir 
+
 
 
 pseudocount="30"

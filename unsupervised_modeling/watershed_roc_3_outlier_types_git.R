@@ -952,7 +952,8 @@ number_of_dimensions <- as.numeric(args[3])  # Dimensionality of space
 pseudoc <- as.numeric(args[4])  # Prior specification for P(E|Z)
 n2_pair_pvalue_fraction <- as.numeric(args[5])  # For N2 Pair cross-validation, pick pvalue threshold for each outlier dimension such that this fraction of cases are positive examples
 binary_pvalue_threshold <- as.numeric(args[6])  # Pvalue threshold to call binary outliers for genomic annotation model
-
+lambda_init <- as.numeric(args[7])
+seed <- as.numeric(args[8])
 
 
 #####################
@@ -962,9 +963,9 @@ lambda_costs <- c(.1,.01,1e-3)
 vi_step_size=.8
 vi_threshold=1e-8
 #lambda_init <- NA
-lambda_init <- 0.1
+#lambda_init <- 0.1
 
-set.seed(1)
+set.seed(seed)
 #######################################
 ## Load in data
 #######################################
@@ -974,7 +975,6 @@ saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference and pseudolikelihood
 #######################################
-if (FALSE) {
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
@@ -1005,7 +1005,6 @@ print(roc_object_exact$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[3]]$evaROC$GAM_pr_auc)
 
 
-}
 #######################################
 ## Run models (RIVER and GAM) assuming no edges (connections) between dimensions
 #######################################

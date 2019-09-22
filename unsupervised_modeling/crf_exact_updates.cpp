@@ -226,6 +226,27 @@ List compute_all_exact_posterior_predictions_cpp(NumericMatrix feat, NumericMatr
 }
 
 // [[Rcpp::export]]
+List compute_all_exact_crf_posterior_predictions_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions) {
+	// All output combinations
+	NumericMatrix combo_mat = extract_all_binary_combinations(number_of_dimensions);
+	// Initialize output matrices
+	NumericMatrix probabilities(feat.nrow(), combo_mat.nrow());
+	// Loop through samples
+	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
+		// Compute normalization constant for this sample
+		double normalization_constant = exact_normalization_constant(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, false);
+		// Loop through all possible states
+		for (int combo_num = 0; combo_num < combo_mat.nrow(); combo_num++) {
+			probabilities(sample_num, combo_num) = exact_probability(normalization_constant, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, combo_num, combo_mat, false);
+		}
+	}
+	List ret;
+	ret["probability"] = probabilities;
+	ret["combination"] = combo_mat;
+	return ret;
+}
+
+// [[Rcpp::export]]
 double compute_exact_observed_data_log_likelihood_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int number_of_pairs) {
 	// Initialize log_likelihood
 	double log_likelihood = 0;

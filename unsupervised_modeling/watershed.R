@@ -245,7 +245,6 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
   gradient_variable_vec <- rep(0, number_of_features+1)
 	
 	#Randomly shuffle the data©
-	set.seed(5)
   random_shuffling_indices <- sample(nrow(feat_train))
 	feat_train_shuff <- feat_train[random_shuffling_indices,]
 	binary_outliers_train_shuff <- binary_outliers_train[random_shuffling_indices,]
@@ -522,14 +521,16 @@ load_watershed_data <- function(input_file, number_of_dimensions, pvalue_fractio
 	# sample name as SubjectID:GeneName
 	rownames(feat) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
 	# Pvalues of outlier status of a particular sample (rows) for a particular outlier type (columns)
-	outlier_pvalues <- raw_data[,(ncol(raw_data)-number_of_dimensions):(ncol(raw_data)-1)]
+	outlier_pvalues <- as.matrix(raw_data[,(ncol(raw_data)-number_of_dimensions):(ncol(raw_data)-1)])
 	# sample name as SubjectID:GeneName
 	rownames(outlier_pvalues) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
 	# Convert outlier status into binary random variables
+  print(pvalue_fraction)
 	fraction_outliers_binary <- ifelse(abs(outlier_pvalues)<=.1,1,0) # Strictly for initialization of binary output matrix
 	for (dimension_num in 1:number_of_dimensions) {
 		ordered <- sort(abs(outlier_pvalues[,dimension_num]))
 		max_val <- ordered[floor(length(ordered)*pvalue_fraction)]
+    print(max_val)
 		fraction_outliers_binary[,dimension_num] <- ifelse(abs(outlier_pvalues[,dimension_num])<=max_val,1,0)
 	}
   outliers_binary <- ifelse(abs(outlier_pvalues)<=pvalue_threshold,1,0)
@@ -908,7 +909,7 @@ map_crf <- function(feat, discrete_outliers, model_params) {
     #analytical_gradient <- compute_exact_crf_pseudolikelihood_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
     #num_grad <- grad(compute_exact_crf_pseudolikelihood_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=model_params$lambda_singleton, independent_variables=model_params$independent_variables)
     #print(as.vector(analytical_gradient))
-    lbfgs_output <- lbfgs(compute_exact_crf_pseudolikelihood_for_lbfgs, compute_exact_crf_pseudolikelihood_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables)
+    lbfgs_output <- lbfgs(compute_exact_crf_pseudolikelihood_for_lbfgs, compute_exact_crf_pseudolikelihood_gradient_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise, phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables, invisible=1)
 
   }
 	# Check to make sure LBFGS converged OK
