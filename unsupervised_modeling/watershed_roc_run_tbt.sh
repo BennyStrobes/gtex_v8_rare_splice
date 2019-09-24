@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=38:00:00
+#SBATCH --time=55:00:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
 
@@ -25,7 +25,7 @@ number_of_dimensions="${12}"
 gene_thresh="0.01"
 input_stem=$outlier_type"_tbt_outliers_"$gene_thresh"_genes_intersection_between_te_ase_splicing"
 input_file=$unsupervised_learning_input_dir$input_stem"_features_filter_N2_pairs.txt"
-output_stem=$watershed_run_dir$outlier_type"_tbt_intersect_te_ase_splicing_out_gene_pvalue_"$gene_thresh"_n2_pair_outlier_fraction_"$n2_pair_pvalue_fraction"_binary_pvalue_threshold_"$binary_pvalue_threshold"_pseudocount_"$pseudocount"_"$phi_method"_"$lambda_init"_"$lambda_pair_init
+output_stem=$watershed_run_dir$outlier_type"_tbt_intersect_te_ase_splicing_out_gene_pvalue_"$gene_thresh"_n2_pair_outlier_fraction_"$n2_pair_pvalue_fraction"_binary_pvalue_threshold_"$binary_pvalue_threshold"_pseudocount_"$pseudocount"_"$phi_method"_"$lambda_init"_"$lambda_pair_init"_v2"
 
 echo $pseudocount
 echo $n2_pair_pvalue_fraction

@@ -8,54 +8,7 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-/*
-// NumericMatrix all_binary_combinations_ignoring_one_row = extract_all_binary_combinations_ignoring_one_row(4,3);
-NumericMatrix extract_all_binary_combinations_ignoring_one_row(int n, int column_to_ignore) {
-	NumericMatrix all_binary_combinations_matrix = extract_all_binary_combinations(n-1);
 
-	int N = all_binary_combinations_matrix.nrow();
-	NumericMatrix combo_mat(N, n);
-	for (int row_num = 0; row_num < N; row_num++) {
-		int counter = 0;
-		for (int column_num = 0; column_num < n; column_num++) {
-			if (column_num == column_to_ignore) {
-				combo_mat(row_num, column_num) = 1;
-			} else {
-				combo_mat(row_num, column_num) = all_binary_combinations_matrix(row_num, counter);
-				counter += 1;
-			}
-		}
-	}
-	return combo_mat;
-}
-
-// NumericMatrix all_binary_combinations_ignoring_two_row = extract_all_binary_combinations_ignoring_two_row(2, 1, 0);
-NumericMatrix extract_all_binary_combinations_ignoring_two_row(int n, int column_to_ignore1, int column_to_ignore2) {
-	if (n == 2) {
-		NumericMatrix combo_mat(1,2);
-		combo_mat(0,0) = 1;
-		combo_mat(0,1) = 1;
-		return combo_mat;
-	} else {
-		NumericMatrix all_binary_combinations_matrix = extract_all_binary_combinations(n-2);
-		int nrow = all_binary_combinations_matrix.nrow();
-		NumericMatrix combo_mat(nrow, n);
-		for (int row_num = 0; row_num < nrow; row_num++) {
-			int counter = 0;
-			for (int column_num = 0; column_num < n; column_num++) {
-				if (column_num == column_to_ignore1 || column_num == column_to_ignore2) {
-					combo_mat(row_num, column_num) = 1;
-				} else {
-					combo_mat(row_num, column_num) = all_binary_combinations_matrix(row_num, counter);
-					counter += 1;
-				}
-			}
-		}
-		return combo_mat;
-	}
-}
-
-*/
 double un_normalized_pseudolikelihood_crf_weight(int dimension, int combination_number, NumericMatrix feat, NumericMatrix posterior, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
 	// Initialize weight
 	double weight = 0;

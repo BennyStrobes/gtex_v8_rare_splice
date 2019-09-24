@@ -83,7 +83,7 @@ NumericMatrix variational_optimization(NumericMatrix probabilities, int sample_n
 	int iteration_counter = 0;
 	int convergence = 0;
 	NumericMatrix prev_prob(1, number_of_dimensions);
-	srand(0);
+
 	while (convergence == 0) {
 		diff_prob = 0;
 		std::vector<int> v(number_of_dimensions);

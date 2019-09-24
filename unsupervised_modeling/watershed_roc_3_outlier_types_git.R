@@ -823,20 +823,32 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	# Extract training data
 	#######################################
 	feat_train <- feat_all[is.na(N2_pairs),]
-	discrete_outliers_train <- discrete_outliers_all[is.na(N2_pairs),]
-	binary_outliers_train <-  binary_outliers_all[is.na(N2_pairs),]
+	discrete_outliers_train <- as.matrix(discrete_outliers_all[is.na(N2_pairs),])
+	binary_outliers_train <-  as.matrix(binary_outliers_all[is.na(N2_pairs),])
 
 	#######################################
 	# Extract Test data
 	#######################################
-  	feat_test <- rbind(feat_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], feat_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
-  	discrete_outliers_test1 <- rbind(discrete_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], discrete_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
-  	discrete_outliers_test2 <- rbind(discrete_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),], discrete_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),])
-  	binary_outliers_test1 <- rbind(binary_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], binary_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
-  	binary_outliers_test2 <- rbind(fraction_binary_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),], fraction_binary_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),])
-  	# Absolute pvalues from test prediction data set (to be used for RNA-only analysis)
-  	real_valued_outliers_test1 <- -log10(abs(rbind(data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])) + 1e-7)
+	if (number_of_dimensions == 1) {
+		# River preprocessing
+		feat_test <- rbind(feat_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], feat_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
+  		discrete_outliers_test1 <- as.matrix(c(discrete_outliers_all[!is.na(N2_pairs)][seq(from=1,to=sum(!is.na(N2_pairs)),by=2)], discrete_outliers_all[!is.na(N2_pairs)][seq(from=2,to=sum(!is.na(N2_pairs)),by=2)]))
+  		discrete_outliers_test2 <- as.matrix(c(discrete_outliers_all[!is.na(N2_pairs)][seq(from=2,to=sum(!is.na(N2_pairs)),by=2)], discrete_outliers_all[!is.na(N2_pairs)][seq(from=1,to=sum(!is.na(N2_pairs)),by=2)]))
+		binary_outliers_test1 <- as.matrix(c(binary_outliers_all[!is.na(N2_pairs)][seq(from=1,to=sum(!is.na(N2_pairs)),by=2)], binary_outliers_all[!is.na(N2_pairs)][seq(from=2,to=sum(!is.na(N2_pairs)),by=2)]))
+  		binary_outliers_test2 <- as.matrix(c(fraction_binary_outliers_all[!is.na(N2_pairs)][seq(from=2,to=sum(!is.na(N2_pairs)),by=2)], fraction_binary_outliers_all[!is.na(N2_pairs)][seq(from=1,to=sum(!is.na(N2_pairs)),by=2)]))
+		# Absolute pvalues from test prediction data set (to be used for RNA-only analysis)
+  		real_valued_outliers_test1 <- -log10(abs(as.matrix(c(data_input$outlier_pvalues[!is.na(N2_pairs)][seq(from=1,to=sum(!is.na(N2_pairs)),by=2)], data_input$outlier_pvalues[!is.na(N2_pairs)][seq(from=2,to=sum(!is.na(N2_pairs)),by=2)]))) + 1e-7)
 
+	} else {
+		# Watershed preprocessing
+  		feat_test <- rbind(feat_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], feat_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
+  		discrete_outliers_test1 <- rbind(discrete_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], discrete_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
+  		discrete_outliers_test2 <- rbind(discrete_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),], discrete_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),])
+  		binary_outliers_test1 <- rbind(binary_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], binary_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])
+  		binary_outliers_test2 <- rbind(fraction_binary_outliers_all[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),], fraction_binary_outliers_all[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),])
+  		# Absolute pvalues from test prediction data set (to be used for RNA-only analysis)
+  		real_valued_outliers_test1 <- -log10(abs(rbind(data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=1,to=sum(!is.na(N2_pairs)),by=2),], data_input$outlier_pvalues[!is.na(N2_pairs),][seq(from=2,to=sum(!is.na(N2_pairs)),by=2),])) + 1e-7)
+  	}
 
 	#######################################
 	## Standardize Genomic Annotations (features)
@@ -891,7 +903,8 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	# Confusion matrix where rows are actual labels and columns are predicted labels
 	# Each row (actual label) is normalized by the sum across all columns (predicted label) in that row (actual label)	#######################################
  	#######################################
-	confusion_matrix <- generate_confusion_matrix(feat_test, discrete_outliers_test1, binary_outliers_test2, watershed_model, inference_method, posterior_prob_test)
+	#confusion_matrix <- generate_confusion_matrix(feat_test, discrete_outliers_test1, binary_outliers_test2, watershed_model, inference_method, posterior_prob_test)
+	confusion_matrix <- 0
  	#######################################
 	# Extract ROC curves and precision recall curves for test set (in each dimension seperately) using:
 	#### 1. Watershed
@@ -900,6 +913,9 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	#cadd_scores <- as.vector(feat_test[,40])
 	cadd_scores <- as.vector(feat_test[,10])
+	if (number_of_dimensions == 1) {
+		colnames(data_input$outliers_binary) = c("phen_1_pval")
+	}
 	dimension_labels <- colnames(data_input$outliers_binary)
 	roc_object_across_dimensions <- compute_roc_across_dimensions(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_test_posteriors, cadd_scores, binary_outliers_test2)
 
@@ -955,7 +971,6 @@ binary_pvalue_threshold <- as.numeric(args[6])  # Pvalue threshold to call binar
 lambda_init <- as.numeric(args[7])
 seed <- as.numeric(args[8])
 
-
 #####################
 # Parameters
 #####################
@@ -965,12 +980,13 @@ vi_threshold=1e-8
 #lambda_init <- NA
 #lambda_init <- 0.1
 
-set.seed(seed)
+set.seed(1)
 #######################################
 ## Load in data
 #######################################
 data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
 saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
+
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference and pseudolikelihood
@@ -988,6 +1004,7 @@ print(roc_object_pseudo$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_pseudo$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_pseudo$roc[[3]]$evaROC$GAM_pr_auc)
 
+
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with exact inference
 #######################################
@@ -1004,7 +1021,6 @@ print(roc_object_exact$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_exact$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[3]]$evaROC$GAM_pr_auc)
 
-
 #######################################
 ## Run models (RIVER and GAM) assuming no edges (connections) between dimensions
 #######################################
@@ -1015,10 +1031,7 @@ roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_
 saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
 print(roc_object_independent$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[1]]$evaROC$GAM_pr_auc)
-print(roc_object_independent$roc[[2]]$evaROC$watershed_pr_auc)
-print(roc_object_independent$roc[[2]]$evaROC$GAM_pr_auc)
-print(roc_object_independent$roc[[3]]$evaROC$watershed_pr_auc)
-print(roc_object_independent$roc[[3]]$evaROC$GAM_pr_auc)
+
 #roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 #colnames(roc_object_exact$model_params$theta) = colnames(feat)

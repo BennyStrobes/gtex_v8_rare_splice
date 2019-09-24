@@ -23,12 +23,14 @@ fi
 n2_pair_pvalue_fraction=".1"
 binary_pvalue_threshold=".1"
 pseudocount="10"
-number_of_dimensions="1"
+number_of_dimensions="3"
 lambda=".01"
 seed="1"
-output_stem=$github_repo_dir"sim_1_class_n2_pair_outlier_fraction_"$n2_pair_pvalue_fraction"_binary_pvalue_threshold_"$binary_pvalue_threshold"_pseudocount_"$pseudocount"_lambda_"$lambda"_seed_"$seed
+output_stem=$github_repo_dir"sim_3_class_n2_pair_outlier_fraction_"$n2_pair_pvalue_fraction"_binary_pvalue_threshold_"$binary_pvalue_threshold"_pseudocount_"$pseudocount"_lambda_"$lambda"_seed_"$seed
+output_stem="sim_3_class_n2_pair_outlier_fraction_"$n2_pair_pvalue_fraction"_binary_pvalue_threshold_"$binary_pvalue_threshold"_pseudocount_"$pseudocount"_lambda_"$lambda"_seed_"$seed
+
 river_file=$river_sim_file_stem"pheno_1.txt"
-Rscript watershed_roc_3_outlier_types_git.R $river_file $output_stem $number_of_dimensions $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $lambda $seed
+Rscript watershed_roc_3_outlier_types_git.R $watershed_sim_file $output_stem $number_of_dimensions $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $lambda $seed
 
 
 echo $lambda

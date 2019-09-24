@@ -238,6 +238,14 @@ compute_logistic_regression_gradient <- function(x, y, feat, lambda) {
 	return(-grad)
 }
 
+get_number_of_edge_pairs <- function(number_of_dimensions) {
+  val = 1
+  if (number_of_dimensions > 1) {
+    val = choose(number_of_dimensions,2)
+  }
+  return(val)
+}
+
 logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init) {
   number_of_dimensions <- dim(binary_outliers_train)[2]
 	number_of_features <- dim(feat_train)[2]
@@ -246,8 +254,8 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
 	
 	#Randomly shuffle the data©
   random_shuffling_indices <- sample(nrow(feat_train))
-	feat_train_shuff <- feat_train[random_shuffling_indices,]
-	binary_outliers_train_shuff <- binary_outliers_train[random_shuffling_indices,]
+	feat_train_shuff <- as.matrix(feat_train[random_shuffling_indices,])
+	binary_outliers_train_shuff <- as.matrix(binary_outliers_train[random_shuffling_indices,])
 
   if (is.na(lambda_init)) {
 	#Create nfolds equally size folds
@@ -265,16 +273,16 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
     		#Segement your data by fold using the which() function 
     		testIndexes <- which(folds==i,arr.ind=TRUE)
     		feat_test_fold <- feat_train_shuff[testIndexes,]
-    		outliers_test_fold <- binary_outliers_train_shuff[testIndexes,]
+    		outliers_test_fold <- as.matrix(binary_outliers_train_shuff[testIndexes,])
     		feat_train_fold <- feat_train_shuff[-testIndexes,]
-    		outliers_train_fold <- binary_outliers_train_shuff[-testIndexes,]
+    		outliers_train_fold <- as.matrix(binary_outliers_train_shuff[-testIndexes,])
     		# Perform logistic regression in each tissue seperately
     		for (dimension in 1:number_of_dimensions) {
     			observed_training_indices <- !is.na(outliers_train_fold[,dimension])
     			observed_training_outliers <- as.matrix(outliers_train_fold[observed_training_indices, dimension])
     			observed_training_feat <- feat_train_fold[observed_training_indices,]
     			observed_testing_indices <- !is.na(outliers_test_fold[,dimension])
-    			observed_testing_outliers <- outliers_test_fold[observed_testing_indices, dimension]
+    			observed_testing_outliers <- as.matrix(outliers_test_fold[observed_testing_indices, dimension])
     			observed_testing_feat <- feat_test_fold[observed_testing_indices,]
     			
     			#log_likelihood <- compute_logistic_regression_likelihood, (gradient_variable_vec, observed_training_outliers, observed_training_feat, lambda)
@@ -311,10 +319,10 @@ logistic_regression_genomic_annotation_model_cv <- function(feat_train, binary_o
   }
 	# Initialize output variables
   pair_value = 0
-  theta_pair = matrix(pair_value,1, choose(number_of_dimensions, 2))
+  theta_pair = matrix(pair_value,1, get_number_of_edge_pairs(number_of_dimensions))
 	beta_init = matrix(0,number_of_features+1, number_of_dimensions)
 	theta_singleton = beta_init[1,]
-	theta = beta_init[2:(number_of_features + 1),]
+	theta = as.matrix(beta_init[2:(number_of_features + 1),])
 	gam_parameters = list(theta_pair=theta_pair, theta_singleton=theta_singleton, theta=theta)
 
   for (dimension in 1:number_of_dimensions) {
@@ -551,9 +559,9 @@ initialize_model_params <- function(num_samples, num_genomic_features, number_of
 						 theta_singleton = theta_singleton_init,
 						 theta = theta_init,
 						 mu = matrix(.5, num_samples, number_of_dimensions),
-						 mu_pairwise = matrix(.5, num_samples, choose(number_of_dimensions, 2)),
+						 mu_pairwise = matrix(.5, num_samples, get_number_of_edge_pairs(number_of_dimensions)),
 						 posterior = matrix(.5, num_samples, number_of_dimensions),
-						 posterior_pairwise = matrix(.5, num_samples, choose(number_of_dimensions, 2)),
+						 posterior_pairwise = matrix(.5, num_samples, get_number_of_edge_pairs(number_of_dimensions)),
 						 num_samples = num_samples,
 						 num_genomic_features = num_genomic_features,
 						 number_of_dimensions = number_of_dimensions,
@@ -579,7 +587,7 @@ update_marginal_posterior_probabilities <- function(feat, discrete_outliers, mod
 		if (model_params$independent_variables == "false") {
 		posterior_list <- update_marginal_probabilities_exact_inference_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2), TRUE)
 		} else if (model_params$independent_variables == "true") {
-			posterior_list <- update_independent_marginal_probabilities_exact_inference_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2), TRUE)
+			posterior_list <- update_independent_marginal_probabilities_exact_inference_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, get_number_of_edge_pairs(model_params$number_of_dimensions), TRUE)
 		}
 	} else if (model_params$inference_method == "vi" | model_params$inference_method == "pseudolikelihood") {
 		#posterior_list <- update_marginal_probabilities_vi_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2), 0.1, 1e-100, model_params$posterior, TRUE)
@@ -631,7 +639,7 @@ compute_exact_crf_gradient_for_lbfgs <- function(x, feat, discrete_outliers, pos
 	for (dimension in 1:number_of_dimensions) {
 		theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
 	}
-	theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+	theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=get_number_of_edge_pairs(number_of_dimensions),byrow=TRUE)
 
 
 
@@ -641,7 +649,7 @@ compute_exact_crf_gradient_for_lbfgs <- function(x, feat, discrete_outliers, pos
 		mu <- mu_list$probability
 		mu_pairwise <- mu_list$probability_pairwise
 	} else if (independent_variables == "true") {
-		mu_list <- update_independent_marginal_probabilities_exact_inference_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+		mu_list <- update_independent_marginal_probabilities_exact_inference_cpp(feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, get_number_of_edge_pairs(number_of_dimensions), FALSE)
 		mu <- mu_list$probability
 		mu_pairwise <- mu_list$probability_pairwise
 	}
@@ -651,7 +659,7 @@ compute_exact_crf_gradient_for_lbfgs <- function(x, feat, discrete_outliers, pos
 	grad_singleton <- (colSums(posterior) - colSums(mu))*(1/nrow(posterior)) - lambda_singleton*theta_singleton
 
 	# Gradient of theta terms (betas)
-	theta_vec <- x[(number_of_dimensions+1):(length(x)-(choose(number_of_dimensions, 2)*nrow(theta_pair)))]
+	theta_vec <- x[(number_of_dimensions+1):(length(x)-(get_number_of_edge_pairs(number_of_dimensions)*nrow(theta_pair)))]
 	grad_theta <- c()
 	for (dimension in 1:number_of_dimensions) {
 		temp_grad <- colSums(posterior[,dimension]*feat) - colSums(mu[,dimension]*feat)
@@ -695,7 +703,7 @@ compute_exact_crf_likelihood_for_lbfgs <- function(x, feat, discrete_outliers, p
 	}
 	#theta_pair <- matrix(0,1, choose(number_of_dimensions, 2))
 	#theta_pair[1,] <- x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)]
-	theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=choose(number_of_dimensions, 2),byrow=TRUE)
+	theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=get_number_of_edge_pairs(number_of_dimensions),byrow=TRUE)
 
 	# Compute likelihood in cpp function
 	if (independent_variables == "false") {
@@ -881,7 +889,10 @@ map_crf <- function(feat, discrete_outliers, model_params) {
   #model_params$theta_pair[1,3] = .09
 	gradient_variable_vec <- extract_gradient_variable_vector(model_params)
 
-
+  #saveRDS(gradient_variable_vec, "gradient_variable_vec.rds")
+  #saveRDS(model_params, "model_params.rds")
+  #saveRDS(feat, "feat.rds")
+  #saveRDS(discrete_outliers, "discrete_outliers.rds")
 	# Run LBFGS (https://cran.r-project.org/web/packages/lbfgs/lbfgs.pdf) using our gradient and likelihood functions.
 	if (model_params$inference_method == "exact") {
     #analytical_gradient <- compute_exact_crf_gradient_for_lbfgs(gradient_variable_vec, feat, discrete_outliers, model_params$posterior, model_params$posterior_pairwise, model_params$phi, model_params$lambda, model_params$lambda_pair, model_params$lambda_singleton, model_params$independent_variables)
@@ -917,14 +928,14 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 		print(paste0("LBFGS optimazation on CRF did not converge. It reported convergence error of: ", lbfgs_output$convergence))
 		print(lbfgs_output$message)
 	}
-
+  print("DONE")
 	# Get optimized crf coefficients back into model_params format
 	model_params$theta_singleton <- lbfgs_output$par[1:model_params$number_of_dimensions]
 	for (dimension in 1:model_params$number_of_dimensions) {
 		model_params$theta[,dimension] <- lbfgs_output$par[(model_params$number_of_dimensions + 1 + ncol(feat)*(dimension-1)):(model_params$number_of_dimensions + ncol(feat)*(dimension))]
 	}
 
- 	model_params$theta_pair <- matrix(lbfgs_output$par[(model_params$number_of_dimensions + (model_params$number_of_dimensions*ncol(feat)) + 1):length(lbfgs_output$par)], ncol=choose(model_params$number_of_dimensions, 2),byrow=TRUE)
+ 	model_params$theta_pair <- matrix(lbfgs_output$par[(model_params$number_of_dimensions + (model_params$number_of_dimensions*ncol(feat)) + 1):length(lbfgs_output$par)], ncol=get_number_of_edge_pairs(model_params$number_of_dimensions),byrow=TRUE)
 
 	return(model_params)
 }
@@ -1029,6 +1040,43 @@ make_vector_to_matrix <- function(theta_pair, number_of_dimensions) {
   return(theta_pair_mat)
 }
 
+
+# Check convergence of Watershed
+check_convergence <- function(model_params, phi_old, theta_old, theta_singleton_old, theta_pair_old, iter, max_iter) {
+  # Initialize to not converged
+  converged = FALSE
+
+  # Number of parameters defining each parameter variable
+  num_theta_param = (dim(model_params$theta)[1]*dim(model_params$theta)[2])
+  num_theta_singleton_param = (dim(as.matrix(model_params$theta_singleton))[1]*dim(as.matrix(model_params$theta_singleton))[2])
+  num_theta_pair_param = (dim(model_params$theta_pair)[1]*dim(model_params$theta_pair)[2])
+  num_phi_param = dim(model_params$phi$inlier_component)[1]*dim(model_params$phi$inlier_component)[2]
+  total_params_watershed = num_theta_param + num_theta_singleton_param + num_theta_pair_param + num_phi_param + num_phi_param
+  total_params_river = num_theta_param + num_theta_singleton_param + num_phi_param + num_phi_param
+
+  # Calculate average norm change in parameter estimates (seperately for RIVER and Watershed)
+  # Done seperately because RIVER doesn't actually have theta_pair parameters
+  if (model_params$independent_variables == "true") {
+    total_norm = (norm(model_params$theta - theta_old) + norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old)) + norm(model_params$phi$inlier_component - phi_old$inlier_component) + norm(model_params$phi$outlier_component - phi_old$outlier_component))/total_params_river
+  } else {
+    total_norm = (norm(model_params$theta - theta_old) + norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old)) + norm(model_params$theta_pair - theta_pair_old) + norm(model_params$phi$inlier_component - phi_old$inlier_component) + norm(model_params$phi$outlier_component - phi_old$outlier_component))/total_params_watershed
+  }
+
+  cat(paste0("Average total norm: ", total_norm, "\n"))
+
+  # Check for convergence
+  if (total_norm < 1e-4) {
+    converged = TRUE
+    cat("Watershed converged\n")
+  } else if (iter == max_iter) {
+    converged = TRUE
+    cat("Watershed converged due to reaching max iteration\n")
+  }
+
+  return(converged)
+}
+
+
 integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh) {
   model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, vi_step_size, vi_thresh)
 
@@ -1045,6 +1093,7 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 
 		model_params$posterior = expected_posteriors$probability
 		model_params$posterior_pairwise = expected_posteriors$probability_pairwise
+
 
 		################## Compute observed data log likelihood
 		#observed_data_log_likelihood <- compute_exact_observed_data_log_likelihood_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2)) #+
@@ -1073,43 +1122,11 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 		model_params <- map_phi(discrete_outliers, model_params)
     	#saveRDS(model_params, paste0(output_root, "_iter_",iter,".rds"))
 
-
-    	# Number of parameters per parameter variable
-   		num_theta_param = (dim(model_params$theta)[1]*dim(model_params$theta)[2])
-    	num_theta_singleton_param = (dim(as.matrix(model_params$theta_singleton))[1]*dim(as.matrix(model_params$theta_singleton))[2])
-    	num_theta_pair_param = (dim(model_params$theta_pair)[1]*dim(model_params$theta_pair)[2])
-    	num_phi_param = dim(model_params$phi$inlier_component)[1]*dim(model_params$phi$inlier_component)[2]
-    	total_params = num_theta_param + num_theta_singleton_param + num_theta_pair_param + num_phi_param + num_phi_param
-      total_params_ind = num_theta_param + num_theta_singleton_param + num_phi_param + num_phi_param
-    	# Extract norms of change in parameter estimates from last iteration to this iteration
-    	theta_norm = norm(model_params$theta - theta_old)/num_theta_param
-    	theta_singleton_norm = norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old))/num_theta_singleton_param
-    	theta_pair_norm = norm(model_params$theta_pair - theta_pair_old)/num_theta_pair_param
-    	phi_inlier_norm = norm(model_params$phi$inlier_component - phi_old$inlier_component)/num_phi_param
-		phi_outlier_norm = norm(model_params$phi$outlier_component - phi_old$outlier_component)/num_phi_param
-    if (model_params$independent_variables == "false") {
-      total_params = num_theta_param + num_theta_singleton_param + num_theta_pair_param + num_phi_param + num_phi_param
-		  total_norm = (norm(model_params$theta - theta_old) + norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old)) + norm(model_params$theta_pair - theta_pair_old) + norm(model_params$phi$inlier_component - phi_old$inlier_component) + norm(model_params$phi$outlier_component - phi_old$outlier_component))/total_params
-		} else if (model_params$independent_variables == "true") {
-      total_params = num_theta_param + num_theta_singleton_param + num_phi_param + num_phi_param
-      total_norm = (norm(model_params$theta - theta_old) + norm(as.matrix(model_params$theta_singleton) - as.matrix(theta_singleton_old)) + norm(model_params$phi$inlier_component - phi_old$inlier_component) + norm(model_params$phi$outlier_component - phi_old$outlier_component))/total_params
-    }
-    # Print norms
-    	print(paste0("Theta norm (", num_theta_param, " parameters): ", theta_norm))
-    	print(paste0("Theta singleton norm (", num_theta_singleton_param, " parameters): ", theta_singleton_norm))
-    	print(paste0("Theta pair norm (", num_theta_pair_param, " parameters): ", theta_pair_norm))
-    	print(paste0("Phi inlier norm (", num_phi_param, " parameters): ", phi_inlier_norm))
-    	print(paste0("Phi outlier norm (", num_phi_param, " parameters): ", phi_outlier_norm))
-    	print(paste0("Total norm (", total_params, " parameters): ", total_norm))
-      iter = iter+1
-      if (total_norm < 1e-4) {
-        converged=TRUE
-        print("SHOULD CONVERGE")
-      }
-      if (iter == max_iter) {
-        converged=TRUE
-        print("SHOULD CONVERGE DUE TO MAX ITER")
-      }
+    ##########################
+    # Check for convergence
+    ##########################
+    converged = check_convergence(model_params, phi_old, theta_old, theta_singleton_old, theta_pair_old, iter, max_iter)
+    iter = iter + 1
 
   }
 	return(model_params)

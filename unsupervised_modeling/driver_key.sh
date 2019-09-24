@@ -117,9 +117,9 @@ if false; then
 sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
 fi
 
-
+if false; then
 sh organize_data_for_github_repo.sh $river_sim_file $github_repo_dir 
-
+fi
 
 
 pseudocount="30"
@@ -130,19 +130,12 @@ sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_clas
 
 
 
-pseudocount="30"
-pvalue_fraction=".01"
-binary_pvalue_threshold=".01"
-sbatch watershed_score_run_old.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction $binary_pvalue_threshold $watershed_3_class_roc_run_dir
 fi
 
-if false; then
-sh debug_watershed.sh $watershed_3_class_roc_run_dir $watershed_3_class_score_run_dir $watershed_debug_visualization_dir
-fi
+
 #####################
 # TBT Model
 #####################
-if false; then
 pseudocount="10"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
@@ -151,7 +144,7 @@ lambda_init=".001"
 lambda_pair_init=".001"
 independent_variables="false"  # false or true
 inference_method="pseudolikelihood" # pseudolikelihood or exact
-outlier_type="total_expression"  # splicing, total_expression, ase
+outlier_type="ase"  # splicing, total_expression, ase
 number_of_dimensions="49"
 sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
 
@@ -163,10 +156,13 @@ lambda_init=".001"
 lambda_pair_init=".001"
 independent_variables="true"  # false or true
 inference_method="exact" # pseudolikelihood or exact
-outlier_type="ase"  # splicing, total_expression, ase
+outlier_type="splicing"  # splicing, total_expression, ase
 number_of_dimensions="49"
+if false; then
 sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+fi
 
+if false; then
 
 Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
 fi
