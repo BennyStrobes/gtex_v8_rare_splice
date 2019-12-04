@@ -1224,7 +1224,7 @@ independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
 roc_object_independent <- readRDS(paste0(output_root, "_roc_object2.rds"))
-
+print(paste0(output_root, "_roc_object2.rds"))
 
 
 
@@ -1326,8 +1326,8 @@ chrom_hmm_to_tissue <- read.table(chrom_hmm_to_tissue_mapping_file, header=TRUE,
 ############################
 outlier_type <- "splicing"
 stem <- paste0(outlier_type,"_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001")
-splicing_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object.rds"))
-splicing_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object.rds"))
+splicing_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object2.rds"))
+splicing_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object2.rds"))
 splicing_tissue_names <- get_tissue_names(splicing_watershed_obj, number_of_dimensions)
 
 ############################
@@ -1335,8 +1335,8 @@ splicing_tissue_names <- get_tissue_names(splicing_watershed_obj, number_of_dime
 ############################
 outlier_type <- "total_expression"
 stem <- paste0(outlier_type,"_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001")
-te_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object.rds"))
-te_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object.rds"))
+te_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object2.rds"))
+te_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object2.rds"))
 te_tissue_names <- get_tissue_names(te_watershed_obj, number_of_dimensions)
 ############################
 # Load in ASE data
@@ -1344,8 +1344,8 @@ te_tissue_names <- get_tissue_names(te_watershed_obj, number_of_dimensions)
 outlier_type <- "ase"
 number_of_dimensions <- 49
 stem <- paste0(outlier_type,"_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001")
-ase_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object.rds"))
-ase_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object.rds"))
+ase_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object2.rds"))
+ase_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object2.rds"))
 ase_tissue_names <- get_tissue_names(ase_watershed_obj, number_of_dimensions)
 
 
