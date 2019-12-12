@@ -202,17 +202,28 @@ def viz_outlier_call(X, outlier_samples, samples, alpha, output_file):
 	plt.ylabel('Normalized Read Counts',size=15)
 	fig.savefig(output_file)
 
+def get_fraction_from_one_junction(X):
+	num_junc = X.shape[1]
+	fracs = []
+	totes = np.sum(X, axis=0)
+	total = np.sum(X)
+	for junc_num in range(num_junc):
+		fracs.append(totes[0,junc_num]/total)
+	return max(fracs)
+
 # Call splicing outliers for each cluster
 # Also write to output
-def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, start_number, end_number):
+def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, num_reads, model_version, start_number, end_number):
 	np.random.seed(1)
 	# Pystan optimizizer
 	#DM_GLM = pystan.StanModel(file = "dm_glm_multi_conc.stan")
-	DM_GLM = pickle.load(open('/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/outlier_calling/dm_glm_multi_conc.pkl', 'rb'))
+	if model_version == 'standard' or model_version == 'standard_pseudocount':
+		DM_GLM = pickle.load(open('/work-zfs/abattle4/bstrober/temp/dm_glm_multi_conc.pkl', 'rb'))
+	elif model_version == 'no_prior' or model_version == 'no_prior_multiple_initializations':
+		DM_GLM = pickle.load(open('/home-1/bstrobe1@jhu.edu/scratch/gtex_v8/rare_var/gtex_v8_rare_splice/outlier_calling/dm_glm_multi_conc_no_prior.pkl', 'rb'))
 	#Initialize output files
 	t_MD = open(output_root + '_md.txt','w')  # Filehandle for matrix of mahalanobis distances
 	t_pvalue = open(output_root + '_emperical_pvalue.txt', 'w')  # Filehandle for matrix of pvalues
-
 
 	# Write headers for output files
 	t_MD.write('CLUSTER_ID\t' + '\t'.join(all_samples) + '\n')
@@ -221,6 +232,8 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 	start_time = time.time()
 	county = 0 
 	total = 0
+	reads = []
+	#t = open('bad_clusters.txt', 'w')
 	# Loop through clusters
 	for counter, cluster_id in enumerate(sorted(cluster_jxn_data_structure.keys())):
 		# Skip cluster_ids not in this parallelization run
@@ -231,7 +244,19 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		####################################################################
 		# Extract jxn matrix for this gene
 		X = cluster_jxn_data_structure[cluster_id]['jxn_matrix']
-		print(X.shape)
+		if model_version == 'standard_pseudocount':
+			X = X + 1
+		#max_reads = np.max(np.sum(X,axis=1))
+		#print(max_reads)
+		#reads.append(max_reads)
+
+		#########
+
+		#frac = get_fraction_from_one_junction(X)
+		#num_samples = X.shape[0]
+		#frac_array = np.asarray([frac]*num_samples).astype(str)
+		#t.write('\t'.join(frac_array) + '\n')
+
 		# Extract sample ids used in THIS cluster (NOTE: Different from all_samples)
 		cluster_samples = cluster_jxn_data_structure[cluster_id]['samples']
 		# Extract covariate matrix (dim len(cluster_samples)Xnum_cov)
@@ -242,7 +267,7 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		#   2. pvalues: vector of length num_samples where each element is the pvalue for that sample
 		#   3. alpha: vector of length num_jxns which defines the fitted dirichlet multinomial distribution
 		try:
-			mahalanobis_distances, pvalues, alpha = dm_glm.run_dm_outlier_analysis(X, cov_mat, DM_GLM)
+			mahalanobis_distances, pvalues, alpha = dm_glm.run_dm_outlier_analysis(X, cov_mat, DM_GLM, num_reads, model_version)
 			####################################################################
 			# Print results to output file
 			####################################################################
@@ -256,6 +281,7 @@ def call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_sa
 		# viz_outlier_call(X, cluster_samples[pvalues < .001], cluster_samples, alpha, cluster_id + '_viz.png')
 	t_MD.close()
 	t_pvalue.close()
+	#t.close()
 
 
 ########################
@@ -271,10 +297,13 @@ covariate_method = sys.argv[3]
 max_number_of_junctions_per_cluster = int(sys.argv[4])
 # Stem used for output files
 output_root = sys.argv[5]
+# Number of reads to simulate in emperical distribution
+num_reads = int(sys.argv[6])
+# Type of Dirichlet multinomial to use (either 'standard' or 'no_prior')
+model_version = sys.argv[7]
 # Following are used for parallelization purposes
-job_number = int(sys.argv[6])
-total_jobs = int(sys.argv[7])
-
+job_number = int(sys.argv[8])
+total_jobs = int(sys.argv[9])
 
 
 
@@ -283,13 +312,12 @@ total_jobs = int(sys.argv[7])
 cluster_jxn_data_structure, all_samples = create_cluster_based_data_structure(tissue_specific_jxn_file, max_number_of_junctions_per_cluster, covariate_method)
 
 
-
 #For parallelization purposes
 start_number, end_number = parallelization_start_and_end(len(cluster_jxn_data_structure), job_number, total_jobs)
 
 # Call splicing outliers for each cluster
 # Also write to output
-call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, start_number, end_number)
+call_splicing_outliers_shell(output_root, cluster_jxn_data_structure, all_samples, num_reads, model_version, start_number, end_number)
 
 
 

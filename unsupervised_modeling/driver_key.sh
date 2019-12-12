@@ -66,6 +66,9 @@ tissue_colors_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/in
 # File in RIVER package containing simulated data
 river_sim_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/sim_river.txt"
 
+# File containing MFASS results
+mfass_file="/work-zfs/abattle4/lab_data/genomic_annotation_data/MFASS/processed_data/snv/snv_data_clean.txt"
+
 #############################################################
 #Used Directories (directories need to be created and empty before starting)
 #############################################################
@@ -91,6 +94,9 @@ watershed_3_class_score_run_dir=$output_root"watershed_three_class_scores/"
 
 # Directory containing visualizations
 watershed_visualization_dir=$output_root"visualize_watershed/"
+
+# Directory comparing to MFASS results
+mfass_comparison_dir=$output_root"mfass_comparison/"
 
 # Directory containing visualization to debug watershed
 watershed_debug_visualization_dir=$output_root"visualize_debug_watershed/"
@@ -165,13 +171,13 @@ if false; then
 sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
 fi
 
+if false; then
+sh compare_to_mfass.sh $watershed_3_class_score_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_outlier_fraction_.01_pseudocount_30_exact_inference_apply_to_all_variants_posteriors.txt.gz" $mfass_file $mfass_comparison_dir
+fi
 
-
-
-
-
+if false; then
 Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
-
+fi
 
 
 

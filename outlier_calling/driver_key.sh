@@ -127,16 +127,76 @@ fi
 total_jobs="10"
 # Whether to include covariates in GLM
 covariate_method="none"
+# Number of reads to simulate for emperical distribution
+num_reads="20000"
+# Type of Dirichlet multinomial to use (either 'standard' or 'no_prior')
+model_version="standard"
 if false; then
 while read tissue_type; do
 	for job_number in $(seq 0 `expr $total_jobs - "1"`); do
 		tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
 		output_root=$splicing_outlier_dir$tissue_type"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
 		echo $tissue_specific_junction_file
-		sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $job_number $total_jobs
+		sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $num_reads $model_version $job_number $total_jobs
 	done
 done<$tissue_names_file
 fi
+
+
+#################
+# Part 3.5: Call splicing outliers in Muscle while varying hyperparameters
+# How many nodes to run in parallel
+total_jobs="40"
+# Whether to include covariates in GLM
+covariate_method="none"
+# Tissue to use
+tissue_type="Muscle_Skeletal"
+# Type of Dirichlet multinomial to use (either 'standard' or 'no_prior' or 'standard_pseudocount')
+model_version="standard"
+# Number of reads to simulate for emperical distribution
+num_read_array=("20000" "10000" "1000" "100")
+num_read_array=("100000")
+
+if false; then
+for num_reads in "${num_read_array[@]}"; do
+	for job_number in $(seq 0 `expr $total_jobs - "1"`); do
+		echo $num_reads" "$job_number
+		tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+		output_root=$splicing_outlier_dir$tissue_type"_compare_num_read_hyperparam_"$num_reads"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
+		sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $num_reads $model_version $job_number $total_jobs
+	done
+done
+fi
+
+
+
+total_jobs="20"
+# Whether to include covariates in GLM
+covariate_method="none"
+# Tissue to use
+tissue_type="Muscle_Skeletal"
+# Number of reads to simulate for emperical distribution
+num_reads="20000"
+# Type of Dirichlet multinomial model to use (either 'standard' or 'no_prior')
+model_version_array=("no_prior_multiple_initializations" "no_prior" "standard")
+model_version_array=("no_prior_multiple_initializations")
+if false; then
+for model_version in "${model_version_array[@]}"; do
+		for job_number in $(seq 0 `expr $total_jobs - "1"`); do
+			echo $model_version" "$job_number
+			tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+			output_root=$splicing_outlier_dir$tissue_type"_compare_model_version_hyperparam_"$model_version"_covariate_method_"$covariate_method"_"$job_number"_"$total_jobs
+			sbatch call_splicing_outliers.sh $tissue_type $tissue_specific_junction_file $covariate_method $max_number_of_junctions_per_cluster $output_root $num_reads $model_version $job_number $total_jobs
+	done
+done
+fi
+
+
+if false; then
+python md_exploratory_analysis.py "cluster16991counts.txt"
+fi
+
+
 
 if false; then
 sh organize_data_for_github_repo.sh $filtered_cluster_dir"Muscle_Skeletal_filtered_jxns_cross_tissue_clusters_gene_mapped.txt" $splicing_outlier_dir"Muscle_Skeletal_covariate_method_none_merged_emperical_pvalue.txt" $github_repo_dir
@@ -150,9 +210,7 @@ fi
 # Part 4: Merge outlier calls (across parallelization runs)
 # get gene level pvalues (accounting for the number of clusters we are taking the minimum over)
 # visualize outlier calls (in each tissue seperately)
-if false; then
 sh merge_splicing_outlier_calls_and_visualize_results.sh $tissue_names_file $covariate_method $total_jobs $splicing_outlier_dir $splicing_outlier_visualization_dir $european_ancestry_individual_list $filtered_cluster_dir
-fi
 
 
 #################

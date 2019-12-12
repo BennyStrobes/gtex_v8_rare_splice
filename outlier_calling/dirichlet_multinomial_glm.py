@@ -72,6 +72,42 @@ def dirichlet_multinomial_fit(y, DM_GLM):
 	alphas = compute_alphas_intercept_only_multi_conc(betas,op['conc'])
 	return np.asarray(alphas)
 
+def dirichlet_multinomial_fit_multiple_initializations(y, DM_GLM, n_init):
+	#fixed parameters (provide relaxed priors to add optimization)
+	concShape=1.0001
+	concRate=1e-4
+	#Make intercept term (in covariate matrix)
+	N,K = y.shape
+	x = np.ones((N,1))
+	N,P = x.shape
+	# Put data in dictionary (required input for pystan)
+	data = dict(N=N, K=K, P = P,y = y, x = x, concShape = concShape,concRate = concRate)
+
+	# Fit multinomial distribution
+	multinomial_mean = np.squeeze(np.asarray(y.sum(axis=0)/np.sum(y)))
+
+	# Keep track of values across multiple iterations
+	optimized_values = []
+	for init_num in range(n_init):
+		# Optimize GLM using pystan
+		op_full = DM_GLM.optimizing(data = data,verbose=False,iter=5000,seed=init_num,as_vector=False)
+		op = op_full['par']
+		#Convert betas from simplex space to real space
+		betas = correct_betas(op['beta_raw'],op['beta_scale'],K,P)
+		#compute actual alpha that defines DM
+		alphas = compute_alphas_intercept_only_multi_conc(betas,op['conc'])
+		log_likelihood = op_full['value']
+		# Get mean of dirichlet multinomial
+		dm_mean = alphas/np.sum(alphas)
+		# Compute euclidean norm between the dm_mean and the multinomial mean
+		euclidean_norm = np.linalg.norm(dm_mean-multinomial_mean)
+		optimized_values.append((euclidean_norm, log_likelihood, alphas))
+	# Select Dirichlet multinomial fit that is most similar to multinomial fit (according to euclidean norm)
+	optimized_values.sort(key=lambda x: x[0])
+	alphas = optimized_values[0][2]
+	return np.asarray(alphas)
+
+
 # Compute mahalanobis distance for one sample
 def compute_mahalanobis_distance(x, alpha):
 	nn = np.sum(x)
@@ -124,12 +160,15 @@ def generate_background_mahalanobis_distances(alpha, num_samples, num_reads):
 	return np.asarray(sample_mahalanobis_distances)
 
 
-def run_dm_outlier_analysis(X, cov_mat, DM_GLM):
+def run_dm_outlier_analysis(X, cov_mat, DM_GLM, num_reads, model_version):
 	#########################################################
 	# Fit Dirichlet multinomial based on samples
 	#########################################################
 	# Fit dirichlet multinomial to X (return dm parameter alpha)
-	alpha = dirichlet_multinomial_fit(X, DM_GLM)
+	if model_version == 'no_prior_multiple_initializations':
+		alpha = dirichlet_multinomial_fit_multiple_initializations(X, DM_GLM, 10)
+	else:
+		alpha = dirichlet_multinomial_fit(X, DM_GLM)
 
 	#########################################################
 	# Compute mahalanobis distance (MD) for all observed samples
@@ -148,7 +187,7 @@ def run_dm_outlier_analysis(X, cov_mat, DM_GLM):
 	# Estimate emperical distribution
 	#########################################################
 	#Take num_samples for the fitted DM. For each draw, compute mahalanobis distance
-	num_reads = 20000  # Number of reads per sample
+	#num_reads = 20000  # Number of reads per sample
 	num_background_samples = 1000000
 	sample_mahalanobis_distances = generate_background_mahalanobis_distances(alpha, num_background_samples, num_reads)
 
@@ -162,9 +201,10 @@ def run_dm_outlier_analysis(X, cov_mat, DM_GLM):
 		# Compute pvalue for this sample
 		pvalue = len(np.where(distance <= sample_mahalanobis_distances)[0])/float(len(sample_mahalanobis_distances))
 		pvalues.append(pvalue)
+
+
 	# Convert to numpy array
 	pvalues = np.asarray(pvalues)
-
 
 	return mahalanobis_distances, pvalues, alpha
 

@@ -33,6 +33,45 @@ while read tissue_type; do
 done<$tissue_names_file
 fi
 
+#################
+# Merge splicing outlier calls in Muscle while varying hyperparameters (num reads in emperical distribution)
+tissue_type="Muscle_Skeletal"
+# Number of reads to simulate for emperical distribution
+num_read_array=("20000" "30000" "10000" "5000" "1000" "500" "100")
+num_read_array=("100000")
+if false; then
+for num_reads in "${num_read_array[@]}"; do
+	echo $num_reads
+	output_root=$splicing_outlier_dir$tissue_type"_compare_num_read_hyperparam_"$num_reads"_covariate_method_"$covariate_method"_"
+	python merge_splicing_outlier_calls.py $output_root $total_jobs
+done
+fi 
+
+#################
+# Merge splicing outlier calls in Muscle while varying hyperparameters (num reads in emperical distribution)
+tissue_type="Muscle_Skeletal"
+# Number of reads to simulate for emperical distribution
+num_read_array=("20000" "10000" "1000" "100")
+if false; then
+for num_reads in "${num_read_array[@]}"; do
+	echo $num_reads
+	output_root=$splicing_outlier_dir$tissue_type"_compare_num_read_hyperparam_"$num_reads"_standard_pseudocount_covariate_method_"$covariate_method"_"
+	python merge_splicing_outlier_calls.py $output_root $total_jobs
+done
+fi
+
+#################
+# Merge splicing outlier calls in Muscle while varying hyperparameters (# Type of Dirichlet multinomial model to use (either 'standard' or 'no_prior')
+tissue_type="Muscle_Skeletal"
+# Type of Dirichlet multinomial model to use (either 'standard' or 'no_prior')
+model_version_array=("no_prior_multiple_initializations" "standard")
+if false; then
+for model_version in "${model_version_array[@]}"; do
+	echo $model_version
+	output_root=$splicing_outlier_dir$tissue_type"_compare_model_version_hyperparam_"$model_version"_covariate_method_"$covariate_method"_"
+	python merge_splicing_outlier_calls.py $output_root $total_jobs
+done
+fi
 
 ####################
 # Get gene level pvalues (accounting for the number of clusters we are taking the minimum over)
