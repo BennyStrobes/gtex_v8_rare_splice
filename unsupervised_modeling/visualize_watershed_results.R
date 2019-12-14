@@ -1168,7 +1168,97 @@ visualize_river_and_watershed_confusion_matrices <- function(watershed_confusion
 
 }
 
+extract_watershed_sample_names <- function(data_input) {
+	feat_all <- data_input$feat
+	N2_pairs <- data_input$N2_pairs
+	feat_train <- feat_all[is.na(N2_pairs),]
+	return(rownames(feat_train))
+}
 
+extract_sample_outlier_values <- function(data_input) {
+	N2_pairs <- data_input$N2_pairs
+	outliers_discrete_train <- data_input$outliers_discrete[is.na(N2_pairs),]
+	return(outliers_discrete_train)
+}
+
+compare_watershed_posteriors_with_different_training_inputs <- function(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact) {
+	roc_3_class_sample_names <- extract_watershed_sample_names(roc_3_class_data_input)
+	alt_roc_3_class_sample_names <- extract_watershed_sample_names(alt_roc_3_class_data_input)
+	indices <- alt_roc_3_class_sample_names %in% roc_3_class_sample_names
+	if (sum(roc_3_class_sample_names != alt_roc_3_class_sample_names[indices]) != 0) {
+		print("FUNDAMENTAL ASSUMPTION ERROR in compare_watershed_posteriors_with_different_training_inputs")
+	}
+
+	roc_posteriors <- roc_object_exact$model_params$posterior
+	alt_roc_posteriors <- alt_roc_object_exact$model_params$posterior[indices,]
+
+	standard_posterior <- c()
+	alt_posterior <- c()
+	class <- c()
+	num_samples <- length(roc_posteriors[,1])
+
+	standard_posterior <- c(standard_posterior, roc_posteriors[,1])
+	alt_posterior <- c(alt_posterior, alt_roc_posteriors[,1])
+	class <- c(class, rep("Splicing", num_samples))
+
+	standard_posterior <- c(standard_posterior, roc_posteriors[,2])
+	alt_posterior <- c(alt_posterior, alt_roc_posteriors[,2])
+	class <- c(class, rep("Expression", num_samples))
+
+	standard_posterior <- c(standard_posterior, roc_posteriors[,3])
+	alt_posterior <- c(alt_posterior, alt_roc_posteriors[,3])
+	class <- c(class, rep("ASE", num_samples))
+
+	df <- data.frame(standard_posterior=standard_posterior, alt_posterior=alt_posterior, outlier_class=factor(class,levels=c("ASE", "Splicing", "Expression")))
+
+	plotter <- ggplot(df, aes(x=standard_posterior, y=alt_posterior, colour=outlier_class)) + geom_point(size=.1) +
+			geom_abline() + 
+			theme(text = element_text(size=11),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=11)) +
+			labs(x="Standard Watershed Posterior", y="Alt Watershed Posterior)",colour="") + 
+			scale_color_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0")) +
+			gtex_v8_figure_theme()
+	return(plotter)
+
+}
+
+make_posterior_scatter_colored_by_outlier_class <- function(posterior, alt_posterior, outlier_status, title) {
+	df <- data.frame(standard_posterior=posterior, alt_posterior=alt_posterior, outlier=factor(outlier_status))
+	plotter <- ggplot(df, aes(x=standard_posterior, y=alt_posterior, colour=outlier)) + geom_point(size=.8) +
+			geom_abline() + 
+			theme(text = element_text(size=11),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=11)) +
+			labs(x="Standard Watershed Posterior", y="Alt Watershed Posterior)",colour="",title=title) + 
+			gtex_v8_figure_theme() +
+			theme(legend.position="bottom")
+	return(plotter)
+}
+
+compare_watershed_posteriors_seperated_by_class_with_different_training_inputs <- function(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact) {
+	roc_3_class_sample_names <- extract_watershed_sample_names(roc_3_class_data_input)
+	alt_roc_3_class_sample_names <- extract_watershed_sample_names(alt_roc_3_class_data_input)
+	indices <- alt_roc_3_class_sample_names %in% roc_3_class_sample_names
+	if (sum(roc_3_class_sample_names != alt_roc_3_class_sample_names[indices]) != 0) {
+		print("FUNDAMENTAL ASSUMPTION ERROR in compare_watershed_posteriors_with_different_training_inputs")
+	}
+
+	roc_posteriors <- roc_object_exact$model_params$posterior
+	alt_roc_posteriors <- alt_roc_object_exact$model_params$posterior[indices,]
+	
+	outliers <- extract_sample_outlier_values(roc_3_class_data_input)
+	alt_outliers <- extract_sample_outlier_values(alt_roc_3_class_data_input)
+	alt_outliers <- alt_outliers[indices,]
+	if (sum(outliers!=alt_outliers) != 0) {
+		print("FUNDAMENTAL assumption error")
+	}
+
+	splicing_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,1], alt_roc_posteriors[,1], outliers[,1], "Splicing")
+	expression_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,2], alt_roc_posteriors[,2], outliers[,2], "Expression")
+	ase_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,3], alt_roc_posteriors[,3], outliers[,3], "ASE")
+
+	combined_scatter_plots <- plot_grid(ase_scatter_plot, splicing_scatter_plot, expression_scatter_plot, ncol=3)
+
+	return(combined_scatter_plots)
+
+}
 
 options(bitmapType = 'cairo', device = 'pdf')
 ############################
@@ -1209,26 +1299,26 @@ roc_3_class_data_input <- readRDS(paste0(input_stem, "_data_input.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- readRDS(paste0(output_root, "_roc_object2.rds"))
+roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
+#roc_object_exact <- readRDS(paste0(output_root, "_roc_object2.rds"))
 
 
 ####### Pseudolikelihood approximation to watershed
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object2.rds"))
+roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 
 ####### Exact RIVER
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- readRDS(paste0(output_root, "_roc_object2.rds"))
-print(paste0(output_root, "_roc_object2.rds"))
+roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
+print(paste0(output_root, "_roc_object.rds"))
 
 
-
-
+if (FALSE) {
 #######################################
 ## Visualize theta pair terms for exact inference
 #######################################
@@ -1302,8 +1392,26 @@ ggsave(combined, file=output_file, width=7.2, height=5.0, units="in")
 output_file <- paste0(output_dir, "watershed_river_confusion_matrix_heatmap.pdf")
 confusion_heatmap <- visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion)
 ggsave(confusion_heatmap, file=output_file, width=7.2, height=7.0, units="in")
+}
+#######################################
+## Compare Watershed to versions of Watershed trained on alternative training data sets
+#######################################
+gene_pval="0.05"
+output_file <- paste0(output_dir, "compare_watershed_posterior_with_different_training_inputs_01_05_scatter.pdf")
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_inference_exact_independent_false_roc_object.rds"))
+scatter <- compare_watershed_posteriors_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
+ggsave(scatter, file=output_file, width=7.2, height=5.0, units="in")
+
+gene_pval="0.05"
+output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_01_05_scatter.pdf")
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_inference_exact_independent_false_roc_object.rds"))
+scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
+ggsave(scatter, file=output_file, width=13.2, height=7.0, units="in")
 
 
+if (FALSE) {
 ############################
 # Model hyperparameters
 ############################
@@ -1643,3 +1751,4 @@ row_3 <- plot_grid(fig_5_te_theta_pair_heatmap, tbt_auc_distribution_plot2,ncol=
 fig_4 <- plot_grid(row_1, row_2, row_3, ncol=1, rel_heights=c(.55,.5,.7))
 ggsave(fig_4, file=paste0(output_dir, "fig4_v4.pdf"), width=7.2, height=6, units="in")
 
+}

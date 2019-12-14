@@ -847,6 +847,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
  	feat_train <- scale(feat_train, center=mean_feat, scale=sd_feat)
  	feat_test <- scale(feat_test, center=mean_feat, scale=sd_feat)
 
+
  	#######################################
 	## Fit Genomic Annotation Model (GAM)
 	#######################################
@@ -962,14 +963,14 @@ lambda_costs <- c(.1,.01,1e-3)
 vi_step_size=.8
 vi_threshold=1e-8
 #lambda_init <- NA
-lambda_init <- 0.1
+lambda_init <- 0.001
 
 set.seed(1)
 #######################################
 ## Load in data
 #######################################
 data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
-saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
+saveRDS(data_input, paste0(output_stem,"_data_input2.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference and pseudolikelihood
@@ -987,25 +988,28 @@ print(roc_object_pseudo$roc[[2]]$evaROC$watershed_pr_auc)
 print(roc_object_pseudo$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_pseudo$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_pseudo$roc[[3]]$evaROC$GAM_pr_auc)
+}
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with exact inference
 #######################################
+if (FALSE) {
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
 roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
 saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
 #roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
+
 print(roc_object_exact$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[1]]$evaROC$GAM_pr_auc)
 print(roc_object_exact$roc[[2]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_exact$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[3]]$evaROC$GAM_pr_auc)
-
-
 }
+
+if (FALSE) {
 #######################################
 ## Run models (RIVER and GAM) assuming no edges (connections) between dimensions
 #######################################
@@ -1020,6 +1024,7 @@ print(roc_object_independent$roc[[2]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_independent$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[3]]$evaROC$GAM_pr_auc)
+}
 #roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 #colnames(roc_object_exact$model_params$theta) = colnames(feat)

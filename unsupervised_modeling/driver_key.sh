@@ -112,20 +112,20 @@ if false; then
 sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $variant_level_genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file $splicing_outlier_dir $ase_outlier_dir $te_outlier_dir $tissue_names_file $ase_old_outlier_file
 fi
 
-if false; then
-sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
-fi
+
 
 pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
+gene_thresh="0.05"
 if false; then
-sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold
+
+sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
+
+gene_thresh="0.1"
+sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
 fi
 
-if false; then
-sh organize_data_for_github_repo.sh $river_sim_file $github_repo_dir 
-fi
 
 
 pseudocount="30"
@@ -133,8 +133,6 @@ pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
 if false; then
 sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_class_score_run_dir $pseudocount $pvalue_fraction $binary_pvalue_threshold $watershed_3_class_roc_run_dir
-
-
 
 fi
 
@@ -171,26 +169,51 @@ if false; then
 sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
 fi
 
-if false; then
-sh compare_to_mfass.sh $watershed_3_class_score_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_outlier_fraction_.01_pseudocount_30_exact_inference_apply_to_all_variants_posteriors.txt.gz" $mfass_file $mfass_comparison_dir
-fi
-
-if false; then
 Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#############
+# Old anylsis
+# No longer used
+###############
+if false; then
+sh organize_data_for_github_repo.sh $river_sim_file $github_repo_dir 
+sh compare_to_mfass.sh $watershed_3_class_score_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_outlier_fraction_.01_pseudocount_30_exact_inference_apply_to_all_variants_posteriors.txt.gz" $mfass_file $mfass_comparison_dir
+sh river_copy_run.sh $unsupervised_learning_input_dir $river_run_dir
 fi
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -568,12 +568,12 @@ def remove_tissue_specific_annotations(input_file, output_file):
 	for line in f:
 		line = line.rstrip()
 		data = line.split()
-		t.write('\t'.join(data[0:49]) + '\t' + data[-4] + '\t' + data[-3] + '\t' + data[-2] + '\t' + data[-1] + '\n')
+		t.write('\t'.join(data[0:-58]) + '\t' + data[-4] + '\t' + data[-3] + '\t' + data[-2] + '\t' + data[-1] + '\n')
 	f.close()
 	t.close()
 
-def randomly_filter_training_instances(input_file, output_file, N, seeder):
-	np.random.seed(seeder)
+def randomly_filter_training_instances(input_file, standard_watershed_file, output_file, N, seeder):
+	np.random.seed(3)
 	# First get current number of samples
 	f = open(input_file)
 	head_count = 0
@@ -587,6 +587,22 @@ def randomly_filter_training_instances(input_file, output_file, N, seeder):
 		if data[-1] == 'NA': # is a training instance
 			num_training = num_training + 1
 	f.close()
+	if N > num_training:
+		N = num_training
+	# Get dictionary list of valid column names
+	valid_column_names = {}
+	head_count = 0
+	f = open(standard_watershed_file)
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			for ele in data:
+				valid_column_names[ele] = 1
+			header=data
+			continue
+	f.close()
 	# Then randomly subset to N training samples
 	randomly_selected_samples_arr = np.random.choice(range(num_training),size=N,replace=False)
 	randomly_selected_samples_dict = {}
@@ -598,15 +614,25 @@ def randomly_filter_training_instances(input_file, output_file, N, seeder):
 	line_counter = 0
 	for line in f:
 		line = line.rstrip()
-		data = line.split()
+		data = np.asarray(line.split())
 		if head_count == 0:
 			head_count = head_count + 1
-			t.write(line + '\n')
+			valid_column_positions = []
+			for i,ele in enumerate(data):
+				if ele in valid_column_names:
+					valid_column_positions.append(i)
+			valid_column_positions = np.asarray(valid_column_positions)
+			if np.array_equal(header,data[valid_column_positions]) == False:
+				print('assumption error; cant continue')
+				pdb.set_trace()
+			t.write('\t'.join(data[valid_column_positions]) + '\n')
 			continue
 		if data[-1] != 'NA':
-			t.write(line + '\n')
+			filtered_line = data[valid_column_positions]
+			t.write('\t'.join(filtered_line) + '\n')
 		if line_counter in randomly_selected_samples_dict:
-			t.write(line + '\n')
+			filtered_line = data[valid_column_positions]
+			t.write('\t'.join(filtered_line) + '\n')
 		line_counter = line_counter + 1
 	f.close()
 	t.close()
@@ -621,7 +647,6 @@ unsupervised_learning_input_dir = sys.argv[5]
 pvalue = float(sys.argv[6])
 gene_individual_to_variant_mapping_file = sys.argv[7]
 seeder = int(sys.argv[8])
-
 
 # Extract dictionary list of individuals used in all three methods
 individuals = get_list_of_individuals_used_in_all_methods(total_expression_outlier_file, ase_outlier_file, splicing_outlier_file)
@@ -682,7 +707,10 @@ merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pa
 merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
 remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
 
+
 # Randomly subset the previous file (merged_no_tissue_anno_output_file) to N training instances
-#N=60000
-#merged_no_tissue_anno_random_subset_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_random_subset_' + str(N) + '_N2_pairs.txt'
-#randomly_filter_training_instances(merged_no_tissue_anno_output_file, merged_no_tissue_anno_random_subset_output_file, N, seeder)
+N=150000
+merged_no_tissue_anno_random_subset_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_random_subset_' + str(N) + '_N2_pairs.txt'
+# Make sure it has the same features as standard watershed file
+standard_watershed_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
+randomly_filter_training_instances(merged_no_tissue_anno_output_file, standard_watershed_file, merged_no_tissue_anno_random_subset_output_file, N, seeder)

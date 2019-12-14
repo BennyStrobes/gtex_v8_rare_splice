@@ -928,7 +928,6 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 		print(paste0("LBFGS optimazation on CRF did not converge. It reported convergence error of: ", lbfgs_output$convergence))
 		print(lbfgs_output$message)
 	}
-  print("DONE")
 	# Get optimized crf coefficients back into model_params format
 	model_params$theta_singleton <- lbfgs_output$par[1:model_params$number_of_dimensions]
 	for (dimension in 1:model_params$number_of_dimensions) {
@@ -1080,7 +1079,7 @@ check_convergence <- function(model_params, phi_old, theta_old, theta_singleton_
 integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh) {
   model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, vi_step_size, vi_thresh)
 
-
+  print(dim(feat)[1])
 	#################
 	# Start loop here
 	##################
