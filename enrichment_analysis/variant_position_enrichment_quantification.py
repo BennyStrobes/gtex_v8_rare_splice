@@ -273,8 +273,8 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 	# Open output file handles
 	t_outlier = open(outlier_positions_file, 'w')
 	t_inlier = open(inlier_positions_file, 'w')
-	t_outlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\texon_skipping\talternative_5_prime\talternative_3_prime\n')
-	t_inlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\texon_skipping\talternative_5_prime\talternative_3_prime\n')
+	t_outlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\texon_skipping\talternative_5_prime\talternative_3_prime\tcluster_id\n')
+	t_inlier.write('distance\tsplice_site_type\tannotated_splice_site\tmajor_allele\tvariant_allele\tindividual\tchrom\tposition\texon_skipping\talternative_5_prime\talternative_3_prime\tcluster_id\n')
 	# Stream variant bed file
 	used = {}
 	f = open(variant_bed_file)
@@ -318,12 +318,12 @@ def get_distance_from_variant_to_observed_splice_sites(cluster_struct, individua
 		if individual_id in cluster_struct[cluster_id]['outlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
 			distance, ss_type, ss_annotated = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
-			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][0]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][1]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][2]) + '\n')
+			t_outlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][0]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][1]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][2]) + '\t' + cluster_id + '\n')
 		# Individaul is an inlier
 		if individual_id in cluster_struct[cluster_id]['inlier_individuals']:
 			# Compute distance from variant to nearest junction (positive values correspond to exons)
 			distance, ss_type, ss_annotated = get_distance_to_nearest_splice_site(cluster_mapping[cluster_id], var_pos, chromosome_string, cluster_to_strand_mapping[cluster_id], annotated_splice_sites)
-			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][0]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][1]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][2]) + '\n')
+			t_inlier.write(str(distance) + '\t' + ss_type + '\t' + ss_annotated + '\t' + major_allele + '\t' + variant_allele + '\t' + individual_id + '\t' + chromosome_string + '\t' + str(var_pos) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][0]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][1]) + '\t' + str(cluster_to_alternative_splicing_type_mapping[cluster_id][2]) + '\t' + cluster_id + '\n')
 	# CLose input and output file handles
 	f.close()
 	t_inlier.close()
