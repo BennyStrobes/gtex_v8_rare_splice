@@ -679,7 +679,7 @@ merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_ou
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
 # Make output file with no tissue specific genomic annotations
-merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
+merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs_' + str(seeder) + '.txt'
 remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
 
 # Randomly subset the previous file (merged_no_tissue_anno_output_file) to N training instances

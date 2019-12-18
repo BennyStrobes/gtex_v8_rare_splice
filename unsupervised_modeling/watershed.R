@@ -533,7 +533,6 @@ load_watershed_data <- function(input_file, number_of_dimensions, pvalue_fractio
 	# sample name as SubjectID:GeneName
 	rownames(outlier_pvalues) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
 	# Convert outlier status into binary random variables
-  print(pvalue_fraction)
 	fraction_outliers_binary <- ifelse(abs(outlier_pvalues)<=.1,1,0) # Strictly for initialization of binary output matrix
 	for (dimension_num in 1:number_of_dimensions) {
 		ordered <- sort(abs(outlier_pvalues[,dimension_num]))

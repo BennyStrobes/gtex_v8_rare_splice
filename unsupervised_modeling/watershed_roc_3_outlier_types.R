@@ -807,9 +807,9 @@ gtex_v8_figure_theme <- function() {
 
 
 
-roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init) {
-	#watershed_data <- readRDS(file_name)
-	#watershed_model <- watershed_data$model_params
+roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init, file_name) {
+	watershed_data <- readRDS(file_name)
+	watershed_model <- watershed_data$model_params
 	#######################################
 	# Load in all data (training and test)
 	#######################################
@@ -876,7 +876,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
   	lambda_pair <- gam_data$lambda
   	lambda <- gam_data$lambda
 
-  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold)
+  	#watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold)
 
 
 
@@ -900,7 +900,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#### 3. RNA-only
 	#######################################
 	#cadd_scores <- as.vector(feat_test[,40])
-	cadd_scores <- as.vector(feat_test[,10])
+	cadd_scores <- as.vector(feat_test[,40])
 	dimension_labels <- colnames(data_input$outliers_binary)
 	roc_object_across_dimensions <- compute_roc_across_dimensions(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_test_posteriors, cadd_scores, binary_outliers_test2)
 
@@ -965,22 +965,21 @@ vi_threshold=1e-8
 #lambda_init <- NA
 lambda_init <- 0.001
 
-set.seed(1)
+set.seed(3)
 #######################################
 ## Load in data
 #######################################
 data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
-saveRDS(data_input, paste0(output_stem,"_data_input2.rds"))
+#saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference and pseudolikelihood
 #######################################
-if (FALSE) {
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
-saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object.rds"))
+roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init, paste0(output_root, "_roc_object.rds"))
+saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object2.rds"))
 #roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
 print(roc_object_pseudo$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_pseudo$roc[[1]]$evaROC$GAM_pr_auc)
@@ -988,17 +987,15 @@ print(roc_object_pseudo$roc[[2]]$evaROC$watershed_pr_auc)
 print(roc_object_pseudo$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_pseudo$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_pseudo$roc[[3]]$evaROC$GAM_pr_auc)
-}
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with exact inference
 #######################################
-if (FALSE) {
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
-saveRDS(roc_object_exact, paste0(output_root, "_roc_object.rds"))
+roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init, paste0(output_root, "_roc_object.rds"))
+saveRDS(roc_object_exact, paste0(output_root, "_roc_object2.rds"))
 #roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 print(roc_object_exact$roc[[1]]$evaROC$watershed_pr_auc)
@@ -1007,24 +1004,22 @@ print(roc_object_exact$roc[[2]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_exact$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[3]]$evaROC$GAM_pr_auc)
-}
 
-if (FALSE) {
 #######################################
 ## Run models (RIVER and GAM) assuming no edges (connections) between dimensions
 #######################################
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
-saveRDS(roc_object_independent, paste0(output_root, "_roc_object.rds"))
+roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init, paste0(output_root, "_roc_object.rds"))
+saveRDS(roc_object_independent, paste0(output_root, "_roc_object2.rds"))
 print(roc_object_independent$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[1]]$evaROC$GAM_pr_auc)
 print(roc_object_independent$roc[[2]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_independent$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[3]]$evaROC$GAM_pr_auc)
-}
+
 #roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 #colnames(roc_object_exact$model_params$theta) = colnames(feat)

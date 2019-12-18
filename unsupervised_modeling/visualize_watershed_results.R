@@ -1290,7 +1290,7 @@ for (tiss_num in 1:length(tissue_colors$tissue_id)) {
 # Load in 3 outlier type data
 ############################
 pseudocount <- 30
-input_stem <- paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_",pseudocount)
+input_stem <- paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_",pseudocount,"_seed_3")
 
 ####### input data
 roc_3_class_data_input <- readRDS(paste0(input_stem, "_data_input.rds"))
@@ -1299,7 +1299,8 @@ roc_3_class_data_input <- readRDS(paste0(input_stem, "_data_input.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
+print(paste0(output_root, "_roc_object.rds"))
+roc_object_exact <- readRDS(paste0(output_root, "_roc_object2.rds"))
 #roc_object_exact <- readRDS(paste0(output_root, "_roc_object2.rds"))
 
 
@@ -1307,18 +1308,17 @@ roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object.rds"))
+roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object2.rds"))
 
 
 ####### Exact RIVER
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
+roc_object_independent <- readRDS(paste0(output_root, "_roc_object2.rds"))
 print(paste0(output_root, "_roc_object.rds"))
 
 
-if (FALSE) {
 #######################################
 ## Visualize theta pair terms for exact inference
 #######################################
@@ -1392,7 +1392,9 @@ ggsave(combined, file=output_file, width=7.2, height=5.0, units="in")
 output_file <- paste0(output_dir, "watershed_river_confusion_matrix_heatmap.pdf")
 confusion_heatmap <- visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion)
 ggsave(confusion_heatmap, file=output_file, width=7.2, height=7.0, units="in")
-}
+
+
+
 #######################################
 ## Compare Watershed to versions of Watershed trained on alternative training data sets
 #######################################
@@ -1411,7 +1413,6 @@ scatter <- compare_watershed_posteriors_seperated_by_class_with_different_traini
 ggsave(scatter, file=output_file, width=13.2, height=7.0, units="in")
 
 
-if (FALSE) {
 ############################
 # Model hyperparameters
 ############################
@@ -1751,4 +1752,3 @@ row_3 <- plot_grid(fig_5_te_theta_pair_heatmap, tbt_auc_distribution_plot2,ncol=
 fig_4 <- plot_grid(row_1, row_2, row_3, ncol=1, rel_heights=c(.55,.5,.7))
 ggsave(fig_4, file=paste0(output_dir, "fig4_v4.pdf"), width=7.2, height=6, units="in")
 
-}
