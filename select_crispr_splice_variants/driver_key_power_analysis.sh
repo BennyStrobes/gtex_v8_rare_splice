@@ -24,7 +24,9 @@ test_variant_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/sel
 #######################################
 power_analysis_data_output_dir="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/select_crispr_splice_variants/power_analysis/"
 
-
-
-
+if false; then
 python run_power_analysis.py $cluster_info_file $whole_blood_junction_file $test_variant_file $power_analysis_data_output_dir
+fi
+
+
+Rscript visualize_power_analysis.R $power_analysis_data_output_dir

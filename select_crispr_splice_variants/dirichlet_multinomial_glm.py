@@ -6,6 +6,7 @@ import pystan
 import pickle
 import time
 from scipy.stats import rankdata
+import scipy.stats
 
 
 ###########################################################
@@ -71,6 +72,36 @@ def dirichlet_multinomial_fit(y, DM_GLM):
 	#compute actual alpha that defines DM
 	alphas = compute_alphas_intercept_only_multi_conc(betas,op['conc'])
 	return np.asarray(alphas)
+
+def dirichlet_multinomial_differential_splicing(y, labels, DM_GLM):
+	#fixed parameters (provide relaxed priors to add optimization)
+	concShape=1.0001
+	concRate=1e-4
+	#Make intercept term (in covariate matrix)
+	N,K = y.shape
+	x_full = np.ones((N,2))
+	x_full[:,1] = labels
+	x_null = np.ones((N,1))
+
+	N,P_full = x_full.shape
+	N,P_null = x_null.shape
+
+	# Put data in dictionary (required input for pystan)
+	data_full = dict(N=N, K=K, P = P_full,y = y, x = x_full, concShape = concShape,concRate = concRate)
+	data_null = dict(N=N, K=K, P = P_null,y = y, x = x_null, concShape = concShape,concRate = concRate)
+
+	# Optimize GLM using pystan
+	op_full = DM_GLM.optimizing(data = data_full,verbose=False,iter=5000,seed=1, as_vector=False)
+	op_null = DM_GLM.optimizing(data = data_null,verbose=False,iter=5000,seed=1, as_vector=False)
+
+	log_likelihood_full = op_full['value']
+	log_likelihood_null = op_null['value']
+
+	loglr = log_likelihood_full - log_likelihood_null
+	pvalue = 1.0 - scipy.stats.chi2.cdf(2.0*loglr,df=1)
+
+	return pvalue
+
 
 def dirichlet_multinomial_fit_multiple_initializations(y, DM_GLM, n_init):
 	#fixed parameters (provide relaxed priors to add optimization)
