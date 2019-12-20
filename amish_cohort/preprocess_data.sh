@@ -9,7 +9,8 @@ vcf_file="$1"
 junction_count_input_dir="$2"
 gtex_watershed_file="$3"
 gtex_lymphocyte_jxn_count_file="$4"
-processed_data_dir="$5"
+sample_mapping_file="$5"
+processed_data_dir="$6"
 
 
 
@@ -19,7 +20,7 @@ processed_data_dir="$5"
 individual_list=$processed_data_dir"individuals_with_WGS_and_RNA.txt"
 individual_to_junction_file_list=$processed_data_dir"individual_id_to_junction_file.txt"
 if false; then
-python extract_individuals_with_WGS_and_RNA.py $vcf_file $junction_count_input_dir $individual_list $individual_to_junction_file_list
+python extract_individuals_with_WGS_and_RNA.py $vcf_file $junction_count_input_dir $sample_mapping_file $individual_list $individual_to_junction_file_list
 fi
 
 ################################
@@ -39,11 +40,17 @@ vcftools --gzvcf $vcf_file --out $variant_prefix --remove-filtered-all --keep $i
 vcftools --gzvcf $vcf_file --out $variant_prefix --remove-filtered-all --keep $individual_list --positions $gtex_variant_position_file --remove-indels --max-missing-count 10 --freq
 fi
 
-
+variant_dosage_file=$variant_prefix'.DS.FORMAT'
+variant_frequency_file=$variant_prefix'.frq'
+variant_bed_file=$processed_data_dir"variant_bed_file.txt"
+if false; then
+python create_variant_bed_file.py $variant_dosage_file $variant_frequency_file $gtex_watershed_file $variant_bed_file
+fi
 
 ################################
 # Create junction count matrix file for amish cohort based on gtex lcl junctions
 ################################
 amish_junction_count_file=$processed_data_dir"amish_junction_count.txt"
-
+if false; then
 python generate_amish_junction_count_file.py $gtex_lymphocyte_jxn_count_file $individual_to_junction_file_list $amish_junction_count_file
+fi

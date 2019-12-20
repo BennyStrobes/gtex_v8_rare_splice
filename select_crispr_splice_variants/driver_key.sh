@@ -102,6 +102,10 @@ fi
 clusters_to_plot_file=$processed_data_output_dir"background_clusters_to_plot.txt"
 tissue_name="Whole_Blood"
 tissue_specific_junction_file=$filtered_cluster_dir$tissue_name"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+if false; then
 python extract_cluster_counts.py $clusters_to_plot_file $tissue_name $tissue_specific_junction_file $processed_data_output_dir"background_"
+fi
 
+if false; then
 Rscript visualize_cluster_distribution.R $clusters_to_plot_file $tissue_name $exon_file $processed_data_output_dir"background_"
+fi

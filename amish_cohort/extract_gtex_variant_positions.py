@@ -26,7 +26,7 @@ for line in f:
 		continue
 	var = data[0].split(':')[2]
 	chrom = var.split('_')[0]
-	pos = var.split('_')[1]
+	pos = str(int(var.split('_')[1]))
 	t.write(chrom + '\t' + pos + '\n')
 f.close()
 t.close()
