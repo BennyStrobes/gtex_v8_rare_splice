@@ -22,6 +22,4 @@ if false; then
 python merge_data_sets.py $splicing_outlier_file $variant_bed_file $merged_data_set_file $merged_compressed_data_set_file
 fi
 
-if false; then
 Rscript visualize_results.R $merged_compressed_data_set_file $visualize_results_dir
-fi

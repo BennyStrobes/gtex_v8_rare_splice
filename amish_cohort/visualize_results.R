@@ -30,6 +30,22 @@ make_gtex_posterior_vs_amish_pvalue_scatter <- function(merged_data) {
 
 }
 
+make_gtex_gam_posterior_vs_amish_pvalue_scatter <- function(merged_data) {
+	log_pval = -log10(merged_data$median_amish_pvalue + 1e-6)
+	posterior = merged_data$median_gam_posterior
+
+	corry <- cor.test(posterior, log_pval, method="spearman")
+	pvalue = corry[3]
+	correlation = corry[4]
+
+	df <- data.frame(pvalue=log_pval, posterior=posterior)
+	scatter <- ggplot(df, aes(x=pvalue, y=posterior)) +
+ 			 geom_point() +
+ 			 gtex_v8_figure_theme() + 
+ 			 labs(x="median -log10(pvalue) in Amish cohort",y="median GTEx GAM splicing posterior", title=paste0("Spearman rho: ", correlation, " / Spearman pvalue: ", pvalue))
+ 	return(scatter)
+
+}
 
 make_gtex_posterior_vs_amish_pvalue_boxplot <- function(merged_data) {
 	log_pval = -log10(merged_data$amish_splicing_pvalue + 1e-6)
@@ -71,6 +87,10 @@ merged_data <- read.table(merged_data_set_file,header=TRUE)
 ###########################
 output_file <- paste0(output_dir, "gtex_posterior_vs_amish_pvalue_scatter.pdf")
 scatter <- make_gtex_posterior_vs_amish_pvalue_scatter(merged_data)
+ggsave(scatter, file=output_file, width=7.2, height=4,units="in")
+
+output_file <- paste0(output_dir, "gtex_gam_posterior_vs_amish_pvalue_scatter.pdf")
+scatter <- make_gtex_gam_posterior_vs_amish_pvalue_scatter(merged_data)
 ggsave(scatter, file=output_file, width=7.2, height=4,units="in")
 
 

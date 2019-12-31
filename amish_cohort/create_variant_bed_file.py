@@ -96,19 +96,23 @@ def compress_watershed_across_individuals(watershed_arr):
 			continue
 		gene_id = data[0].split(':')[1]
 		watershed_posterior = float(data[10])
+		gam_posterior = float(data[4])
 		num_rv = data[0].split('_')[-1]
 		if num_rv == '0':
 			pdb.set_trace()
 		gene_id = gene_id + '_' + num_rv
 		if gene_id not in genes:
-			genes[gene_id] = [watershed_posterior]
+			genes[gene_id] = ([watershed_posterior], [gam_posterior])
 		else:
-			old_arr = genes[gene_id]
+			old_tuple = genes[gene_id]
+			old_arr = old_tuple[0]
 			old_arr.append(watershed_posterior)
-			genes[gene_id] = old_arr
+			old_arr_gam = old_tuple[1]
+			old_arr_gam.append(gam_posterior)
+			genes[gene_id] = (old_arr, old_arr_gam)
 	arr = []
 	for gene in genes:
-		arr.append((gene, np.median(genes[gene])))
+		arr.append((gene, np.median(genes[gene][0]), np.median(genes[gene][1])))
 	return arr
 
 def get_alternate_count(standard_order, num_rv):
@@ -134,7 +138,7 @@ watershed_variants = extract_watershed_variants(gtex_watershed_file, valid_posit
 f = open(variant_dosage_file)
 g = open(variant_frequency_file)
 t = open(variant_bed_file, 'w')
-t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_splice_posterior\n')
+t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_splice_posterior\tmedian_gam_splice_posterior\n')
 aa=0
 bb=0
 head_count = 0
@@ -170,6 +174,7 @@ for line1 in f:
 	watershed_array = compress_watershed_across_individuals(watershed_variants[var])
 	for ele in watershed_array:
 		average_watershed_splice_posterior = ele[1]
+		average_gam_splice_posterior = ele[2]
 		ensamble_id = ele[0].split('_')[0]
 		num_rv = int(ele[0].split('_')[1])
 		if num_rv < 1 or num_rv > 2:
@@ -182,7 +187,7 @@ for line1 in f:
 			amish_sample = amish_samples[index]
 			if int(np.round(genotype)) == alternate_count:
 				rv = var + '_' + str(num_rv)
-				t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_splice_posterior) + '\n')
+				t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_splice_posterior) + '\t' + str(average_gam_splice_posterior) + '\n')
 				hits = hits + 1
 		if hits == len(genotypes):
 			print('all rv')
