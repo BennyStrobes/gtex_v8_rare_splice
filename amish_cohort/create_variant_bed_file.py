@@ -13,6 +13,7 @@ def extract_watershed_variants(gtex_watershed_file, valid_positions):
 		data = line.split()
 		if head_count == 0:
 			head_count = head_count + 1
+			print(data)
 			continue
 		indi = data[0].split(':')[0]
 		gene = data[0].split(':')[1]
@@ -88,15 +89,15 @@ def get_valid_positions(variant_frequency_file):
 		dicti[pos] = 1
 	return dicti
 
-def compress_watershed_across_individuals(watershed_arr):
+def compress_watershed_across_individuals(watershed_arr, outlier_column_index, gam_column_index, watershed_column_index):
 	genes = {}
 	for sample in watershed_arr:
 		data = sample.split()
-		if data[1] == 'NaN':
+		if data[outlier_column_index] == 'NaN':
 			continue
 		gene_id = data[0].split(':')[1]
-		watershed_posterior = float(data[10])
-		gam_posterior = float(data[4])
+		watershed_posterior = float(data[watershed_column_index])
+		gam_posterior = float(data[gam_column_index])
 		num_rv = data[0].split('_')[-1]
 		if num_rv == '0':
 			pdb.set_trace()
@@ -122,77 +123,99 @@ def get_alternate_count(standard_order, num_rv):
 		alternate_count = 2 - num_rv
 	return alternate_count
 
+def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index):
+	f = open(variant_dosage_file)
+	g = open(variant_frequency_file)
+	t = open(variant_bed_file, 'w')
+	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\n')
+	aa=0
+	bb=0
+	head_count = 0
+	for line1 in f:
+		line1 = line1.rstrip()
+		data1 = line1.split()
+		line2 = g.next().rstrip()
+		data2 = line2.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			amish_samples = np.asarray(data1[2:])
+			continue
+		allele1 = data2[4].split(':')[0]
+		allele2 = data2[5].split(':')[0]
+		var1 = data2[0] + '_' + data2[1] + '_' + allele1 + '_' + allele2
+		var2 = data2[0] + '_' + data2[1] + '_' + allele2 + '_' + allele1
+		# Simple error checking
+		if var1 in watershed_variants and var2 in watershed_variants:
+			print('assumption error')
+			pdb.set_trace()
+		if var1 in watershed_variants:
+			var = var1
+			major_allele = allele1
+			variant_allele = allele2
+			standard_order = True
+		elif var2 in watershed_variants:
+			var = var2
+			major_allele = allele2
+			variant_allele = allele1
+			standard_order = False
+		else:
+			continue
+		watershed_array = compress_watershed_across_individuals(watershed_variants[var], outlier_column_index, gam_column_index, watershed_column_index)
+		for ele in watershed_array:
+			average_watershed_posterior = ele[1]
+			average_gam_posterior = ele[2]
+			ensamble_id = ele[0].split('_')[0]
+			num_rv = int(ele[0].split('_')[1])
+			if num_rv < 1 or num_rv > 2:
+				print('assumption error')
+				pdb.set_trace()
+			alternate_count = get_alternate_count(standard_order, num_rv)
+			genotypes = np.asarray(data1[2:]).astype(float)
+			hits = 0
+			for index, genotype in enumerate(genotypes):
+				amish_sample = amish_samples[index]
+				if int(np.round(genotype)) == alternate_count:
+					rv = var + '_' + str(num_rv)
+					t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\n')
+					hits = hits + 1
+			if hits == len(genotypes):
+				print('all rv')
+				pdb.set_trace()
+	t.close()
+	g.close()
+	f.close()
+
 variant_dosage_file = sys.argv[1]
 variant_frequency_file = sys.argv[2]
 gtex_watershed_file = sys.argv[3]
-variant_bed_file = sys.argv[4]
+variant_bed_file_stem = sys.argv[4]
 
 
 
 valid_positions = get_valid_positions(variant_frequency_file)
 # Extract dictionary of watershed variants
 # Will be mapping from variant id to lines involving that variant
-#watershed_variants = extract_watershed_variants(gtex_watershed_file, valid_positions)
 watershed_variants = extract_watershed_variants(gtex_watershed_file, valid_positions)
 
-f = open(variant_dosage_file)
-g = open(variant_frequency_file)
-t = open(variant_bed_file, 'w')
-t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_splice_posterior\tmedian_gam_splice_posterior\n')
-aa=0
-bb=0
-head_count = 0
-for line1 in f:
-	line1 = line1.rstrip()
-	data1 = line1.split()
-	line2 = g.next().rstrip()
-	data2 = line2.split()
-	if head_count == 0:
-		head_count = head_count + 1
-		amish_samples = np.asarray(data1[2:])
-		continue
-	allele1 = data2[4].split(':')[0]
-	allele2 = data2[5].split(':')[0]
-	var1 = data2[0] + '_' + data2[1] + '_' + allele1 + '_' + allele2
-	var2 = data2[0] + '_' + data2[1] + '_' + allele2 + '_' + allele1
-	# Simple error checking
-	if var1 in watershed_variants and var2 in watershed_variants:
-		print('assumption error')
-		pdb.set_trace()
-	if var1 in watershed_variants:
-		var = var1
-		major_allele = allele1
-		variant_allele = allele2
-		standard_order = True
-	elif var2 in watershed_variants:
-		var = var2
-		major_allele = allele2
-		variant_allele = allele1
-		standard_order = False
-	else:
-		continue
-	watershed_array = compress_watershed_across_individuals(watershed_variants[var])
-	for ele in watershed_array:
-		average_watershed_splice_posterior = ele[1]
-		average_gam_splice_posterior = ele[2]
-		ensamble_id = ele[0].split('_')[0]
-		num_rv = int(ele[0].split('_')[1])
-		if num_rv < 1 or num_rv > 2:
-			print('assumption error')
-			pdb.set_trace()
-		alternate_count = get_alternate_count(standard_order, num_rv)
-		genotypes = np.asarray(data1[2:]).astype(float)
-		hits = 0
-		for index, genotype in enumerate(genotypes):
-			amish_sample = amish_samples[index]
-			if int(np.round(genotype)) == alternate_count:
-				rv = var + '_' + str(num_rv)
-				t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_splice_posterior) + '\t' + str(average_gam_splice_posterior) + '\n')
-				hits = hits + 1
-		if hits == len(genotypes):
-			print('all rv')
-			pdb.set_trace()
-t.close()
-g.close()
-f.close()
 
+# Print variant bed file for splicing
+splicing_variant_bed_file = variant_bed_file_stem + 'splicing.txt'
+outlier_column_index = 1
+gam_column_index = 4
+watershed_column_index = 10
+create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index)
+
+# Print variant bed file for ase
+splicing_variant_bed_file = variant_bed_file_stem + 'ase.txt'
+outlier_column_index = 3
+gam_column_index = 6
+watershed_column_index = 12
+create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index)
+
+
+# Print variant bed file for te
+splicing_variant_bed_file = variant_bed_file_stem + 'expression.txt'
+outlier_column_index = 2
+gam_column_index = 5
+watershed_column_index = 11
+create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index)

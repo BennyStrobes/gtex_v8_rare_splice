@@ -10,7 +10,8 @@ junction_count_input_dir="$2"
 gtex_watershed_file="$3"
 gtex_lymphocyte_jxn_count_file="$4"
 sample_mapping_file="$5"
-processed_data_dir="$6"
+ase_outlier_calls_file="$6"
+processed_data_dir="$7"
 
 
 
@@ -21,6 +22,14 @@ individual_list=$processed_data_dir"individuals_with_WGS_and_RNA.txt"
 individual_to_junction_file_list=$processed_data_dir"individual_id_to_junction_file.txt"
 if false; then
 python extract_individuals_with_WGS_and_RNA.py $vcf_file $junction_count_input_dir $sample_mapping_file $individual_list $individual_to_junction_file_list
+fi
+
+################################
+# Preprocess ase outlier calls file
+################################
+processed_ase_outlier_calls_file=$processed_data_dir"ase_outlier_calls.txt"
+if false; then
+python process_ase_outlier_calls.py $ase_outlier_calls_file $processed_ase_outlier_calls_file $sample_mapping_file
 fi
 
 ################################
@@ -42,9 +51,9 @@ fi
 
 variant_dosage_file=$variant_prefix'.DS.FORMAT'
 variant_frequency_file=$variant_prefix'.frq'
-variant_bed_file=$processed_data_dir"variant_bed_file.txt"
+variant_bed_file_stem=$processed_data_dir"variant_bed_"
 if false; then
-python create_variant_bed_file.py $variant_dosage_file $variant_frequency_file $gtex_watershed_file $variant_bed_file
+python create_variant_bed_file.py $variant_dosage_file $variant_frequency_file $gtex_watershed_file $variant_bed_file_stem
 fi
 
 ################################

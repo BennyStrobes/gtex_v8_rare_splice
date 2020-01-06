@@ -17,26 +17,24 @@ def get_outlier_calls(splicing_outlier_file):
 			head_count = head_count + 1
 			samples = np.asarray(data[1:])
 			continue
-		ensamble_id = data[0]
+		ensamble_id = data[0].split('.')[0]
 		pvalz = np.asarray(data[1:])
-		pval_float = pvalz.astype(float)
-		if sum(pval_float < .001) == len(pvalz):
-			print('miss')
-			continue
 		for i, pval in enumerate(pvalz):
 			sample_name = samples[i]
+			if pval == 'NA':
+				continue
 			dicti[sample_name + '_' + ensamble_id] = pval
 	f.close()
 	return dicti
 
 
-splicing_outlier_file = sys.argv[1]
+outlier_file = sys.argv[1]
 variant_bed_file = sys.argv[2]
 merged_data_set_file = sys.argv[3]
 merged_compressed_data_set_file = sys.argv[4]
 
 
-outliers = get_outlier_calls(splicing_outlier_file)
+outliers = get_outlier_calls(outlier_file)
 
 
 f = open(variant_bed_file)
@@ -48,10 +46,10 @@ for line in f:
 	data = line.split()
 	if head_count == 0:
 		head_count = head_count + 1
-		t.write(line + '\tamish_splicing_pvalue\n')
+		t.write(line + '\tamish_pvalue\n')
 		continue
 	sample_name = data[2]
-	ensamble_id = data[1]
+	ensamble_id = data[1].split('.')[0]
 	test_name = sample_name + '_' + ensamble_id
 	if test_name not in outliers:
 		continue
