@@ -1260,6 +1260,90 @@ compare_watershed_posteriors_seperated_by_class_with_different_training_inputs <
 
 }
 
+plot_three_class_auprc_bootstrap_distributions <- function(watershed_roc, river_roc, number_of_dimensions) {
+	auprc <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+
+	for (dimension in 1:number_of_dimensions) {
+		# Extract auprc data on this dimension
+		watershed_roc_object <- watershed_roc[[dimension]]
+		river_roc_object_ind <- river_roc[[dimension]]
+
+		dimension_name <- watershed_roc_object$name
+
+		# Tied watershed (exact inference)
+		auprc <- c(auprc, watershed_roc_object$evaROC$watershed_pr_auc_bootstraps)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(watershed_roc_object$evaROC$watershed_pr_auc_bootstraps)))
+		prediction_type <- c(prediction_type, rep("Watershed", length(watershed_roc_object$evaROC$watershed_pr_auc_bootstraps)))
+		print(paste0(dimension_name, " Watershed"))
+		full_pr_auc = watershed_roc_object$evaROC$watershed_pr_auc
+		bootstrap_pr_aucs = watershed_roc_object$evaROC$watershed_pr_auc_bootstraps
+		c_u = full_pr_auc - quantile(bootstrap_pr_aucs-full_pr_auc, .025)
+		c_l = full_pr_auc - quantile(bootstrap_pr_aucs-full_pr_auc, .975)
+		print(paste0("[", c_l, " , ", c_u, "]"))
+
+		# RIVER
+		auprc <- c(auprc, river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps)))
+		prediction_type <- c(prediction_type, rep("RIVER", length(river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps)))
+		print(paste0(dimension_name, " RIVER"))
+		full_pr_auc = river_roc_object_ind$evaROC$watershed_pr_auc
+		bootstrap_pr_aucs = river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps
+		c_u = full_pr_auc - quantile(bootstrap_pr_aucs-full_pr_auc, .025)
+		c_l = full_pr_auc - quantile(bootstrap_pr_aucs-full_pr_auc, .975)
+		print(paste0("[", c_l, " , ", c_u, "]"))
+
+		# GAM
+		auprc <- c(auprc, river_roc_object_ind$evaROC$GAM_pr_auc_bootstraps)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(river_roc_object_ind$evaROC$GAM_pr_auc_bootstraps)))
+		prediction_type <- c(prediction_type, rep("GAM", length(river_roc_object_ind$evaROC$GAM_pr_auc_bootstraps)))
+		print(paste0(dimension_name, " GAM"))
+		full_pr_auc = river_roc_object_ind$evaROC$GAM_pr_auc
+		bootstrap_pr_aucs = river_roc_object_ind$evaROC$GAM_pr_auc_bootstraps
+		c_u = full_pr_auc - quantile(bootstrap_pr_aucs-full_pr_auc, .025)
+		c_l = full_pr_auc - quantile(bootstrap_pr_aucs-full_pr_auc, .975)
+		print(paste0("[", c_l, " , ", c_u, "]"))
+	}
+
+	# Put into compact df
+	df <- data.frame(auprc=auprc, model=factor(prediction_type,levels=c("Watershed","RIVER","GAM")), outlier_type=factor(outlier_type))
+
+	outlier_type <- "ase"
+  	plotter_ase <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=auprc, fill=model, colour=model)) + geom_histogram(position="identity",alpha=0.5) + 
+                labs(x="AUC(PR)", y="Non-parametric bootstrap samples", colour="", fill="", title="ASE") +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                scale_color_manual(values=c("steelblue3", "steelblue3", "firebrick4")) +
+                scale_fill_manual(values=c("steelblue3", "white", "firebrick4")) +
+                gtex_v8_figure_theme()
+	outlier_type <- "splicing"
+  	plotter_splice <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=auprc, fill=model, colour=model)) + geom_histogram(position="identity",alpha=0.5) + 
+                labs(x="AUC(PR)", y="Non-parametric bootstrap samples", colour="", fill="", title="Splicing") +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                scale_color_manual(values=c("steelblue3", "steelblue3", "firebrick4")) +
+                scale_fill_manual(values=c("steelblue3", "white", "firebrick4")) +
+                gtex_v8_figure_theme()
+
+	outlier_type <- "total_expression"
+  	plotter_te <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=auprc, fill=model, colour=model)) + geom_histogram(position="identity",alpha=0.5) + 
+                labs(x="AUC(PR)", y="Non-parametric bootstrap samples", colour="", fill="", title="Expression") +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                scale_color_manual(values=c("steelblue3", "steelblue3", "firebrick4")) +
+                scale_fill_manual(values=c("steelblue3", "white", "firebrick4")) +
+                gtex_v8_figure_theme()
+
+
+    legend <- get_legend(plotter_ase)
+    combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"),plotter_splice+ theme(legend.position="none"), plotter_te + theme(legend.position="none"), ncol=1)
+
+
+	return(plot_grid(combined_plots,legend,ncol=1,rel_heights=c(1,.06)))
+
+}
+
 options(bitmapType = 'cairo', device = 'pdf')
 ############################
 # Command line args
@@ -1299,22 +1383,30 @@ roc_3_class_data_input <- readRDS(paste0(input_stem, "_data_input.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- readRDS(paste0(output_root, "_roc_object2.rds"))
+roc_object_exact <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
 
 ####### Pseudolikelihood approximation to watershed
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object2.rds"))
+roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
 
 ####### Exact RIVER
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- readRDS(paste0(output_root, "_roc_object2.rds"))
+roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
+
+
+#######################################
+## Visualize bootstrap auprc distributions
+#######################################
+output_file <- paste0(output_dir, "watershed_3_class_auprc_bootstrap_distributions.pdf")
+roc_3_bootstrap_distributions <- plot_three_class_auprc_bootstrap_distributions(roc_object_exact$roc, roc_object_independent$roc, 3)
+ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, units="in")
 
 #######################################
 ## Visualize theta pair terms for exact inference
@@ -1387,9 +1479,10 @@ ggsave(combined, file=output_file, width=7.2, height=5.0, units="in")
 ## Visualize Confusion matrix for both RIVER and Watershed (exact and vi)
 #######################################
 output_file <- paste0(output_dir, "watershed_river_confusion_matrix_heatmap.pdf")
+if (FALSE) {
 confusion_heatmap <- visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion)
 ggsave(confusion_heatmap, file=output_file, width=7.2, height=7.0, units="in")
-
+}
 
 
 #######################################

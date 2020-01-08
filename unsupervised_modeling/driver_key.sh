@@ -118,11 +118,12 @@ pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
 gene_thresh="0.01"
+
 if false; then
-
 sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
+fi
 
-
+if false; then
 
 gene_thresh="0.1"
 sbatch watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
@@ -170,9 +171,8 @@ number_of_dimensions="49"
 if false; then
 sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
 fi
-if false; then
+
 Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
-fi
 
 
 
