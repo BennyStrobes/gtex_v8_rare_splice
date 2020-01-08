@@ -52,9 +52,8 @@ fi
 variant_dosage_file=$variant_prefix'.DS.FORMAT'
 variant_frequency_file=$variant_prefix'.frq'
 variant_bed_file_stem=$processed_data_dir"variant_bed_"
-if false; then
 python create_variant_bed_file.py $variant_dosage_file $variant_frequency_file $gtex_watershed_file $variant_bed_file_stem
-fi
+
 
 ################################
 # Create junction count matrix file for amish cohort based on gtex lcl junctions

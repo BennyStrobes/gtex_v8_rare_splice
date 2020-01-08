@@ -69,9 +69,10 @@ for line in f:
 	test_id = data[0] + ':' + data[1]
 	posterior = float(data[3])
 	gam_posterior = float(data[4])
-	pval = float(data[5])
+	river_posterior = float(data[5])
+	pval = float(data[6])
 	if test_id not in dicti:
-		dicti[test_id] = ([pval], posterior, gam_posterior)
+		dicti[test_id] = ([pval], posterior, gam_posterior, river_posterior)
 	else:
 		old_tuple = dicti[test_id]
 		old_tuple[0].append(pval)
@@ -81,13 +82,13 @@ for line in f:
 		dicti[test_id] = old_tuple
 f.close()
 t = open(merged_compressed_data_set_file, 'w')
-t.write('variant_id\tensamble_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_amish_pvalue\n')
+t.write('variant_id\tensamble_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\tmedian_amish_pvalue\n')
 for test_id in dicti.keys():
 	variant_id = test_id.split(':')[0]
 	gene_id = test_id.split(':')[1]
 	tupler = dicti[test_id]
 	median_pval = np.median(tupler[0])
-	t.write(variant_id + '\t' + gene_id + '\t' + str(tupler[1]) + '\t' + str(tupler[2]) + '\t' + str(median_pval) + '\n')
+	t.write(variant_id + '\t' + gene_id + '\t' + str(tupler[1]) + '\t' + str(tupler[2]) + '\t' + str(tupler[3]) + '\t' + str(median_pval) + '\n')
 t.close()
 
 

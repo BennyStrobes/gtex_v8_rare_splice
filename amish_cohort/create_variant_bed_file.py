@@ -86,10 +86,13 @@ def get_valid_positions(variant_frequency_file):
 			head_count = head_count + 1
 			continue
 		pos = data[0] + '_' + data[1]
-		dicti[pos] = 1
+		af1 = float(data[4].split(':')[1])
+		af2 = float(data[5].split(':')[1])
+		maf = min(af1,af2)
+		dicti[pos] = maf
 	return dicti
 
-def compress_watershed_across_individuals(watershed_arr, outlier_column_index, gam_column_index, watershed_column_index):
+def compress_watershed_across_individuals(watershed_arr, outlier_column_index, gam_column_index, watershed_column_index, river_column_index):
 	genes = {}
 	for sample in watershed_arr:
 		data = sample.split()
@@ -98,22 +101,25 @@ def compress_watershed_across_individuals(watershed_arr, outlier_column_index, g
 		gene_id = data[0].split(':')[1]
 		watershed_posterior = float(data[watershed_column_index])
 		gam_posterior = float(data[gam_column_index])
+		river_posterior = float(data[river_column_index])
 		num_rv = data[0].split('_')[-1]
 		if num_rv == '0':
 			pdb.set_trace()
 		gene_id = gene_id + '_' + num_rv
 		if gene_id not in genes:
-			genes[gene_id] = ([watershed_posterior], [gam_posterior])
+			genes[gene_id] = ([watershed_posterior], [gam_posterior], [river_posterior])
 		else:
 			old_tuple = genes[gene_id]
 			old_arr = old_tuple[0]
 			old_arr.append(watershed_posterior)
 			old_arr_gam = old_tuple[1]
 			old_arr_gam.append(gam_posterior)
-			genes[gene_id] = (old_arr, old_arr_gam)
+			old_arr_river = old_tuple[2]
+			old_arr_river.append(river_posterior)
+			genes[gene_id] = (old_arr, old_arr_gam, old_arr_river)
 	arr = []
 	for gene in genes:
-		arr.append((gene, np.median(genes[gene][0]), np.median(genes[gene][1])))
+		arr.append((gene, np.median(genes[gene][0]), np.median(genes[gene][1]), np.median(genes[gene][2])))
 	return arr
 
 def get_alternate_count(standard_order, num_rv):
@@ -123,11 +129,11 @@ def get_alternate_count(standard_order, num_rv):
 		alternate_count = 2 - num_rv
 	return alternate_count
 
-def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index):
+def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index):
 	f = open(variant_dosage_file)
 	g = open(variant_frequency_file)
 	t = open(variant_bed_file, 'w')
-	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\n')
+	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\n')
 	aa=0
 	bb=0
 	head_count = 0
@@ -160,10 +166,11 @@ def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequ
 			standard_order = False
 		else:
 			continue
-		watershed_array = compress_watershed_across_individuals(watershed_variants[var], outlier_column_index, gam_column_index, watershed_column_index)
+		watershed_array = compress_watershed_across_individuals(watershed_variants[var], outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
 		for ele in watershed_array:
 			average_watershed_posterior = ele[1]
 			average_gam_posterior = ele[2]
+			average_river_posterior = ele[3]
 			ensamble_id = ele[0].split('_')[0]
 			num_rv = int(ele[0].split('_')[1])
 			if num_rv < 1 or num_rv > 2:
@@ -176,8 +183,74 @@ def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequ
 				amish_sample = amish_samples[index]
 				if int(np.round(genotype)) == alternate_count:
 					rv = var + '_' + str(num_rv)
-					t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\n')
+					t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\t' + str(average_river_posterior) + '\n')
 					hits = hits + 1
+			if hits == len(genotypes):
+				print('all rv')
+				pdb.set_trace()
+	t.close()
+	g.close()
+	f.close()
+
+def create_expression_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index):
+	f = open(variant_dosage_file)
+	g = open(variant_frequency_file)
+	t = open(variant_bed_file, 'w')
+	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\n')
+	aa=0
+	bb=0
+	head_count = 0
+	for line1 in f:
+		line1 = line1.rstrip()
+		data1 = line1.split()
+		line2 = g.next().rstrip()
+		data2 = line2.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			amish_samples = np.asarray(data1[2:])
+			continue
+		allele1 = data2[4].split(':')[0]
+		allele2 = data2[5].split(':')[0]
+		var1 = data2[0] + '_' + data2[1] + '_' + allele1 + '_' + allele2
+		var2 = data2[0] + '_' + data2[1] + '_' + allele2 + '_' + allele1
+		# Simple error checking
+		if var1 in watershed_variants and var2 in watershed_variants:
+			print('assumption error')
+			pdb.set_trace()
+		if var1 in watershed_variants:
+			var = var1
+			major_allele = allele1
+			variant_allele = allele2
+			standard_order = True
+		elif var2 in watershed_variants:
+			var = var2
+			major_allele = allele2
+			variant_allele = allele1
+			standard_order = False
+		else:
+			continue
+		watershed_array = compress_watershed_across_individuals(watershed_variants[var], outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
+		for ele in watershed_array:
+			average_watershed_posterior = ele[1]
+			average_gam_posterior = ele[2]
+			average_river_posterior = ele[3]
+			ensamble_id = ele[0].split('_')[0]
+			num_rv = int(ele[0].split('_')[1])
+			if num_rv < 1 or num_rv > 2:
+				print('assumption error')
+				pdb.set_trace()
+			alternate_count = get_alternate_count(standard_order, num_rv)
+			genotypes = np.asarray(data1[2:]).astype(float)
+			af = np.sum(genotypes)/(2.0*len(genotypes))
+			maf = min(af, 1.0-af)
+			hits = 0
+			for index, genotype in enumerate(genotypes):
+				amish_sample = amish_samples[index]
+				if int(np.round(genotype)) == alternate_count:
+					rv = var + '_' + str(num_rv)
+					if maf <= .05:
+						t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\t' + str(average_river_posterior) + '\n')
+						hits = hits + 1
 			if hits == len(genotypes):
 				print('all rv')
 				pdb.set_trace()
@@ -202,20 +275,31 @@ watershed_variants = extract_watershed_variants(gtex_watershed_file, valid_posit
 splicing_variant_bed_file = variant_bed_file_stem + 'splicing.txt'
 outlier_column_index = 1
 gam_column_index = 4
+river_column_index = 7
 watershed_column_index = 10
-create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index)
+create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
 
 # Print variant bed file for ase
 splicing_variant_bed_file = variant_bed_file_stem + 'ase.txt'
 outlier_column_index = 3
 gam_column_index = 6
+river_column_index = 9
 watershed_column_index = 12
-create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index)
-
+create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
 
 # Print variant bed file for te
 splicing_variant_bed_file = variant_bed_file_stem + 'expression.txt'
 outlier_column_index = 2
 gam_column_index = 5
+river_column_index = 8
 watershed_column_index = 11
-create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index)
+create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
+
+
+# Print variant bed file for te
+splicing_variant_bed_file = variant_bed_file_stem + 'rare_expression.txt'
+outlier_column_index = 2
+gam_column_index = 5
+river_column_index = 8
+watershed_column_index = 11
+create_expression_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
