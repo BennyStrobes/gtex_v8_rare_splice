@@ -87,7 +87,8 @@ make_gtex_watershed_gam_posterior_vs_amish_pvalue_boxplot <- function(merged_dat
 	type <- c(rep("Median GTEx posterior > .8", length(high_watershed_pvalz)), rep("Median GTEx posterior < .01", length(low_watershed_pvalz)), rep("Median GTEx posterior > .8", length(high_gam_pvalz)), rep("Median GTEx posterior < .01", length(low_gam_pvalz)))
 	model <- c(rep("Watershed", length(high_watershed_pvalz)), rep("Watershed", length(low_watershed_pvalz)), rep("GAM", length(high_gam_pvalz)), rep("GAM", length(low_gam_pvalz)))
 
-	#print(wilcox.test(high_watershed_pvalz, low_watershed_pvalz))
+	print(outlier_type)
+	print(wilcox.test(high_watershed_pvalz, low_watershed_pvalz))
 	#print(wilcox.test(high_watershed_pvalz, high_gam_pvalz))
 	#print(wilcox.test(high_gam_pvalz, low_gam_pvalz))
 

@@ -1344,6 +1344,269 @@ plot_three_class_auprc_bootstrap_distributions <- function(watershed_roc, river_
 
 }
 
+plot_three_class_delta_auprc_bootstrap_distributions <- function(watershed_roc, river_roc, number_of_dimensions) {
+	delta_auprc <- c()
+	outlier_type <- c()
+	ci <- c()
+	pvalues <- c()
+	for (dimension in 1:number_of_dimensions) {
+		# Extract auprc data on this dimension
+		watershed_roc_object <- watershed_roc[[dimension]]
+		river_roc_object_ind <- river_roc[[dimension]]
+
+		dimension_name <- watershed_roc_object$name
+
+		
+
+		population_watershed_pr_auc = watershed_roc_object$evaROC$watershed_pr_auc
+		population_river_pr_auc = river_roc_object_ind$evaROC$watershed_pr_auc
+		population_delta_pr_auc = population_watershed_pr_auc - population_river_pr_auc
+
+
+		# BootStrapped delta_auprc
+		bootstrapped_delta_pr_auc = watershed_roc_object$evaROC$watershed_pr_auc_bootstraps - river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps
+
+		c_u = population_delta_pr_auc - quantile(bootstrapped_delta_pr_auc-population_delta_pr_auc, .025)
+		c_l = population_delta_pr_auc - quantile(bootstrapped_delta_pr_auc-population_delta_pr_auc, .975)
+
+		ci <- c(ci, paste0("[", c_l, " , ", c_u, "]"))
+
+		fraction = sum(watershed_roc_object$evaROC$watershed_pr_auc_bootstraps > river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps)/length(river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps)
+		print(paste0(dimension_name, ": ", 1-fraction))
+
+		pvalues <- bootstrapped_delta_pr_auc
+		delta_auprc <- c(delta_auprc, bootstrapped_delta_pr_auc)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(bootstrapped_delta_pr_auc)))
+
+	}
+
+	# Put into compact df
+	df <- data.frame(delta_auprc=delta_auprc, outlier_type=factor(outlier_type))
+
+	outlier_type <- "ase"
+  	plotter_ase <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("ASE (95% CI", ci[3], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = 0.0, color='red') +
+                gtex_v8_figure_theme()
+	outlier_type <- "splicing"
+  	plotter_splicing <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("Splicing (95% CI", ci[1], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = 0.0, color='red') +
+                gtex_v8_figure_theme()
+
+	outlier_type <- "total_expression"
+  	plotter_te <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("Expression (95% CI", ci[2], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = 0.0, color='red') +
+                gtex_v8_figure_theme()
+
+
+    combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"),plotter_splicing+ theme(legend.position="none"), plotter_te + theme(legend.position="none"), ncol=1)
+
+
+	return(combined_plots)
+}
+
+
+auprc_bootstrap_hypothesis_testing <- function(watershed_object, river_object, number_of_dimensions) {
+	# Number of bootstap iterations
+	B = 20000
+	# Model predictions
+	watershed_predictions <- watershed_object$watershed_predictions
+	river_predictions <- river_object$watershed_predictions
+	# Held out labels
+	labels = watershed_object$held_out_labels
+
+	num_instances = dim(labels)[1]
+
+
+	auprc <- c()
+	outlier_type <- c()
+	pvalues <- c()
+	population_delta_auprc_arr <- c()
+
+	for (dimension in 1:number_of_dimensions) {
+		# Get dimension name
+		dimension_name <- watershed_object$roc[[dimension]]$name
+		dimension_watershed_predictions <- watershed_predictions[,dimension]
+		dimension_river_predictions <- river_predictions[,dimension]
+		dimension_labels <- labels[,dimension]
+
+		merged_predictions <- c(dimension_watershed_predictions, dimension_river_predictions)
+		merged_labels <- c(dimension_labels, dimension_labels)
+
+		# Compute delta AUPRC at population level
+		watershed_population_auprc <- pr.curve(scores.class0=dimension_watershed_predictions[dimension_labels==1], scores.class1=dimension_watershed_predictions[dimension_labels==0])$auc.integral
+		river_population_auprc <- pr.curve(scores.class0=dimension_river_predictions[dimension_labels==1], scores.class1=dimension_river_predictions[dimension_labels==0])$auc.integral
+		delta_population_auprc <- watershed_population_auprc - river_population_auprc
+		population_delta_auprc_arr <- c(population_delta_auprc_arr, delta_population_auprc)
+
+		# Create emperical distribution on delta auprcs
+		emperical_delta_auprc <- c()
+		for (bootstrap_iteration in 1:B) {
+			bootstrap_indices = sample(1:(2*num_instances),size=2*num_instances,replace=TRUE)
+			bootstrap_predictions = merged_predictions[bootstrap_indices]
+			bootstrap_labels = merged_labels[bootstrap_indices]
+			
+			bootstrap_watershed_predictions = bootstrap_predictions[1:num_instances]
+			bootstrap_watershed_labels = bootstrap_labels[1:num_instances]
+			bootstrap_watershed_auprc = pr.curve(scores.class0=bootstrap_watershed_predictions[bootstrap_watershed_labels==1], scores.class1=bootstrap_watershed_predictions[bootstrap_watershed_labels==0])$auc.integral
+
+			bootstrap_river_predictions = bootstrap_predictions[(num_instances+1):length(bootstrap_predictions)]
+			bootstrap_river_labels = bootstrap_labels[(num_instances+1):length(bootstrap_labels)]
+			bootstrap_river_auprc = pr.curve(scores.class0=bootstrap_river_predictions[bootstrap_river_labels==1], scores.class1=bootstrap_river_predictions[bootstrap_river_labels==0])$auc.integral
+			
+
+			bootstrap_delta_auprc <- bootstrap_watershed_auprc - bootstrap_river_auprc
+
+			emperical_delta_auprc <- c(emperical_delta_auprc, bootstrap_delta_auprc)
+			#bootstrap_auprc <- pr.curve(scores.class0=bootstrap_predictions[bootstrap_labels==1], scores.class1=bootstrap_predictions[bootstrap_labels==0])$auc.integral
+		}
+
+		pvalue <- sum(emperical_delta_auprc > delta_population_auprc)/length(emperical_delta_auprc)
+		pvalues <- c(pvalues, pvalue)
+
+		auprc <- c(auprc, emperical_delta_auprc)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(emperical_delta_auprc)))
+	}
+
+	df <- data.frame(delta_auprc=auprc, outlier_type=factor(outlier_type))
+
+	outlier_type <- "ase"
+  	plotter_ase <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("ASE (pvalue=", pvalues[3], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = population_delta_auprc_arr[3], color='red') +
+                gtex_v8_figure_theme()
+	
+	outlier_type <- "splicing"
+  	plotter_splice <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("Splicing (pvalue=", pvalues[1], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = population_delta_auprc_arr[1], color='red') +
+                gtex_v8_figure_theme()
+
+	outlier_type <- "total_expression"
+  	plotter_te <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("Expression (pvalue=", pvalues[2], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = population_delta_auprc_arr[2], color='red') +
+                gtex_v8_figure_theme()
+	
+	combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"),plotter_splice+ theme(legend.position="none"), plotter_te + theme(legend.position="none"), ncol=1)
+
+    return(combined_plots)
+}
+
+delta_auprc_bootstrap_hypothesis_testing <- function(watershed_object, river_object, number_of_dimensions) {
+	# Number of bootstap iterations
+	set.seed(5)
+	B = 20000
+	# Model predictions
+	watershed_predictions <- watershed_object$watershed_predictions
+	river_predictions <- river_object$watershed_predictions
+	# Held out labels
+	labels = watershed_object$held_out_labels
+
+	num_instances = dim(labels)[1]
+
+
+	auprc <- c()
+	outlier_type <- c()
+	pvalues <- c()
+	population_delta_auprc_arr <- c()
+
+	for (dimension in 1:number_of_dimensions) {
+		# Get dimension name
+		dimension_name <- watershed_object$roc[[dimension]]$name
+		dimension_watershed_predictions <- watershed_predictions[,dimension]
+		dimension_river_predictions <- river_predictions[,dimension]
+		dimension_labels <- labels[,dimension]
+
+		# Compute delta AUPRC at population level
+		watershed_population_auprc <- pr.curve(scores.class0=dimension_watershed_predictions[dimension_labels==1], scores.class1=dimension_watershed_predictions[dimension_labels==0])$auc.integral
+		river_population_auprc <- pr.curve(scores.class0=dimension_river_predictions[dimension_labels==1], scores.class1=dimension_river_predictions[dimension_labels==0])$auc.integral
+		delta_population_auprc <- watershed_population_auprc - river_population_auprc
+		population_delta_auprc_arr <- c(population_delta_auprc_arr, delta_population_auprc)
+
+		# Create emperical distribution on delta auprcs
+		emperical_delta_auprc <- c()
+		for (bootstrap_iteration in 1:B) {
+			bootstrap_indices = sample(1:num_instances,size=num_instances,replace=TRUE)
+
+			bootstrap_watershed_predictions = dimension_watershed_predictions[bootstrap_indices]
+			bootstrap_river_predictions = dimension_river_predictions[bootstrap_indices]
+			bootstrap_labels = dimension_labels[bootstrap_indices]
+
+			bootstrap_null_watershed_predictions <- bootstrap_watershed_predictions
+			bootstrap_null_river_predictions <- bootstrap_watershed_predictions
+
+			x1 <- rbinom(n=num_instances, size=1, prob=.5)
+			x2 <- rbinom(n=num_instances, size=1, prob=.5)
+
+			bootstrap_null_watershed_predictions[x1==1] <- bootstrap_river_predictions[x1==1]
+			bootstrap_null_river_predictions[x2==1] <- bootstrap_river_predictions[x2==1]
+
+
+			bootstrap_watershed_auprc = pr.curve(scores.class0=bootstrap_null_watershed_predictions[bootstrap_labels==1], scores.class1=bootstrap_null_watershed_predictions[bootstrap_labels==0])$auc.integral
+			bootstrap_river_auprc = pr.curve(scores.class0=bootstrap_null_river_predictions[bootstrap_labels==1], scores.class1=bootstrap_null_river_predictions[bootstrap_labels==0])$auc.integral
+
+			bootstrap_delta_auprc <- bootstrap_watershed_auprc - bootstrap_river_auprc
+
+			emperical_delta_auprc <- c(emperical_delta_auprc, bootstrap_delta_auprc)
+			#bootstrap_auprc <- pr.curve(scores.class0=bootstrap_predictions[bootstrap_labels==1], scores.class1=bootstrap_predictions[bootstrap_labels==0])$auc.integral
+		}
+
+		pvalue <- sum(emperical_delta_auprc > delta_population_auprc)/length(emperical_delta_auprc)
+		print(dimension_name)
+		print(pvalue)
+		pvalues <- c(pvalues, pvalue)
+
+		auprc <- c(auprc, emperical_delta_auprc)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(emperical_delta_auprc)))
+	}
+
+	df <- data.frame(delta_auprc=auprc, outlier_type=factor(outlier_type))
+
+	outlier_type <- "ase"
+  	plotter_ase <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("ASE (pvalue=", pvalues[3], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = population_delta_auprc_arr[3], color='red') +
+                gtex_v8_figure_theme()
+	
+	outlier_type <- "splicing"
+  	plotter_splice <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("Splicing (pvalue=", pvalues[1], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = population_delta_auprc_arr[1], color='red') +
+                gtex_v8_figure_theme()
+
+	outlier_type <- "total_expression"
+  	plotter_te <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=delta_auprc)) + geom_histogram(position="identity", color="darkblue", fill="lightblue") + 
+                labs(x="Watershed AUC(PR) - RIVER AUC(PR)", y="Non-parametric bootstrap samples", title=paste0("Expression (pvalue=", pvalues[2], ")")) +
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                geom_vline(xintercept = population_delta_auprc_arr[2], color='red') +
+                gtex_v8_figure_theme()
+	
+	combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"),plotter_splice+ theme(legend.position="none"), plotter_te + theme(legend.position="none"), ncol=1)
+
+    return(combined_plots)
+}
+
+
 options(bitmapType = 'cairo', device = 'pdf')
 ############################
 # Command line args
@@ -1400,6 +1663,30 @@ output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_
 roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
 
+
+#######################################
+## delta AUPRC bootstrap hypothesis testing
+#######################################
+output_file <- paste0(output_dir, "watershed_3_class_delta_auprc_hypothesis_testing_bootstrap_distributions.pdf")
+delta_auprc_bootstrap_hypothesis_testing_histogram <- delta_auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
+ggsave(delta_auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
+
+
+#######################################
+## AUPRC bootstrap hypothesis testing
+#######################################
+output_file <- paste0(output_dir, "watershed_3_class_auprc_hypothesis_testing_bootstrap_distributions.pdf")
+if (FALSE) {
+auprc_bootstrap_hypothesis_testing_histogram <- auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
+ggsave(auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
+}
+
+#######################################
+## Visualize bootstrap delta auprc distributions
+#######################################
+output_file <- paste0(output_dir, "watershed_3_class_delta_auprc_bootstrap_distributions.pdf")
+roc_3_bootstrap_distributions <- plot_three_class_delta_auprc_bootstrap_distributions(roc_object_exact$roc, roc_object_independent$roc, 3)
+ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, units="in")
 
 #######################################
 ## Visualize bootstrap auprc distributions

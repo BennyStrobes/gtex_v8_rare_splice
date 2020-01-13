@@ -142,6 +142,7 @@ remove_na <- function(x) {
 }
 
 compute_confidence_interval_on_auprc_with_non_parametric_bootstrap <- function(predictions, labels, num_bootstrap_samples) {
+	set.seed(2)
 	# Number of samples we have
 	num_samples <- length(predictions)
 	# Initialize vector to keep track of auprc across bootstrap iterations
@@ -405,19 +406,19 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	nfolds <- 5
 
-	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
-	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
+	#gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
+	#print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
 
-	gam_posterior_test_obj <- update_independent_marginal_probabilities_exact_inference_cpp(feat_test, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, matrix(0,2,2), matrix(0,2,2), number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
-	gam_test_posteriors <- gam_posterior_test_obj$probability
+	#gam_posterior_test_obj <- update_independent_marginal_probabilities_exact_inference_cpp(feat_test, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, matrix(0,2,2), matrix(0,2,2), number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+	#gam_test_posteriors <- gam_posterior_test_obj$probability
 
 
 	#######################################
 	### Initialize phi using genomic annotation model
 	#######################################
-	gam_posterior_train_obj <- update_independent_marginal_probabilities_exact_inference_cpp(feat_train, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, matrix(0,2,2), matrix(0,2,2), number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
-	gam_train_posteriors <- gam_posterior_train_obj$probability
-	phi_init <- map_phi_initialization(discrete_outliers_train, gam_train_posteriors, number_of_dimensions, pseudoc)
+	#gam_posterior_train_obj <- update_independent_marginal_probabilities_exact_inference_cpp(feat_train, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, matrix(0,2,2), matrix(0,2,2), number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
+	#gam_train_posteriors <- gam_posterior_train_obj$probability
+	#phi_init <- map_phi_initialization(discrete_outliers_train, gam_train_posteriors, number_of_dimensions, pseudoc)
 
  	#######################################
 	## Fit Watershed Model (using training data)
@@ -433,16 +434,16 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
  	#######################################
 	## Get test data watershed posterior probabilities
 	#######################################
- 	posterior_info_test <- update_marginal_posterior_probabilities(feat_test, discrete_outliers_test1, watershed_model)
-  	posterior_prob_test <- posterior_info_test$probability  # Marginal posteriors
-  	posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise  # Pairwise posteriors
+ 	#posterior_info_test <- update_marginal_posterior_probabilities(feat_test, discrete_outliers_test1, watershed_model)
+  	#posterior_prob_test <- posterior_info_test$probability  # Marginal posteriors
+  	#posterior_pairwise_prob_test <- posterior_info_test$probability_pairwise  # Pairwise posteriors
 
    	#######################################
 	## Compute confusion matrix from held out test data
 	# Confusion matrix where rows are actual labels and columns are predicted labels
 	# Each row (actual label) is normalized by the sum across all columns (predicted label) in that row (actual label)	#######################################
  	#######################################
-	confusion_matrix <- generate_confusion_matrix(feat_test, discrete_outliers_test1, binary_outliers_test2, watershed_model, inference_method, posterior_prob_test)
+	#confusion_matrix <- generate_confusion_matrix(feat_test, discrete_outliers_test1, binary_outliers_test2, watershed_model, inference_method, posterior_prob_test)
  	confusion_matrix <- 0
  	#######################################
 	# Extract ROC curves and precision recall curves for test set (in each dimension seperately) using:
@@ -454,7 +455,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	dimension_labels <- colnames(data_input$outliers_binary)
 	roc_object_across_dimensions <- compute_roc_across_dimensions(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_test_posteriors, cadd_scores, binary_outliers_test2)
 
-	return(list(roc=roc_object_across_dimensions, confusion=confusion_matrix, model_params=watershed_model, gam_model_params=gam_data, watershed_predictions=posterior_prob_test, gam_predictions=gam_test_posteriors, cadd_predictions=cadd_scores))
+	return(list(roc=roc_object_across_dimensions, confusion=confusion_matrix, model_params=watershed_model, gam_model_params=gam_data, watershed_predictions=posterior_prob_test, held_out_labels=binary_outliers_test2, gam_predictions=gam_test_posteriors, cadd_predictions=cadd_scores))
 
 }
 

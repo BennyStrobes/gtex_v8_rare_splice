@@ -248,7 +248,7 @@ def create_expression_variant_bed_file(variant_bed_file, variant_dosage_file, va
 				amish_sample = amish_samples[index]
 				if int(np.round(genotype)) == alternate_count:
 					rv = var + '_' + str(num_rv)
-					if maf <= .05:
+					if maf <= .1:
 						t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\t' + str(average_river_posterior) + '\n')
 						hits = hits + 1
 			if hits == len(genotypes):
@@ -277,7 +277,7 @@ outlier_column_index = 1
 gam_column_index = 4
 river_column_index = 7
 watershed_column_index = 10
-create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
+#create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
 
 # Print variant bed file for ase
 splicing_variant_bed_file = variant_bed_file_stem + 'ase.txt'
@@ -285,7 +285,7 @@ outlier_column_index = 3
 gam_column_index = 6
 river_column_index = 9
 watershed_column_index = 12
-create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
+#create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
 
 # Print variant bed file for te
 splicing_variant_bed_file = variant_bed_file_stem + 'expression.txt'
@@ -293,7 +293,7 @@ outlier_column_index = 2
 gam_column_index = 5
 river_column_index = 8
 watershed_column_index = 11
-create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
+#create_variant_bed_file(splicing_variant_bed_file, variant_dosage_file, variant_frequency_file, watershed_variants, outlier_column_index, gam_column_index, watershed_column_index, river_column_index)
 
 
 # Print variant bed file for te

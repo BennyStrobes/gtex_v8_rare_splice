@@ -61,9 +61,9 @@ visualize_results_dir=$output_root"visualize_results/"
 ########################
 # Part 1 preprocess the data
 #########################
-if false; then
+
 sh preprocess_data.sh $vcf_file $junction_count_input_dir $gtex_watershed_file $gtex_lymphocyte_jxn_count_file $sample_mapping_file $ase_outlier_calls_file $processed_data_dir
-fi
+
 
 
 #########################
@@ -102,6 +102,5 @@ fi
 #########################
 # Part 4: Merge results
 #########################
-if false; then
 sh merge_and_visualize_results.sh $splicing_outlier_dir $expression_outlier_dir $processed_data_dir $merged_results_dir $visualize_results_dir
-fi
+
