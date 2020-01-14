@@ -28,22 +28,33 @@ tpm_file <- args[3]  # output file
 log_tpm_file <- args[4]  # output file
 
 
-
+print(raw_counts_file)
 # Load in raw counts data
 raw_counts_data <- read.table(raw_counts_file, header=TRUE)
 
 # Matrix of just raw counts
-raw_counts = raw_counts_data[,7:(dim(raw_counts_data)[2])]
+raw_counts = raw_counts_data[,8:(dim(raw_counts_data)[2])]
 
 # length of genes
-gene_length = raw_counts_data[,6]
+amish_gene_length = raw_counts_data[,6]
+gtex_gene_length = raw_counts_data[,7]
+
 
 # Names of genes
 gene_ids = raw_counts_data[,1]
 
 colnames(raw_counts) = sub("X", "", colnames(raw_counts))
-# Compute TPM mat
-tpm_mat <- compute_tpm(raw_counts, gene_length)
+
+amish_raw_counts = raw_counts[,1:97]
+gtex_raw_counts = raw_counts[,98:(dim(raw_counts)[2])]
+
+
+tpm_amish_mat <- compute_tpm(amish_raw_counts, amish_gene_length)
+tpm_gtex_mat <- compute_tpm(gtex_raw_counts, gtex_gene_length)
+
+
+tpm_mat <- cbind(amish_raw_counts, gtex_raw_counts)
+
 
 # Save tpm mat
 rownames(raw_counts) = gene_ids

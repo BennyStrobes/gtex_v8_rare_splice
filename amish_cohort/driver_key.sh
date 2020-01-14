@@ -37,6 +37,15 @@ ase_outlier_calls_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicin
 # Gtex gene list
 gtex_gene_list="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gencode.v26.GRCh38.genes_genetypes_autosomal_PCandlinc_only.txt"
 
+# GTEx v8 lymphocyte count file
+gtex_lymphocyte_count_file="/work-zfs/abattle4/lab_data/GTEx_v8/processed/rna_seq_by_tissue/gene_reads/Cells-EBV-transformedlymphocytes.txt"
+
+# GTEx v8 processed lymphocyte file
+gtex_lymphocyte_standardized_expression_file="/work-zfs/abattle4/lab_data/GTEx_v8/ciseQTL/GTEx_Analysis_v8_eQTL_expression_matrices/Cells_EBV-transformed_lymphocytes.v8.normalized_expression.bed.gz"
+
+# Gtex gene length
+gtex_gene_length_file="/work-zfs/abattle4/bstrober/rare_variant/gtex_v8/splicing/input_data/gencode.v26.GRCh38.gene_lengths.txt"
+
 #######################################
 # output Directories
 #######################################
@@ -61,7 +70,6 @@ visualize_results_dir=$output_root"visualize_results/"
 ########################
 # Part 1 preprocess the data
 #########################
-
 sh preprocess_data.sh $vcf_file $junction_count_input_dir $gtex_watershed_file $gtex_lymphocyte_jxn_count_file $sample_mapping_file $ase_outlier_calls_file $processed_data_dir
 
 
@@ -97,10 +105,12 @@ fi
 # Part 3: Call total expression outliers
 #########################
 if false; then
-sh call_total_expression_outliers.sh $raw_count_file $expression_outlier_dir $sample_mapping_file $processed_data_dir"individual_id_to_junction_file.txt" $gtex_gene_list
+sh call_total_expression_outliers.sh $raw_count_file $expression_outlier_dir $sample_mapping_file $processed_data_dir"individual_id_to_junction_file.txt" $gtex_gene_list $gtex_lymphocyte_count_file $gtex_lymphocyte_standardized_expression_file $gtex_gene_length_file
 fi
+
 #########################
 # Part 4: Merge results
 #########################
+if false; then
 sh merge_and_visualize_results.sh $splicing_outlier_dir $expression_outlier_dir $processed_data_dir $merged_results_dir $visualize_results_dir
-
+fi

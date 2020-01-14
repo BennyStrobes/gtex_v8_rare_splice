@@ -202,7 +202,8 @@ make_gtex_watershed_river_gam_posterior_vs_amish_pvalue_pr_curve <- function(mer
 merged_splicing_data_set_file <- args[1]
 merged_ase_data_set_file <- args[2]
 merged_expression_data_set_file <- args[3]
-output_dir <- args[4]
+merged_rare_expression_data_set_file <- args[4]
+output_dir <- args[5]
 
 pr_pvalue_threshold = .05
 
@@ -210,6 +211,7 @@ pr_pvalue_threshold = .05
 splicing_merged_data <- read.table(merged_splicing_data_set_file,header=TRUE)
 ase_merged_data <- read.table(merged_ase_data_set_file,header=TRUE)
 expression_merged_data <- read.table(merged_expression_data_set_file,header=TRUE)
+rare_expression_merged_data <- read.table(merged_rare_expression_data_set_file,header=TRUE)
 
 
 ###########################
@@ -289,7 +291,7 @@ output_file <- paste0(output_dir, "expression_gtex_gam_posterior_vs_amish_pvalue
 #scatter <- make_gtex_gam_posterior_vs_amish_pvalue_scatter(expression_merged_data, "Expression")
 #ggsave(scatter, file=output_file, width=7.2, height=4,units="in")
 ###########################
-# make boxplot of amish splicing pvalues at different watershed thresholds
+# make boxplot of amish expression pvalues at different watershed thresholds
 ###########################
 output_file <- paste0(output_dir, "expression_gtex_watershed_gam_posterior_vs_amish_pvalue_boxplot.pdf")
 boxplot <- make_gtex_watershed_gam_posterior_vs_amish_pvalue_boxplot(expression_merged_data, "Expression")
@@ -297,6 +299,17 @@ ggsave(boxplot, file=output_file, width=7.2, height=4,units="in")
 
 output_file <- paste0(output_dir, "expression_gtex_watershed_river_gam_posterior_vs_amish_pvalue_boxplot.pdf")
 boxplot <- make_gtex_watershed_river_gam_posterior_vs_amish_pvalue_boxplot(expression_merged_data, "Expression")
+ggsave(boxplot, file=output_file, width=7.2, height=4,units="in")
+
+###########################
+# make boxplot of amish rare-expression pvalues at different watershed thresholds
+###########################
+output_file <- paste0(output_dir, "rare_expression_gtex_watershed_gam_posterior_vs_amish_pvalue_boxplot.pdf")
+boxplot <- make_gtex_watershed_gam_posterior_vs_amish_pvalue_boxplot(rare_expression_merged_data, "Expression")
+ggsave(boxplot, file=output_file, width=7.2, height=4,units="in")
+
+output_file <- paste0(output_dir, "rare_expression_gtex_watershed_river_gam_posterior_vs_amish_pvalue_boxplot.pdf")
+boxplot <- make_gtex_watershed_river_gam_posterior_vs_amish_pvalue_boxplot(rare_expression_merged_data, "Expression")
 ggsave(boxplot, file=output_file, width=7.2, height=4,units="in")
 
 ###########################

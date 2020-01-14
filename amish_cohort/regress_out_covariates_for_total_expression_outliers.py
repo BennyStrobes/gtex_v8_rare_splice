@@ -16,7 +16,7 @@ from sklearn import linear_model
 input_file = sys.argv[1]
 output_file = sys.argv[2]
 
-num_expression_pcs = 15
+num_expression_pcs = 30
 
 # Load in expression data
 expr_full = np.loadtxt(input_file,dtype=str,delimiter='\t')

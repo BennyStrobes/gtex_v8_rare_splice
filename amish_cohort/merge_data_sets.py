@@ -27,14 +27,43 @@ def get_outlier_calls(splicing_outlier_file):
 	f.close()
 	return dicti
 
+def get_variant_to_maf_mapping(maf_file):
+	f = open(maf_file)
+	mapping = {}
+	head_count = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		variant_id = data[0] + '_' + data[1] + '_' + data[4].split(':')[0] + '_' +  data[5].split(':')[0] + '_1'
+		variant_id2 = data[0] + '_' + data[1] + '_' + data[5].split(':')[0] + '_' +  data[4].split(':')[0] + '_1'
+		variant_id3 = data[0] + '_' + data[1] + '_' + data[4].split(':')[0] + '_' +  data[5].split(':')[0] + '_2'
+		variant_id4 = data[0] + '_' + data[1] + '_' + data[5].split(':')[0] + '_' +  data[4].split(':')[0] + '_2'
+		af1 = float(data[4].split(':')[1])
+		af2 = float(data[5].split(':')[1])
+		maf = min(af1,af2)
+		# Simple error checking
+		if variant_id in mapping:
+			print('assumptionerror!')
+			pdb.set_trace()
+		mapping[variant_id] = maf
+		mapping[variant_id2] = maf
+		mapping[variant_id3] = maf
+		mapping[variant_id4] = maf
+	return mapping
 
 outlier_file = sys.argv[1]
 variant_bed_file = sys.argv[2]
-merged_data_set_file = sys.argv[3]
-merged_compressed_data_set_file = sys.argv[4]
+maf_file = sys.argv[3]
+merged_data_set_file = sys.argv[4]
+merged_compressed_data_set_file = sys.argv[5]
 
 
 outliers = get_outlier_calls(outlier_file)
+
+variant_to_maf = get_variant_to_maf_mapping(maf_file)
 
 
 f = open(variant_bed_file)
@@ -82,13 +111,22 @@ for line in f:
 		dicti[test_id] = old_tuple
 f.close()
 t = open(merged_compressed_data_set_file, 'w')
-t.write('variant_id\tensamble_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\tmedian_amish_pvalue\n')
+t.write('variant_id\tensamble_id\tamish_maf\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\tmedian_amish_pvalue\n')
 for test_id in dicti.keys():
 	variant_id = test_id.split(':')[0]
 	gene_id = test_id.split(':')[1]
 	tupler = dicti[test_id]
 	median_pval = np.median(tupler[0])
-	t.write(variant_id + '\t' + gene_id + '\t' + str(tupler[1]) + '\t' + str(tupler[2]) + '\t' + str(tupler[3]) + '\t' + str(median_pval) + '\n')
+
+	# simple error check
+	if variant_id not in variant_to_maf:
+		print('assumptionerrororor')
+		pdb.set_trace()
+	maf = variant_to_maf[variant_id]
+	if maf == 0.0:
+		continue
+	# Print results
+	t.write(variant_id + '\t' + gene_id + '\t' + str(maf) + '\t' + str(tupler[1]) + '\t' + str(tupler[2]) + '\t' + str(tupler[3]) + '\t' + str(median_pval) + '\n')
 t.close()
 
 
