@@ -99,19 +99,23 @@ for line in f:
 	posterior = float(data[3])
 	gam_posterior = float(data[4])
 	river_posterior = float(data[5])
-	pval = float(data[6])
+	direction = data[6]
+	pval = float(data[7])
 	if test_id not in dicti:
-		dicti[test_id] = ([pval], posterior, gam_posterior, river_posterior)
+		dicti[test_id] = ([pval], posterior, gam_posterior, river_posterior, direction)
 	else:
 		old_tuple = dicti[test_id]
 		old_tuple[0].append(pval)
 		if old_tuple[1] != posterior:
 			print('assumption erro!')
 			pdb.set_trace()
+		if old_tuple[4] != direction:
+			print('assumption erro!')
+			pdb.set_trace()
 		dicti[test_id] = old_tuple
 f.close()
 t = open(merged_compressed_data_set_file, 'w')
-t.write('variant_id\tensamble_id\tamish_maf\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\tmedian_amish_pvalue\n')
+t.write('variant_id\tensamble_id\tamish_maf\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\tmedian_amish_pvalue\tmode_gtex_direction\n')
 for test_id in dicti.keys():
 	variant_id = test_id.split(':')[0]
 	gene_id = test_id.split(':')[1]
@@ -126,7 +130,7 @@ for test_id in dicti.keys():
 	if maf == 0.0:
 		continue
 	# Print results
-	t.write(variant_id + '\t' + gene_id + '\t' + str(maf) + '\t' + str(tupler[1]) + '\t' + str(tupler[2]) + '\t' + str(tupler[3]) + '\t' + str(median_pval) + '\n')
+	t.write(variant_id + '\t' + gene_id + '\t' + str(maf) + '\t' + str(tupler[1]) + '\t' + str(tupler[2]) + '\t' + str(tupler[3]) + '\t' + str(median_pval) + '\t' + tupler[4] + '\n')
 t.close()
 
 

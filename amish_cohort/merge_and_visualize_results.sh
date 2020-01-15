@@ -21,7 +21,7 @@ splicing_outlier_file=$splicing_outlier_dir"amish_cohort_covariate_method_none_m
 variant_bed_file=$processed_data_dir"variant_bed_splicing.txt"
 merged_data_set_file=$merged_results_dir"merged_data_set_splicing.txt"
 merged_compressed_data_set_file=$merged_results_dir"merged_compressed_data_set_splicing.txt"
-
+if false; then
 python merge_data_sets.py $splicing_outlier_file $variant_bed_file $maf_file $merged_data_set_file $merged_compressed_data_set_file
 
 
@@ -52,7 +52,7 @@ variant_bed_file=$processed_data_dir"variant_bed_rare_expression.txt"
 merged_data_set_file=$merged_results_dir"merged_data_set_rare_expression.txt"
 merged_compressed_data_set_file=$merged_results_dir"merged_compressed_data_set_rare_expression.txt"
 python merge_data_sets.py $expression_outlier_file $variant_bed_file $maf_file $merged_data_set_file $merged_compressed_data_set_file
-
+fi
 
 ############################################
 ########## Visualize results

@@ -102,12 +102,15 @@ def compress_watershed_across_individuals(watershed_arr, outlier_column_index, g
 		watershed_posterior = float(data[watershed_column_index])
 		gam_posterior = float(data[gam_column_index])
 		river_posterior = float(data[river_column_index])
+		direction = 1
+		if float(data[outlier_column_index]) < 0:
+			direction = -1
 		num_rv = data[0].split('_')[-1]
 		if num_rv == '0':
 			pdb.set_trace()
 		gene_id = gene_id + '_' + num_rv
 		if gene_id not in genes:
-			genes[gene_id] = ([watershed_posterior], [gam_posterior], [river_posterior])
+			genes[gene_id] = ([watershed_posterior], [gam_posterior], [river_posterior], [direction])
 		else:
 			old_tuple = genes[gene_id]
 			old_arr = old_tuple[0]
@@ -116,10 +119,16 @@ def compress_watershed_across_individuals(watershed_arr, outlier_column_index, g
 			old_arr_gam.append(gam_posterior)
 			old_arr_river = old_tuple[2]
 			old_arr_river.append(river_posterior)
-			genes[gene_id] = (old_arr, old_arr_gam, old_arr_river)
+			old_arr_direction = old_tuple[3]
+			old_arr_direction.append(direction)
+			genes[gene_id] = (old_arr, old_arr_gam, old_arr_river, old_arr_direction)
 	arr = []
 	for gene in genes:
-		arr.append((gene, np.median(genes[gene][0]), np.median(genes[gene][1]), np.median(genes[gene][2])))
+		if 2.0*len(np.where(np.asarray(genes[gene][3])==1)[0]) >= len(genes[gene][3]):
+			final_direction = '+'
+		else:
+			final_direction = '-'
+		arr.append((gene, np.median(genes[gene][0]), np.median(genes[gene][1]), np.median(genes[gene][2]), final_direction))
 	return arr
 
 def get_alternate_count(standard_order, num_rv):
@@ -133,7 +142,7 @@ def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequ
 	f = open(variant_dosage_file)
 	g = open(variant_frequency_file)
 	t = open(variant_bed_file, 'w')
-	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\n')
+	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\tmode_gtex_direction\n')
 	aa=0
 	bb=0
 	head_count = 0
@@ -171,6 +180,7 @@ def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequ
 			average_watershed_posterior = ele[1]
 			average_gam_posterior = ele[2]
 			average_river_posterior = ele[3]
+			mode_outlier_direction = ele[4]
 			ensamble_id = ele[0].split('_')[0]
 			num_rv = int(ele[0].split('_')[1])
 			if num_rv < 1 or num_rv > 2:
@@ -183,7 +193,7 @@ def create_variant_bed_file(variant_bed_file, variant_dosage_file, variant_frequ
 				amish_sample = amish_samples[index]
 				if int(np.round(genotype)) == alternate_count:
 					rv = var + '_' + str(num_rv)
-					t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\t' + str(average_river_posterior) + '\n')
+					t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\t' + str(average_river_posterior) + '\t' + mode_outlier_direction  + '\n')
 					hits = hits + 1
 			if hits == len(genotypes):
 				print('all rv')
@@ -196,7 +206,7 @@ def create_expression_variant_bed_file(variant_bed_file, variant_dosage_file, va
 	f = open(variant_dosage_file)
 	g = open(variant_frequency_file)
 	t = open(variant_bed_file, 'w')
-	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\n')
+	t.write('variant_id\tensamble_id\tamish_sample_id\tmedian_watershed_posterior\tmedian_gam_posterior\tmedian_river_posterior\tmode_gtex_direction\n')
 	aa=0
 	bb=0
 	head_count = 0
@@ -234,6 +244,7 @@ def create_expression_variant_bed_file(variant_bed_file, variant_dosage_file, va
 			average_watershed_posterior = ele[1]
 			average_gam_posterior = ele[2]
 			average_river_posterior = ele[3]
+			mode_outlier_direction = ele[4]
 			ensamble_id = ele[0].split('_')[0]
 			num_rv = int(ele[0].split('_')[1])
 			if num_rv < 1 or num_rv > 2:
@@ -249,7 +260,7 @@ def create_expression_variant_bed_file(variant_bed_file, variant_dosage_file, va
 				if int(np.round(genotype)) == alternate_count:
 					rv = var + '_' + str(num_rv)
 					if maf <= .01:
-						t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\t' + str(average_river_posterior) + '\n')
+						t.write(rv + '\t' + ensamble_id + '\t' + amish_sample + '\t' + str(average_watershed_posterior) + '\t' + str(average_gam_posterior) + '\t' + str(average_river_posterior) + '\t' + mode_outlier_direction + '\n')
 						hits = hits + 1
 			if hits == len(genotypes):
 				print('all rv')
