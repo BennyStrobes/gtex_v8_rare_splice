@@ -1667,6 +1667,7 @@ roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
 #######################################
 ## delta AUPRC bootstrap hypothesis testing
 #######################################
+if (FALSE) {
 output_file <- paste0(output_dir, "watershed_3_class_delta_auprc_hypothesis_testing_bootstrap_distributions.pdf")
 delta_auprc_bootstrap_hypothesis_testing_histogram <- delta_auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
 ggsave(delta_auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
@@ -1676,10 +1677,8 @@ ggsave(delta_auprc_bootstrap_hypothesis_testing_histogram, file=output_file, wid
 ## AUPRC bootstrap hypothesis testing
 #######################################
 output_file <- paste0(output_dir, "watershed_3_class_auprc_hypothesis_testing_bootstrap_distributions.pdf")
-if (FALSE) {
 auprc_bootstrap_hypothesis_testing_histogram <- auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
 ggsave(auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
-}
 
 #######################################
 ## Visualize bootstrap delta auprc distributions
@@ -1694,6 +1693,8 @@ ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, uni
 output_file <- paste0(output_dir, "watershed_3_class_auprc_bootstrap_distributions.pdf")
 roc_3_bootstrap_distributions <- plot_three_class_auprc_bootstrap_distributions(roc_object_exact$roc, roc_object_independent$roc, 3)
 ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, units="in")
+}
+
 
 #######################################
 ## Visualize theta pair terms for exact inference
@@ -1766,10 +1767,9 @@ ggsave(combined, file=output_file, width=7.2, height=5.0, units="in")
 ## Visualize Confusion matrix for both RIVER and Watershed (exact and vi)
 #######################################
 output_file <- paste0(output_dir, "watershed_river_confusion_matrix_heatmap.pdf")
-if (FALSE) {
 confusion_heatmap <- visualize_river_and_watershed_confusion_matrices(roc_object_exact$confusion, roc_object_pseudo$confusion, roc_object_independent$confusion)
 ggsave(confusion_heatmap, file=output_file, width=7.2, height=7.0, units="in")
-}
+
 
 
 #######################################
@@ -1777,19 +1777,28 @@ ggsave(confusion_heatmap, file=output_file, width=7.2, height=7.0, units="in")
 #######################################
 gene_pval="0.05"
 output_file <- paste0(output_dir, "compare_watershed_posterior_with_different_training_inputs_01_05_scatter.pdf")
-alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_data_input.rds"))
-alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_inference_exact_independent_false_roc_object.rds"))
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
 scatter <- compare_watershed_posteriors_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
 ggsave(scatter, file=output_file, width=7.2, height=5.0, units="in")
 
 gene_pval="0.05"
 output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_01_05_scatter.pdf")
-alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_data_input.rds"))
-alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_inference_exact_independent_false_roc_object.rds"))
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
 scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
 ggsave(scatter, file=output_file, width=13.2, height=7.0, units="in")
 
+#######################################
+## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)
+#######################################
+number_of_dimensions <- 3
+output_file <- paste0(output_dir, "compare_gene_threshold_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
+alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_true_roc_object3.rds"))
+gam_river_watershed_3_class_pr_curves <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions)
+ggsave(gam_river_watershed_3_class_pr_curves, file=output_file, width=10, height=3.0, units="in")
 
+print("DONE")
 ############################
 # Model hyperparameters
 ############################

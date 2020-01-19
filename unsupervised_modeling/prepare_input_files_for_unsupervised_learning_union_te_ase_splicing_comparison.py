@@ -243,12 +243,14 @@ def get_total_expression_outlier_info(individuals, genes, pvalue_threshold, tota
 	return total_expression_outlier_genes
 
 
-def union_of_three_dictionaries(dicti1, dicti2):
+def union_of_three_dictionaries(dicti1, dicti2, dicti3):
 	union = {}
 	for key  in dicti1.keys():
 		union[key] = 1
 	for key  in dicti2.keys():
-		union[key] = 1	
+		union[key] = 1
+	for key in dicti3.keys():
+		union[key] = 1
 	return union
 
 
@@ -713,8 +715,8 @@ splicing_outlier_genes = get_splicing_outlier_info(individuals, genes, pvalue, s
 # For total expression outliers extract list of genes for which we have at least one outlier sample and extract zscore threshold that gives us num_outlier_samples
 total_expression_outlier_genes = get_total_expression_outlier_info(individuals, genes, pvalue, total_expression_outlier_file)
 
-# Take intersection of outlier genes from each of three methods
-outlier_genes = intersection_of_three_dictionaries(splicing_outlier_genes, total_expression_outlier_genes, ase_outlier_genes)
+# Take union of outlier genes from each of three methods
+outlier_genes = union_of_three_dictionaries(splicing_outlier_genes, total_expression_outlier_genes, ase_outlier_genes)
 
 # Extract dictionary of (sample, gene) pairs for each class that are valid. Value of dictionary is 1 if outlier and 0 if inlier
 splicing_outliers = get_splicing_outliers(outlier_genes, individuals, splicing_outlier_file)
@@ -724,15 +726,15 @@ ase_outliers = get_ase_outliers(outlier_genes, individuals, ase_outlier_file)
 
 
 # Print outliers
-ase_output_file = unsupervised_learning_input_dir + 'ase_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
+ase_output_file = unsupervised_learning_input_dir + 'ase_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing.txt'
 print_outlier_output_file(ase_outliers, genomic_annotation_file, ase_output_file, gene_individual_to_variant_mapping_file, seeder)
-splicing_output_file = unsupervised_learning_input_dir + 'splicing_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
+splicing_output_file = unsupervised_learning_input_dir + 'splicing_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing.txt'
 print_outlier_output_file(splicing_outliers, genomic_annotation_file, splicing_output_file, gene_individual_to_variant_mapping_file, seeder)
-total_expression_output_file = unsupervised_learning_input_dir + 'total_expression_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
+total_expression_output_file = unsupervised_learning_input_dir + 'total_expression_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing.txt'
 print_outlier_output_file(total_expression_outliers, genomic_annotation_file, total_expression_output_file, gene_individual_to_variant_mapping_file, seeder)
 
 # Merge three outlier files
-merged_output_file = unsupervised_learning_input_dir + 'merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
+merged_output_file = unsupervised_learning_input_dir + 'merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_N2_pairs.txt'
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
 
@@ -742,25 +744,25 @@ merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pa
 
 
 # Print outliers
-splicing_output_file = unsupervised_learning_input_dir + 'fully_observed_splicing_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
+splicing_output_file = unsupervised_learning_input_dir + 'fully_observed_splicing_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing.txt'
 print_outlier_output_file_no_nan(splicing_outliers, total_expression_outliers,ase_outliers, genomic_annotation_file, splicing_output_file, gene_individual_to_variant_mapping_file, seeder)
-total_expression_output_file = unsupervised_learning_input_dir + 'fully_observed_total_expression_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
+total_expression_output_file = unsupervised_learning_input_dir + 'fully_observed_total_expression_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing.txt'
 print_outlier_output_file_no_nan(total_expression_outliers, splicing_outliers, ase_outliers, genomic_annotation_file, total_expression_output_file, gene_individual_to_variant_mapping_file, seeder)
-ase_output_file = unsupervised_learning_input_dir + 'fully_observed_ase_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing.txt'
+ase_output_file = unsupervised_learning_input_dir + 'fully_observed_ase_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing.txt'
 print_outlier_output_file_no_nan(ase_outliers, total_expression_outliers, splicing_outliers, genomic_annotation_file, ase_output_file, gene_individual_to_variant_mapping_file, seeder)
 
 
 # Merge three outlier files
-merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
+merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_N2_pairs.txt'
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
 # Make output file with no tissue specific genomic annotations
-merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
+merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
 remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
 
 
 # Randomly subset the previous file (merged_no_tissue_anno_output_file) to N training instances
-merged_no_tissue_anno_same_n2_pairs_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_' + str(seeder) + '.txt'
+merged_no_tissue_anno_same_n2_pairs_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_' + str(seeder) + '.txt'
 # Make sure it has the same features as standard watershed file
 standard_watershed_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs_' + str(seeder) + '.txt'
 

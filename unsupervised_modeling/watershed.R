@@ -7,7 +7,7 @@ library(Biobase)
 library(pROC)
 library(ggplot2)
 library(sigmoid)
-# library(Rcpp)
+ library(Rcpp)
 library(numDeriv)
 library(lbfgs)
 library(reshape)
@@ -16,10 +16,10 @@ library(PRROC)
 library(RColorBrewer)
 library(DirichletReg)
 library(reticulate)
-#sourceCpp("crf_exact_updates.cpp")
-#sourceCpp("crf_variational_updates.cpp")
-#sourceCpp("independent_crf_exact_updates.cpp")
-#sourceCpp("crf_pseudolikelihood_updates.cpp")
+sourceCpp("crf_exact_updates.cpp")
+sourceCpp("crf_variational_updates.cpp")
+sourceCpp("independent_crf_exact_updates.cpp")
+sourceCpp("crf_pseudolikelihood_updates.cpp")
 
 initialize_genomic_annotation_variables_v_rand <- function(number_of_features, number_of_dimensions, independent_variables) {
   if (independent_variables == "true") {
@@ -1077,7 +1077,6 @@ check_convergence <- function(model_params, phi_old, theta_old, theta_singleton_
 integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh) {
   model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, vi_step_size, vi_thresh)
 
-  print(dim(feat)[1])
 	#################
 	# Start loop here
 	##################
