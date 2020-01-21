@@ -641,7 +641,23 @@ def randomly_filter_training_instances(input_file, standard_watershed_file, outp
 	return
 
 
-def merge_with_standard_watershed_file(input_file, standard_watershed_file, output_file):
+def merge_with_standard_watershed_file(input_file, standard_watershed_file, output_file, max_number_of_training_instances, seeder):
+	np.random.seed(seeder)
+	# First get current number of samples
+	f = open(input_file)
+	head_count = 0
+	num_training = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		if data[-1] == 'NA': # is a training instance
+			num_training = num_training + 1
+	f.close()
+	if max_number_of_training_instances > num_training:
+		max_number_of_training_instances = num_training
 	# Get dictionary list of valid column names
 	valid_column_names = {}
 	n2_pair_lines = []
@@ -661,10 +677,16 @@ def merge_with_standard_watershed_file(input_file, standard_watershed_file, outp
 			continue
 		n2_pair_lines.append(line)
 	f.close()
+	# Then randomly subset to N training samples
+	randomly_selected_samples_arr = np.random.choice(range(num_training),size=max_number_of_training_instances,replace=False)
+	randomly_selected_samples_dict = {}
+	for ele in randomly_selected_samples_arr:
+		randomly_selected_samples_dict[ele] = 1
 	# Print output file
 	f = open(input_file)
 	t = open(output_file, 'w')
 	head_count = 0
+	line_counter = 0
 	for line in f:
 		line = line.rstrip()
 		data = np.asarray(line.split())
@@ -681,8 +703,10 @@ def merge_with_standard_watershed_file(input_file, standard_watershed_file, outp
 			t.write('\t'.join(data[valid_column_positions]) + '\n')
 			continue
 		if data[-1] == 'NA':
-			filtered_line = data[valid_column_positions]
-			t.write('\t'.join(filtered_line) + '\n')
+			if line_counter in randomly_selected_samples_arr:
+				filtered_line = data[valid_column_positions]
+				t.write('\t'.join(filtered_line) + '\n')
+		line_counter = line_counter + 1
 	f.close()
 	# Add N2 pair lines from standard watershed file
 	for n2_pair_line in n2_pair_lines:
@@ -699,8 +723,6 @@ unsupervised_learning_input_dir = sys.argv[5]
 pvalue = float(sys.argv[6])
 gene_individual_to_variant_mapping_file = sys.argv[7]
 seeder = int(sys.argv[8])
-
-
 
 # Extract dictionary list of individuals used in all three methods
 individuals = get_list_of_individuals_used_in_all_methods(total_expression_outlier_file, ase_outlier_file, splicing_outlier_file)
@@ -756,10 +778,10 @@ print_outlier_output_file_no_nan(ase_outliers, total_expression_outliers, splici
 merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_N2_pairs.txt'
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
+
 # Make output file with no tissue specific genomic annotations
 merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
 remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
-
 
 # Randomly subset the previous file (merged_no_tissue_anno_output_file) to N training instances
 merged_no_tissue_anno_same_n2_pairs_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_' + str(seeder) + '.txt'
@@ -767,7 +789,8 @@ merged_no_tissue_anno_same_n2_pairs_output_file = unsupervised_learning_input_di
 standard_watershed_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs_' + str(seeder) + '.txt'
 
 # Use same N2 pairs as was used in standard watershed analysis (p=.01).. see standard_watershed_file
-merge_with_standard_watershed_file(merged_no_tissue_anno_output_file, standard_watershed_file, merged_no_tissue_anno_same_n2_pairs_output_file)
+max_number_of_training_instances=300000
+merge_with_standard_watershed_file(merged_no_tissue_anno_output_file, standard_watershed_file, merged_no_tissue_anno_same_n2_pairs_output_file, max_number_of_training_instances, seeder)
 
 
 

@@ -528,9 +528,9 @@ saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
 independent_variables = "false"
 inference_method = "pseudolikelihood"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
-#saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object3.rds"))
-roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object3.rds"))
+roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
+saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object3.rds"))
+#roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object3.rds"))
 print(roc_object_pseudo$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_pseudo$roc[[1]]$evaROC$GAM_pr_auc)
 print(roc_object_pseudo$roc[[2]]$evaROC$watershed_pr_auc)
@@ -544,9 +544,9 @@ print(roc_object_pseudo$roc[[3]]$evaROC$GAM_pr_auc)
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
-#saveRDS(roc_object_exact, paste0(output_root, "_roc_object3.rds"))
-roc_object_exact <- readRDS(paste0(output_root, "_roc_object3.rds"))
+roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
+saveRDS(roc_object_exact, paste0(output_root, "_roc_object3.rds"))
+#roc_object_exact <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
 print(roc_object_exact$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[1]]$evaROC$GAM_pr_auc)
@@ -561,9 +561,9 @@ print(roc_object_exact$roc[[3]]$evaROC$GAM_pr_auc)
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
-#saveRDS(roc_object_independent, paste0(output_root, "_roc_object3.rds"))
-roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
+roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
+saveRDS(roc_object_independent, paste0(output_root, "_roc_object3.rds"))
+#roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
 print(roc_object_independent$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[1]]$evaROC$GAM_pr_auc)

@@ -28,8 +28,8 @@ python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicin
 fi
 
 
-if false; then
 gene_pvalue_thresh_arr=(".05" ".1")
+if false; then
 for pvalue in "${gene_pvalue_thresh_arr[@]}"; do
 	echo $pvalue
 	python prepare_input_files_for_unsupervised_learning_intersection_te_ase_splicing_at_other_gene_pvalue_thresholds.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $pvalue $gene_individual_to_variant_mapping_file $random_seed
@@ -38,8 +38,9 @@ fi
 
 
 pvalue=".01"
+if false; then
 python prepare_input_files_for_unsupervised_learning_union_te_ase_splicing_comparison.py $genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $pvalue $gene_individual_to_variant_mapping_file $random_seed
-
+fi
 
 
 

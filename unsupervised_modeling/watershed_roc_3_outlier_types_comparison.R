@@ -533,6 +533,7 @@ load_watershed_data_for_gene_threshold_comparison <- function(input_file, standa
 	outliers_discrete <- get_discretized_outliers(outlier_pvalues)
 	num_training_outliers = 0
 	standard_num_training_outliers = 0
+	pseudoc_arr <- c()
 	for (dimension_num in 1:number_of_dimensions) {
 		ordered <- sort(abs(standard_outlier_pvalues[,dimension_num]))
 		max_val <- ordered[floor(length(ordered)*pvalue_fraction)]
@@ -543,8 +544,9 @@ load_watershed_data_for_gene_threshold_comparison <- function(input_file, standa
 		standard_num_outliers_dimension <- get_min_num_discrete_outliers(standard_outliers_discrete[is.na(standard_n2_pairs),dimension_num])
 		num_outliers_dimension <- get_min_num_discrete_outliers(outliers_discrete[is.na(as.character(N2_pairs)), dimension_num])
 		frac = num_outliers_dimension/standard_num_outliers_dimension
-		#frac = sum(outliers_binary_temp[is.na(as.character(N2_pairs)),dimension_num])/sum(standard_outliers_binary[is.na(standard_n2_pairs),dimension_num])
-		#print(frac*30.0)
+		frac = sum(outliers_binary_temp[is.na(as.character(N2_pairs)),dimension_num])/sum(standard_outliers_binary[is.na(standard_n2_pairs),dimension_num])
+		dimension_pseudoc = (frac*30.0)
+		pseudoc_arr <- c(pseudoc_arr, dimension_pseudoc)
 		num_training_outliers = num_outliers_dimension + num_training_outliers
 		standard_num_training_outliers = standard_num_training_outliers + standard_num_outliers_dimension
 	}
@@ -558,7 +560,7 @@ load_watershed_data_for_gene_threshold_comparison <- function(input_file, standa
 	# Put all data into compact data structure
 	#scaled_pseudoc = 30.0*num_training_instances/standard_num_training_instances
 	# scaled_pseudoc = 30.0*num_training_outliers/standard_num_training_outliers
-	scaled_pseudoc = 30.0
+	scaled_pseudoc = pseudoc_arr
 
 	data_input <- list(feat=as.matrix(feat), outlier_pvalues=as.matrix(outlier_pvalues),outliers_binary=as.matrix(outliers_binary), fraction_outliers_binary=as.matrix(fraction_outliers_binary),outliers_discrete=outliers_discrete, N2_pairs=N2_pairs, pseudoc=scaled_pseudoc)
 	return(data_input)
@@ -596,6 +598,7 @@ set.seed(3)
 data_input <- load_watershed_data_for_gene_threshold_comparison(input_file, standard_input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
 saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
 pseudoc = data_input$pseudoc
+print(pseudoc)
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with exact inference

@@ -118,26 +118,33 @@ pseudocount="30"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
 gene_thresh="0.01"
+if false; then
 sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
-
-
-n2_pair_pvalue_fraction=".01"
-binary_pvalue_threshold=".01"
-gene_thresh="0.05"
-if false; then
-sbatch watershed_roc_run_3_outlier_types_at_other_gene_thresholds_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
 fi
 
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
-gene_thresh="0.1"
+input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.05_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_3.txt"
+output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_seperate_pseudoc"
 if false; then
-sbatch watershed_roc_run_3_outlier_types_at_other_gene_thresholds_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
+sbatch watershed_roc_run_3_outlier_types_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $input_file $output_stem
 fi
 
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.1_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_3.txt"
+output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_seperate_pseudoc"
+if false; then
+sbatch watershed_roc_run_3_outlier_types_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $input_file $output_stem
+fi
 
-
-
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.01_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_3.txt"
+output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_seperate_pseudoc"
+if false; then
+sbatch watershed_roc_run_3_outlier_types_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $input_file $output_stem
+fi
 
 pseudocount="30"
 pvalue_fraction=".01"
@@ -180,9 +187,8 @@ if false; then
 sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
 fi
 
-if false; then
 Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
-fi
+
 
 
 

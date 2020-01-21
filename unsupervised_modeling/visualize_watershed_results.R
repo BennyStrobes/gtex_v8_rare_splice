@@ -134,8 +134,8 @@ make_fig_5_theta_pair_heatmap <- function(theta_pair, number_of_dimensions,tissu
     
    	combined = ggdraw() +
         draw_plot(heatmap, .05,.05,.95,0.95) +
-        draw_plot(colors.vertical, -.321, .123, .903, .903) + 
-        draw_plot(colors.horizontal,0.086,-.157, .69,.69)
+        draw_plot(colors.vertical, -.324, .1175, .903, .910) + 
+        draw_plot(colors.horizontal,0.084,-.161, .69,.69)
 
     return(combined)
 
@@ -811,7 +811,7 @@ absolute_risk_plot_with_cadd_helper <- function(gam_predictions, watershed_predi
 	print(df)
 	p <- ggplot(data=df, aes(x=model_type, y=absolute_risk, fill=outlier_type)) +
 	geom_bar(stat="identity", color="black", position=position_dodge())+
-	ylim(0,.7) + 
+	ylim(0,.72) + 
   	gtex_v8_figure_theme() + 
   	labs(x="", y="Proportion of variants\nleading to outlier", fill="", title=paste0("Watershed posterior > ", watershed_threshold)) + 
   	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0")) 
@@ -1222,6 +1222,8 @@ compare_watershed_posteriors_with_different_training_inputs <- function(roc_3_cl
 }
 
 make_posterior_scatter_colored_by_outlier_class <- function(posterior, alt_posterior, outlier_status, title) {
+	print(title)
+	print(cor.test(posterior, alt_posterior))
 	df <- data.frame(standard_posterior=posterior, alt_posterior=alt_posterior, outlier=factor(outlier_status))
 	plotter <- ggplot(df, aes(x=standard_posterior, y=alt_posterior, colour=outlier)) + geom_point(size=.8) +
 			geom_abline() + 
@@ -1795,8 +1797,8 @@ ggsave(scatter, file=output_file, width=13.2, height=7.0, units="in")
 number_of_dimensions <- 3
 output_file <- paste0(output_dir, "compare_gene_threshold_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
 alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_true_roc_object3.rds"))
-gam_river_watershed_3_class_pr_curves <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions)
-ggsave(gam_river_watershed_3_class_pr_curves, file=output_file, width=10, height=3.0, units="in")
+gam_river_watershed_3_class_pr_curves_input_data_comparison <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions)
+ggsave(gam_river_watershed_3_class_pr_curves_input_data_comparison, file=output_file, width=10, height=3.0, units="in")
 
 print("DONE")
 ############################
@@ -2094,9 +2096,55 @@ ggsave(combined_tbt_heatmap,file=output_file,width=7.2, height=11, units="in")
 
 
 
-
-
 ############################################
+# MAKE FIGURE 4 v4
+############################################
+
+row_1 <- plot_grid(NULL, roc_3_theta_pair_exact, roc_3_absolute_risk_bar_plot, ncol=3, labels=c("A","B","C"), rel_widths=c(1,1.1,1))
+row_2 <- plot_grid(gam_river_watershed_3_class_pr_curves, labels=c("D"))
+row_3 <- plot_grid(fig_5_te_theta_pair_heatmap, tbt_auc_distribution_plot2,ncol=2, rel_widths=c(1,.75), labels=c("E", "F"))
+fig_4 <- plot_grid(row_1, row_2, row_3, ncol=1, rel_heights=c(.55,.5,.7))
+ggsave(fig_4, file=paste0(output_dir, "fig4.pdf"), width=7.2, height=6, units="in")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################
+# OLD ANALYSIS
+##################
+
+if (FALSE) {
+	############################################
 # MAKE FIGURE 4
 ############################################
 
@@ -2127,14 +2175,4 @@ row_2 <- plot_grid(gam_river_watershed_3_class_pr_curves, labels=c("D"))
 row_3 <- plot_grid(fig_5_te_theta_pair_heatmap, tbt_auc_distribution_plot,ncol=2, rel_widths=c(1,.75), labels=c("E", "F"))
 fig_4 <- plot_grid(row_1, row_2, row_3, ncol=1, rel_heights=c(.55,.5,.7))
 ggsave(fig_4, file=paste0(output_dir, "fig4_v3.pdf"), width=7.2, height=6, units="in")
-
-############################################
-# MAKE FIGURE 4 v4
-############################################
-
-row_1 <- plot_grid(NULL, roc_3_theta_pair_exact, roc_3_absolute_risk_bar_plot, ncol=3, labels=c("A","B","C"), rel_widths=c(1,1.1,1))
-row_2 <- plot_grid(gam_river_watershed_3_class_pr_curves, labels=c("D"))
-row_3 <- plot_grid(fig_5_te_theta_pair_heatmap, tbt_auc_distribution_plot2,ncol=2, rel_widths=c(1,.75), labels=c("E", "F"))
-fig_4 <- plot_grid(row_1, row_2, row_3, ncol=1, rel_heights=c(.55,.5,.7))
-ggsave(fig_4, file=paste0(output_dir, "fig4_v4.pdf"), width=7.2, height=6, units="in")
-
+}
