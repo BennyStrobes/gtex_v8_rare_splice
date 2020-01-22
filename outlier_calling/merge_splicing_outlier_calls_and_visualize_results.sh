@@ -73,6 +73,15 @@ for model_version in "${model_version_array[@]}"; do
 done
 fi
 
+##################
+# Compute fraction of reads coming from each junction
+tissue_type="Muscle_Skeletal"
+output_file=$splicing_outlier_dir$tissue_type"_max_fraction_of_reads_from_a_junction.txt"
+splicing_outlier_file=$splicing_outlier_dir$tissue_type"_covariate_method_none_merged_emperical_pvalue.txt"
+tissue_specific_junction_file=$filtered_cluster_dir$tissue_type"_filtered_jxns_cross_tissue_clusters_gene_mapped.txt"
+if false; then
+python compute_fraction_of_reads_coming_from_each_junction.py $splicing_outlier_file $tissue_specific_junction_file $output_file
+fi
 ####################
 # Get gene level pvalues (accounting for the number of clusters we are taking the minimum over)
 if false; then

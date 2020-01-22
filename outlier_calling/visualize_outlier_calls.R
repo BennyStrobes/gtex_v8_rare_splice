@@ -161,7 +161,7 @@ robustness_of_outlier_calls_to_emperical_read_depth_scatterplot <- function(tiss
 	gold_standard_data <- read.table(gold_standard_file, header=TRUE)
 	gold_standard_cluster_ids <- as.character(gold_standard_data[,1])
 	gold_standard_data <- as.matrix(gold_standard_data[,2:dim(gold_standard_data)[2]])
-	frac <- as.matrix(read.table("bad_clusters.txt", header=FALSE))
+	frac <- as.matrix(read.table(paste0(splicing_outlier_dir, tissue_type, "_max_fraction_of_reads_from_a_junction.txt"), header=FALSE))
 
 	#indices <- rep("hi", dim(gold_standard_data)[1])
 	#indices <- indices=="hi"
@@ -206,6 +206,63 @@ robustness_of_outlier_calls_to_emperical_read_depth_scatterplot <- function(tiss
   			geom_point(size=.0001) +
   			gtex_v8_figure_theme() +
   			labs(x = "-log10(pvalue gs)", y="-log10(pvalue alt)",colour="frac_arr") 
+  	return(p)
+}
+
+compare_outlier_distributions <- function(gold_standard_file, comparison_file, fraction_of_reads_file, x_axis_label, y_axis_label) {
+	# Load in Gold Standard outlier data
+	gold_standard_data <- read.table(gold_standard_file, header=TRUE)
+	gold_standard_cluster_ids <- as.character(gold_standard_data[,1])
+	gold_standard_data <- as.matrix(gold_standard_data[,2:dim(gold_standard_data)[2]])
+
+	# Load in comparison outlier data
+	comparison_data <- read.table(comparison_file, header=TRUE)
+	comparison_cluster_ids <- as.character(comparison_data[,1])
+	comparison_data <- as.matrix(comparison_data[,2:dim(comparison_data)[2]])
+
+	frac <- as.matrix(read.table(fraction_of_reads_file, header=FALSE))
+
+	# Subset to clusters found in b
+	indices = gold_standard_cluster_ids %in% comparison_cluster_ids
+	num_clusters_failed = length(indices) - sum(indices)
+	print(paste0(num_clusters_failed, " clusters did not converge when no prior was used"))
+	gold_standard_data <- gold_standard_data[indices,]
+	frac <- frac[indices,]
+	gold_standard_cluster_ids <- gold_standard_cluster_ids[indices]
+
+	# Double check that data is matching
+	if (sum(comparison_cluster_ids != gold_standard_cluster_ids) != 0.0) {
+		print('assumption error')
+	}
+
+		
+	alt_pvalue = as.vector(comparison_data)
+	gs_pvalue = as.vector(gold_standard_data)
+	frac_arr = as.vector(frac)
+	frac_arr[frac_arr < .8] = .8
+
+	# OUTPUT SOME STATISTICS
+	print(cor(gs_pvalue, alt_pvalue, method="spearman"))
+	diff = abs(-log10(gs_pvalue+1e-6) - -log10(alt_pvalue+1e-6))
+	print(sum(diff > 1))
+	print(length(diff))
+	print(sum(diff > 1)/length(diff))
+
+
+	# randomly sample indices for viz
+	random_indices <- sample (c(1:length(gs_pvalue)), size=length(gs_pvalue)/100.0, replace=F)
+	gs_pvalue = gs_pvalue[random_indices]
+	alt_pvalue = alt_pvalue[random_indices]
+	frac_arr = frac_arr[random_indices]
+
+	# Put into compact data frame
+	df <- data.frame(stadard_pvalue=-log10(gs_pvalue+1e-6), alt_pvalue=-log10(alt_pvalue+1e-6), fraction=frac_arr)
+	# Plot
+	p <- ggplot(df, aes(x=stadard_pvalue, y=alt_pvalue,colour=frac_arr)) + 
+  			geom_point(size=.0001) +
+  			gtex_v8_figure_theme() +
+  			theme(legend.position="bottom") + 
+  			labs(x = paste0("-log10(p-value) [ ", x_axis_label, " ]"), y=paste0("-log10(p-value) [ ", y_axis_label, " ]"),colour="Fraction of reads\nfrom one junction") 
   	return(p)
 }
 
@@ -326,6 +383,68 @@ output_file <- paste0(splicing_outlier_visualization_dir, "corrected_vs_uncorrec
 ###############################
 # Robustness of splicing outlier calls in Muscle-Skeletal to hyperparameters
 ###############################
+
+# Compare outlier distrbutions as a function of prior choice
+tissue_type <- "Muscle_Skeletal"
+output_file <- paste0(splicing_outlier_visualization_dir, "compare_outlier_distributions_prior_vs_no_prior_scatter.pdf")
+gold_standard_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_model_version_hyperparam_standard_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_model_version_hyperparam_no_prior_multiple_initializations_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+fraction_of_reads_file <- paste0(splicing_outlier_dir, tissue_type, "_max_fraction_of_reads_from_a_junction.txt")
+outlier_comparison_scatter_no_prior <- compare_outlier_distributions(gold_standard_file, comparison_file, fraction_of_reads_file, "Standard prior", paste0("No prior"))
+ggsave(outlier_comparison_scatter_no_prior, file=output_file, width=7.2, height=5, units="in")
+
+
+# Compare outlier distrbutions as a function of emperical read depth
+tissue_type <- "Muscle_Skeletal"
+num_reads <- "1000"
+output_file <- paste0(splicing_outlier_visualization_dir, "compare_outlier_distributions_20000_vs_", num_reads, "_scatter.pdf")
+gold_standard_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_20000_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_", num_reads, "_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+fraction_of_reads_file <- paste0(splicing_outlier_dir, tissue_type, "_max_fraction_of_reads_from_a_junction.txt")
+#outlier_comparison_scatter_1000_reads <- compare_outlier_distributions(gold_standard_file, comparison_file, fraction_of_reads_file, "20000 reads", paste0(num_reads, " reads"))
+#ggsave(outlier_comparison_scatter_1000_reads, file=output_file, width=7.2, height=5, units="in")
+
+tissue_type <- "Muscle_Skeletal"
+num_reads <- "10000"
+output_file <- paste0(splicing_outlier_visualization_dir, "compare_outlier_distributions_20000_vs_", num_reads, "_scatter.pdf")
+gold_standard_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_20000_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_", num_reads, "_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+fraction_of_reads_file <- paste0(splicing_outlier_dir, tissue_type, "_max_fraction_of_reads_from_a_junction.txt")
+outlier_comparison_scatter_10000_reads <- compare_outlier_distributions(gold_standard_file, comparison_file, fraction_of_reads_file, "20000 reads", paste0(num_reads, " reads"))
+ggsave(outlier_comparison_scatter_10000_reads, file=output_file, width=7.2, height=5, units="in")
+
+tissue_type <- "Muscle_Skeletal"
+num_reads <- "100000"
+output_file <- paste0(splicing_outlier_visualization_dir, "compare_outlier_distributions_20000_vs_", num_reads, "_scatter.pdf")
+gold_standard_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_20000_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_", num_reads, "_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
+fraction_of_reads_file <- paste0(splicing_outlier_dir, tissue_type, "_max_fraction_of_reads_from_a_junction.txt")
+outlier_comparison_scatter_100000_reads <- compare_outlier_distributions(gold_standard_file, comparison_file, fraction_of_reads_file, "20000 reads", paste0(num_reads, " reads"))
+ggsave(outlier_comparison_scatter_100000_reads, file=output_file, width=7.2, height=5, units="in")
+
+# Make combined plot
+output_file <- paste0(splicing_outlier_visualization_dir, "compare_outlier_distributions_combined.pdf")
+joint_outlier_robustness_plot <- plot_grid(outlier_comparison_scatter_10000_reads, outlier_comparison_scatter_100000_reads, outlier_comparison_scatter_no_prior, ncol=2, labels=c("A","B", "C"))
+ggsave(joint_outlier_robustness_plot, file=output_file, width=7.2, height=7, units="in")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################
+# OLD (NO LONGER USED)
+########################
+
+
 tissue_type <- "Muscle_Skeletal"
 output_file <- paste0(splicing_outlier_visualization_dir, "pseudocount_emperical_read_depth_robustness_boxplot.pdf")
 # boxplot <- robustness_of_outlier_calls_to_emperical_read_depth_boxplot(tissue_type, covariate_method, splicing_outlier_dir)
@@ -343,6 +462,6 @@ output_file <- paste0(splicing_outlier_visualization_dir, "emperical_read_depth_
 ###############################
 tissue_type <- "Muscle_Skeletal"
 output_file <- paste0(splicing_outlier_visualization_dir, tissue_type, "_outlier_prior_robustness_scatter.pdf")
-scatter <- robustness_of_outlier_calls_to_prior_scatterplot(tissue_type, covariate_method, splicing_outlier_dir)
-ggsave(scatter, file=output_file, width=7.2, height=5, units="in")
+#scatter <- robustness_of_outlier_calls_to_prior_scatterplot(tissue_type, covariate_method, splicing_outlier_dir)
+#ggsave(scatter, file=output_file, width=7.2, height=5, units="in")
 
