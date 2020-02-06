@@ -372,7 +372,7 @@ mutation_type_pwm_plot_across_annotated_concensus_sites_two_row <- function(inpu
 
 	combined <- plot_grid(combined_donor_plotter, combined_acceptor_plotter, ncol=2, rel_widths=c(7,3)) +
 				draw_text("Background for splice sites with low junction usage", x=.55, y=.97, size=8)+
-				draw_text("Outlier variants for splice sites with low junction usage", x=.55, y=.47, size=8)
+				draw_text("sOutlier variants for splice sites with low junction usage", x=.55, y=.47, size=8)
 
 	return(combined)
 
@@ -1655,6 +1655,70 @@ make_positional_odds_ratio_plot_seperated_by_ss_type <- function(inlier_distance
 }
 
 
+# Make density plot of distance between rare variants and splice sites (with seperate plots for 5' and 3' splice sites) using odds ratios of real vs background
+# Positive distance corresponds to variant being on exon while negative distance corresponds to variant being in intron
+make_positional_odds_ratio_plot_seperated_by_ss_type_no_y_axis <- function(inlier_distance_file, outlier_distance_file) {
+	inlier_distances <- read.table(inlier_distance_file, header=TRUE)
+	outlier_distances <- read.table(outlier_distance_file, header=TRUE)
+
+	outlier_donor_distances <- outlier_distances[as.character(outlier_distances$splice_site_type)=="donor",]
+	outlier_acceptor_distances <- outlier_distances[as.character(outlier_distances$splice_site_type)=="acceptor",]
+	inlier_donor_distances <- inlier_distances[as.character(inlier_distances$splice_site_type)=="donor",]
+	inlier_acceptor_distances <- inlier_distances[as.character(inlier_distances$splice_site_type)=="acceptor",]
+
+
+
+	donor_df <- extract_positional_odds_ratio_data_for_all_positions_in_window(outlier_donor_distances, inlier_donor_distances, 7, 3)
+	acceptor_df <- extract_positional_odds_ratio_data_for_all_positions_in_window(outlier_acceptor_distances, inlier_acceptor_distances, 3,2)
+
+
+
+	#Combine outliers and non-outliers into a compact data frame
+	odds_ratio <- c(donor_df$odds_ratio, acceptor_df$odds_ratio)
+	dist_to_ss <- c(donor_df$dist_to_ss, acceptor_df$dist_to_ss)
+	ss_type <- c(rep("donor",length(donor_df$dist_to_ss)), rep("acceptor", length(acceptor_df$dist_to_ss)))
+	lower_bounds <- c(donor_df$lower_bounds, acceptor_df$lower_bounds)
+	upper_bounds <- c(donor_df$upper_bounds, acceptor_df$upper_bounds)
+
+	df <- data.frame(odds_ratio=odds_ratio, dist_to_ss=dist_to_ss, lower_bound=lower_bounds, upper_bound=upper_bounds, ss_type=factor(ss_type, levels=c("donor","acceptor")))
+
+	df_acceptor <- df[as.character(df$ss_type) == "acceptor",]
+	df_donor <- df[as.character(df$ss_type) == "donor", ]
+
+
+	options(bitmapType = 'cairo', device = 'pdf')
+
+	acceptor_plot <-  ggplot() + geom_point(data=df_acceptor, mapping=aes(x=dist_to_ss, y=odds_ratio), color="#0D324D") +
+					geom_errorbar(data=df_acceptor, mapping=aes(x=dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="#0D324D",width=0.0) +
+					labs(x = "", y = "") +
+					#geom_vline(xintercept = -.5, size=.00001,linetype="dashed") +
+					#geom_vline(xintercept = -2.5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					gtex_v8_figure_theme() +
+					theme(axis.text.x=element_text(angle=45,hjust=1)) +
+					scale_x_continuous(breaks=-3:1, labels=c("A-3","A-2","A-1","A+1", "A+2")) +
+					theme(axis.title.y=element_blank())
+
+
+	donor_plot <-  ggplot() + geom_point(data=df_donor, mapping=aes(x=-dist_to_ss, y=odds_ratio), color="#0D324D") +
+					geom_errorbar(data=df_donor, mapping=aes(x=-dist_to_ss,ymin=lower_bound, ymax=upper_bound),color="#0D324D",width=0.0) +
+					labs(x = "", y = "") +
+					#geom_vline(xintercept = 2.5, size=.00001,linetype="dashed") +
+					#geom_vline(xintercept = .5, size=.00001,linetype="dashed") + 
+					geom_hline(yintercept = 1, size=.00001,linetype="dashed") +
+					gtex_v8_figure_theme() + 
+					theme(axis.text.x=element_text(angle=45,hjust=1)) +
+					scale_x_continuous(breaks=-2:7, labels=c("D-3", "D-2", "D-1", "D+1", "D+2", "D+3","D+4", "D+5", "D+6", "D+7"))
+
+
+	error_bar_plot <- plot_grid(donor_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm")),acceptor_plot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm")), ncol=2, rel_widths=c(1.9,1))
+
+	return(error_bar_plot)
+
+
+}
+
+
 odds_ratio_concensus_boxplot_across_tissues <- function(aa) {
 	df_to_concensus <- aa[as.character(aa$to_or_from_concensus) == "to_concensus",]
 	df_from_concensus <- aa[as.character(aa$to_or_from_concensus) == "from_concensus",]
@@ -2488,6 +2552,17 @@ output_file <- paste0(visualize_variant_position_enrichment_dir, "distance_to_",
 panel_2d <- make_positional_odds_ratio_plot_seperated_by_ss_type(inlier_distance_file, outlier_distance_file)
 ggsave(panel_2d, file=paste0(visualize_variant_position_enrichment_dir, "panel_2d.pdf"), width=7.2, height=3, units="in")
 
+#######################
+# Positional odds ratio plots for RV seperated by donor vs acceptor splice sites
+#########################
+distance <- "1000"
+version <- "observed_splice_site"
+pvalue_threshold <- "1e-05"
+outlier_distance_file <- paste0(variant_position_enrichment_dir, "outlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+inlier_distance_file <- paste0(variant_position_enrichment_dir, "inlier_distance_to_", version, "_distance_", distance, "_pvalue_thresh_", pvalue_threshold, ".txt")
+panel_2d_no_y_axis <- make_positional_odds_ratio_plot_seperated_by_ss_type_no_y_axis(inlier_distance_file, outlier_distance_file)
+#ggsave(panel_2d, file=paste0(visualize_variant_position_enrichment_dir, "panel_2d.pdf"), width=7.2, height=3, units="in")
+
 
 #######################
 #Make plot showing read count enrichments for rare variants in PPTs
@@ -2517,10 +2592,55 @@ ggsave(fig_2, file=paste0(visualize_variant_position_enrichment_dir,'fig2.pdf'),
 #########################
 first_row <- plot_grid(panel_2a, panel_2b, labels = c('A','B'), ncol=2)
 second_row <- plot_grid(NULL, labels = c('C'), ncol=1)
-third_row <- plot_grid(panel_2d, panel_2e, labels = c('D','E'), ncol=2, rel_widths=c(1.6,1))
-fourth_row <- plot_grid(mutation_type_annotated_pwm_plot, labels = c('F'), ncol=1)
+third_row <- plot_grid(panel_2d, panel_2e, labels = c('D','F'), ncol=2, rel_widths=c(1.6,1))
+fourth_row <- plot_grid(NULL, mutation_type_annotated_pwm_plot, labels = c('E', ''), ncol=2, rel_widths=c(.01,1))
 fig_2 = plot_grid(first_row,second_row,third_row, fourth_row, nrow = 4, align='v', rel_heights=c(1.1,.55,.85,.5))
 ggsave(fig_2, file=paste0(visualize_variant_position_enrichment_dir,'fig2_v2.pdf'), width=7.2, height=6.7,units="in")
+
+
+############
+# Make figure 2 
+#########################
+
+panel_2e_edited <- panel_2e + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"), panel.border = element_blank())
+first_row <- plot_grid(panel_2a, panel_2b, labels = c('A','B'), ncol=2)
+second_row <- plot_grid(NULL, labels = c('C'), ncol=1)
+third_row <- plot_grid(NULL,NULL, labels = c('D', ''),rel_heights=c(.04,1), ncol=1)
+fourth_row <- plot_grid(NULL, NULL, mutation_type_annotated_pwm_plot_two_row, NULL, labels = c("E","F", "", ""), ncol=2, rel_heights=c(.03,1), rel_widths=c(1,.7))
+fig_2 = plot_grid(first_row,second_row,third_row, fourth_row, nrow = 4, align='v', rel_heights=c(.98,.45,.63,.78))
+combined_fig2 <- ggdraw() + 
+				draw_plot(fig_2,0,0,1,1) +
+				draw_plot(panel_2e_edited,.59,-.019,.4,.255) +
+				draw_plot(panel_2d_no_y_axis,-.0145,.242,1.00,.22) +
+				draw_label("Relative risk", 0.007, .39, size=8,angle=90) 
+
+ggsave(combined_fig2, file=paste0(visualize_variant_position_enrichment_dir,'fig2_v3.pdf'), width=7.2, height=7.0,units="in")
+
+
+############
+# Make figure 2 
+#########################
+
+panel_2e_edited <- panel_2e + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"), panel.border = element_blank())
+first_row <- plot_grid(panel_2a, panel_2b, labels = c('A','B'), ncol=2)
+second_row <- plot_grid(NULL, labels = c('C'), ncol=1)
+third_row <- plot_grid(NULL,NULL, labels = c('D', ''),rel_heights=c(.04,1), ncol=1)
+fourth_row <- plot_grid(NULL, NULL, mutation_type_annotated_pwm_plot_two_row, NULL, labels = c("E","F", "", ""), ncol=2, rel_heights=c(.03,1), rel_widths=c(1,.56))
+fig_2 = plot_grid(first_row,second_row,third_row, fourth_row, nrow = 4, align='v', rel_heights=c(.98,.45,.63,.78))
+combined_fig2 <- ggdraw() + 
+				draw_plot(fig_2,0,0,1,1) +
+				draw_plot(panel_2e_edited + labs(y=""),.632,-.019,.357,.255) +
+				draw_plot(panel_2d_no_y_axis,-.0145,.242,1.00,.22) +
+				draw_label("Relative risk", 0.007, .39, size=8,angle=90) +
+				draw_label("Junction usage", 0.655, .145, size=8,angle=90) 
+
+ggsave(combined_fig2, file=paste0(visualize_variant_position_enrichment_dir,'fig2_v4.pdf'), width=7.2, height=7.0,units="in")
+
+
+
+print("DONE")
+
+
 
 #######################
 # Make TBT enrichment supplementary figure

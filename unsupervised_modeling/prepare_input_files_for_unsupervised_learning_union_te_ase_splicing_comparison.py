@@ -724,6 +724,7 @@ pvalue = float(sys.argv[6])
 gene_individual_to_variant_mapping_file = sys.argv[7]
 seeder = int(sys.argv[8])
 
+'''
 # Extract dictionary list of individuals used in all three methods
 individuals = get_list_of_individuals_used_in_all_methods(total_expression_outlier_file, ase_outlier_file, splicing_outlier_file)
 # Extract dictionary list of genes used in all three methods
@@ -778,18 +779,18 @@ print_outlier_output_file_no_nan(ase_outliers, total_expression_outliers, splici
 merged_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_N2_pairs.txt'
 merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', total_expression_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', ase_output_file.split('.tx')[0] + '_features_filter_N2_pairs.txt', merged_output_file)
 
-
+'''
 # Make output file with no tissue specific genomic annotations
 merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
-remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
+#remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
 
 # Randomly subset the previous file (merged_no_tissue_anno_output_file) to N training instances
-merged_no_tissue_anno_same_n2_pairs_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_' + str(seeder) + '.txt'
+merged_no_tissue_anno_same_n2_pairs_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_450000_' + str(seeder) + '.txt'
 # Make sure it has the same features as standard watershed file
 standard_watershed_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs_' + str(seeder) + '.txt'
 
 # Use same N2 pairs as was used in standard watershed analysis (p=.01).. see standard_watershed_file
-max_number_of_training_instances=300000
+max_number_of_training_instances=450000
 merge_with_standard_watershed_file(merged_no_tissue_anno_output_file, standard_watershed_file, merged_no_tissue_anno_same_n2_pairs_output_file, max_number_of_training_instances, seeder)
 
 

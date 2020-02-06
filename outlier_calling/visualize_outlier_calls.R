@@ -48,8 +48,8 @@ bar_plot_showing_number_of_multi_tissue_outliers_at_various_pvalue_thresholds <-
 
 corrected_vs_uncorrected_gene_level_pvalue_scatter_plot <- function(pvalue_comparison_file, tissue_type) {
 	df <- read.table(pvalue_comparison_file,header=TRUE)
-	df$corrected_pvalue <- -log10(df$corrected_pvalue + .0000001)
-	df$uncorrected_pvalue <- -log10(df$uncorrected_pvalue + .0000001)
+	df$corrected_pvalue <- -log10(df$corrected_pvalue + .000001)
+	df$uncorrected_pvalue <- -log10(df$uncorrected_pvalue + .000001)
 
 	df <- df[sample(nrow(df), 100000),]
 
@@ -368,16 +368,16 @@ output_file <- paste0(splicing_outlier_visualization_dir, "number_of_multi_tissu
 # Scatter plot showing corrected and uncorrected -log10(pvalues) at gene level colored by number of clusters mapped to the gene
 tissue_type="Muscle_Skeletal"
 pvalue_comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_covariate_method_", covariate_method,"_gene_level_method_comparison.txt")
-# cluster_correction_scatter <- corrected_vs_uncorrected_gene_level_pvalue_scatter_plot(pvalue_comparison_file, tissue_type)
+cluster_correction_scatter <- corrected_vs_uncorrected_gene_level_pvalue_scatter_plot(pvalue_comparison_file, tissue_type)
 
 # histogram showing corrected and uncorrected pvalues at gene level
 tissue_type="Muscle_Skeletal"
 pvalue_comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_covariate_method_", covariate_method,"_gene_level_method_comparison.txt")
-# clustter_correction_histogram <- corrected_vs_uncorrected_gene_level_pvalue_histogram(pvalue_comparison_file, tissue_type)
+clustter_correction_histogram <- corrected_vs_uncorrected_gene_level_pvalue_histogram(pvalue_comparison_file, tissue_type)
 
 output_file <- paste0(splicing_outlier_visualization_dir, "corrected_vs_uncorrected_gene_level_pvalues_", tissue_type, "_joint.pdf")
-#joint_correction_plot <- plot_grid(cluster_correction_scatter, clustter_correction_histogram, ncol=1, labels=c("A","B"))
-# ggsave(joint_correction_plot, file=output_file, width=7.2, height=5, units="in")
+joint_correction_plot <- plot_grid(cluster_correction_scatter, clustter_correction_histogram, ncol=1, labels=c("A","B"))
+ggsave(joint_correction_plot, file=output_file, width=7.2, height=5, units="in")
 
 
 ###############################
@@ -411,7 +411,7 @@ gold_standard_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_re
 comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_", num_reads, "_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
 fraction_of_reads_file <- paste0(splicing_outlier_dir, tissue_type, "_max_fraction_of_reads_from_a_junction.txt")
 outlier_comparison_scatter_10000_reads <- compare_outlier_distributions(gold_standard_file, comparison_file, fraction_of_reads_file, "20000 reads", paste0(num_reads, " reads"))
-ggsave(outlier_comparison_scatter_10000_reads, file=output_file, width=7.2, height=5, units="in")
+#ggsave(outlier_comparison_scatter_10000_reads, file=output_file, width=7.2, height=5, units="in")
 
 tissue_type <- "Muscle_Skeletal"
 num_reads <- "100000"
@@ -420,12 +420,12 @@ gold_standard_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_re
 comparison_file <- paste0(splicing_outlier_dir, tissue_type, "_compare_num_read_hyperparam_", num_reads, "_covariate_method_", covariate_method, "_merged_emperical_pvalue.txt")
 fraction_of_reads_file <- paste0(splicing_outlier_dir, tissue_type, "_max_fraction_of_reads_from_a_junction.txt")
 outlier_comparison_scatter_100000_reads <- compare_outlier_distributions(gold_standard_file, comparison_file, fraction_of_reads_file, "20000 reads", paste0(num_reads, " reads"))
-ggsave(outlier_comparison_scatter_100000_reads, file=output_file, width=7.2, height=5, units="in")
+#ggsave(outlier_comparison_scatter_100000_reads, file=output_file, width=7.2, height=5, units="in")
 
 # Make combined plot
 output_file <- paste0(splicing_outlier_visualization_dir, "compare_outlier_distributions_combined.pdf")
 joint_outlier_robustness_plot <- plot_grid(outlier_comparison_scatter_10000_reads, outlier_comparison_scatter_100000_reads, outlier_comparison_scatter_no_prior, ncol=2, labels=c("A","B", "C"))
-ggsave(joint_outlier_robustness_plot, file=output_file, width=7.2, height=7, units="in")
+#ggsave(joint_outlier_robustness_plot, file=output_file, width=7.2, height=7, units="in")
 
 
 

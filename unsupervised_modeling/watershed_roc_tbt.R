@@ -416,13 +416,36 @@ remove_na <- function(x) {
 	return(x[!is.na(x)])
 }
 
- #######################################
+compute_confidence_interval_on_auprc_with_non_parametric_bootstrap <- function(predictions, labels, num_bootstrap_samples) {
+	set.seed(2)
+	# Number of samples we have
+	num_samples <- length(predictions)
+	# Initialize vector to keep track of auprc across bootstrap iterations
+	auprc_arr <- c()
+	# Compute aucprc across whole vector
+	population_auprc <- pr.curve(scores.class0=predictions[labels==1], scores.class1=predictions[labels==0])$auc.integral
+	# Loop through bootstrap samples
+	for (bootstrap_sample in 1:num_bootstrap_samples) {
+		bootstrap_indices = sample(1:num_samples,size=num_samples,replace=TRUE)
+		bootstrap_predictions = predictions[bootstrap_indices]
+		bootstrap_labels = labels[bootstrap_indices]
+		bootstrap_auprc <- pr.curve(scores.class0=bootstrap_predictions[bootstrap_labels==1], scores.class1=bootstrap_predictions[bootstrap_labels==0])$auc.integral
+		auprc_arr <- c(auprc_arr, bootstrap_auprc)
+	}
+	#print(quantile(auprc_arr,.025))
+	#print(quantile(auprc_arr, .975))
+	return(auprc_arr)
+}
+
+
+#######################################
 # Extract ROC curves and precision recall curves for test set (in each dimension seperately) using:
 #### 1. Watershed
 #### 2. GAM
 #### 3. RNA-only
 #######################################
 compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels, posterior_prob_test, real_valued_outliers_test1, gam_posteriors, binary_outliers_test2, median_river_prob, outlier_type) {
+	num_non_parametric_bootstrap_samples <- 20000
 	roc_object_across_dimensions <- list()
 	pos_list <- c()
 	neg_list <- c()
@@ -435,6 +458,7 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
 	}
   	# Loop through dimensions
   	for (dimension in 1:number_of_dimensions) {
+  		print(dimension)
   		# Name of dimension
   		dimension_name <- strsplit(dimension_labels[dimension],"_pval")[[1]][1]
   		# Pseudo gold standard
@@ -447,6 +471,9 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
   		pos_list <- c(pos_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]))
   		neg_list <- c(neg_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]))
   	
+  		valid_indices <- !is.na(real_valued_outliers_test1[,dimension]) & !is.na(test_outlier_status)
+  		watershed_auc_prc_ci <- compute_confidence_interval_on_auprc_with_non_parametric_bootstrap(posterior_prob_test[valid_indices, dimension], test_outlier_status[valid_indices], num_non_parametric_bootstrap_samples)
+
   		# Predictions with only RNA
   		#rna_only_roc_obj <- roc(test_outlier_status, real_valued_outliers_test1[,dimension])
   		rna_only_roc_obj <- roc.curve(scores.class0 = remove_na(real_valued_outliers_test1[,dimension][test_outlier_status==1]), scores.class1 = remove_na(real_valued_outliers_test1[,dimension][test_outlier_status==0]), curve = T)
@@ -457,8 +484,15 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
    		gam_roc_obj <- roc.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
    		gam_pr_obj <- pr.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
 
+   		valid_indices <- !is.na(real_valued_outliers_test1[,dimension]) & !is.na(test_outlier_status)
+  		gam_auc_prc_ci <- compute_confidence_interval_on_auprc_with_non_parametric_bootstrap(gam_posteriors[valid_indices, dimension], test_outlier_status[valid_indices], num_non_parametric_bootstrap_samples)
+
    		median_river_roc_obj <- roc.curve(scores.class0 = remove_na(median_river_prob[,outlier_dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(median_river_prob[,outlier_dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
    		median_river_pr_obj <- pr.curve(scores.class0 = remove_na(median_river_prob[,outlier_dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(median_river_prob[,outlier_dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
+
+   		valid_indices <- !is.na(real_valued_outliers_test1[,dimension]) & !is.na(test_outlier_status)
+  		median_river_auc_prc_ci <- compute_confidence_interval_on_auprc_with_non_parametric_bootstrap(median_river_prob[valid_indices, outlier_dimension], test_outlier_status[valid_indices], num_non_parametric_bootstrap_samples)
+
 
 		evaROC <-	
 		 list(watershed_sens=roc_obj$curve[,2],
@@ -467,12 +501,14 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
          	  watershed_pr_auc=pr_obj$auc.integral,
          	  watershed_recall=pr_obj$curve[,1],
          	  watershed_precision=pr_obj$curve[,2],
+         	  watershed_pr_auc_bootstraps=watershed_auc_prc_ci,
          	  GAM_sens=gam_roc_obj$curve[,2],
               GAM_spec=1-gam_roc_obj$curve[,1],
               GAM_auc=gam_roc_obj$auc,
          	  GAM_pr_auc=gam_pr_obj$auc.integral,
          	  GAM_recall=gam_pr_obj$curve[,1],
          	  GAM_precision=gam_pr_obj$curve[,2],
+         	  GAM_pr_auc_bootstraps=gam_auc_prc_ci,
          	  rna_only_pr_auc=rna_only_pr_obj$auc.integral,
          	  rna_only_recall=rna_only_pr_obj$curve[,1],
          	  rna_only_precision=rna_only_pr_obj$curve[,2],
@@ -485,6 +521,7 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
               median_river_pr_auc=median_river_pr_obj$auc.integral,
               median_river_recall=median_river_pr_obj$curve[,1],
               median_river_precision=median_river_pr_obj$curve[,2],
+              median_river_pr_auc_bootstraps=median_river_auc_prc_ci,
               num_positive_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])])),
               num_negative_pairs=length(remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])])))
 
@@ -506,7 +543,10 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
 
 
 
-roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, outlier_type) {
+roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, outlier_type, file_name) {
+	watershed_data <- readRDS(file_name)
+	watershed_model <- watershed_data$model_params
+	gam_data <- watershed_data$gam_params
 	#######################################
 	# Load in all data (training and test)
 	#######################################
@@ -548,8 +588,8 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	nfolds <- 5
 
-	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
-	saveRDS(gam_data,"gam.RDS")
+	#gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
+	#saveRDS(gam_data,"gam.RDS")
 	#gam_data <- readRDS("gam.RDS")
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
 
@@ -579,7 +619,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
   	lambda_pair <- lambda_pair_init
   	lambda <- lambda_init
 
-  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold)
+  	# watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold)
 
  	#######################################
 	## Get test data watershed posterior probabilities
@@ -836,9 +876,8 @@ data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pval
 #######################################
 ## Run Watershed model
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, outlier_type)
-saveRDS(roc_object, paste0(output_root, "_roc_object.rds"))
-
+roc_object <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, phi_method, lambda_init, lambda_pair_init, outlier_type, paste0(output_root, "_roc_object2.rds"))
+saveRDS(roc_object, paste0(output_root, "_roc_object3.rds"))
 
 
 

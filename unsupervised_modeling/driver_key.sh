@@ -125,23 +125,23 @@ fi
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
 input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.05_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_3.txt"
-output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_seperate_pseudoc"
+output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_subsample"
 if false; then
 sbatch watershed_roc_run_3_outlier_types_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $input_file $output_stem
 fi
 
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
-input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.1_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_3.txt"
-output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_seperate_pseudoc"
+input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.1_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_450000_3.txt"
+output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000"
 if false; then
 sbatch watershed_roc_run_3_outlier_types_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $input_file $output_stem
 fi
 
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
-input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.01_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_3.txt"
-output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_seperate_pseudoc"
+input_file=$unsupervised_learning_input_dir"fully_observed_merged_outliers_0.01_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_450000_3.txt"
+output_stem=$watershed_3_class_roc_run_dir"fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000"
 if false; then
 sbatch watershed_roc_run_3_outlier_types_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $input_file $output_stem
 fi
@@ -154,10 +154,11 @@ sbatch watershed_score_run.sh $unsupervised_learning_input_dir $watershed_3_clas
 
 fi
 
-
+if false; then
 #####################
 # TBT Model
 #####################
+#te
 pseudocount="10"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
@@ -168,9 +169,8 @@ independent_variables="false"  # false or true
 inference_method="pseudolikelihood" # pseudolikelihood or exact
 outlier_type="total_expression"  # splicing, total_expression, ase
 number_of_dimensions="49"
-if false; then
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
-fi
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+
 
 
 pseudocount="10"
@@ -183,10 +183,68 @@ independent_variables="true"  # false or true
 inference_method="exact" # pseudolikelihood or exact
 outlier_type="total_expression"  # splicing, total_expression, ase
 number_of_dimensions="49"
-if false; then
-sh watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+
+
+#ase
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_method="fixed"  # fixed, sample_size, marginal
+lambda_init=".001"
+lambda_pair_init=".001"
+independent_variables="false"  # false or true
+inference_method="pseudolikelihood" # pseudolikelihood or exact
+outlier_type="ase"  # splicing, total_expression, ase
+number_of_dimensions="49"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_method="fixed"  # fixed, sample_size
+lambda_init=".001"
+lambda_pair_init=".001"
+independent_variables="true"  # false or true
+inference_method="exact" # pseudolikelihood or exact
+outlier_type="ase"  # splicing, total_expression, ase
+number_of_dimensions="49"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+
+#splicing
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_method="fixed"  # fixed, sample_size, marginal
+lambda_init=".001"
+lambda_pair_init=".001"
+independent_variables="false"  # false or true
+inference_method="pseudolikelihood" # pseudolikelihood or exact
+outlier_type="splicing"  # splicing, total_expression, ase
+number_of_dimensions="49"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_method="fixed"  # fixed, sample_size
+lambda_init=".001"
+lambda_pair_init=".001"
+independent_variables="true"  # false or true
+inference_method="exact" # pseudolikelihood or exact
+outlier_type="splicing"  # splicing, total_expression, ase
+number_of_dimensions="49"
+sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $outlier_type $number_of_dimensions
+
 fi
 
+
+
+
+
+###############################
+# VISUALIZE RESULTS
+################################
 Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
 
 

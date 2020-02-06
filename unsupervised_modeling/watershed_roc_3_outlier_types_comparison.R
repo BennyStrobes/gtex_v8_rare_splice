@@ -560,7 +560,7 @@ load_watershed_data_for_gene_threshold_comparison <- function(input_file, standa
 	# Put all data into compact data structure
 	#scaled_pseudoc = 30.0*num_training_instances/standard_num_training_instances
 	# scaled_pseudoc = 30.0*num_training_outliers/standard_num_training_outliers
-	scaled_pseudoc = pseudoc_arr
+	scaled_pseudoc = 30.0
 
 	data_input <- list(feat=as.matrix(feat), outlier_pvalues=as.matrix(outlier_pvalues),outliers_binary=as.matrix(outliers_binary), fraction_outliers_binary=as.matrix(fraction_outliers_binary),outliers_discrete=outliers_discrete, N2_pairs=N2_pairs, pseudoc=scaled_pseudoc)
 	return(data_input)
@@ -592,6 +592,7 @@ vi_threshold=1e-8
 lambda_init <- 0.001
 
 set.seed(3)
+print(input_file)
 #######################################
 ## Load in data
 #######################################

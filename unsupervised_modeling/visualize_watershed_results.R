@@ -299,7 +299,7 @@ make_tbt_auc_distribution_plot2 <- function(ase_watershed, ase_river, ase_tissue
 	# Make boxplot
 	boxplot <- ggplot(df, aes(x=method, y=auc, fill=outlier_type)) + geom_boxplot() +
 				gtex_v8_figure_theme() + 
-				xlab("") +
+				xlab("Tissue-Specific Model") +
                	ylab("AUC(PR)") + 
                	theme(legend.position="none") +
                	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0"))  
@@ -344,7 +344,87 @@ make_tbt_auc_lolipop_plot <- function(roc_object_vi, roc_object_exact, tissue_na
                scale_x_continuous(breaks=1:length(ordered_tissue_names),labels=gsub("_"," ",ordered_tissue_names,fixed=TRUE)) 
     return(plotter +draw_text(outlier_type, x=11, y=.68,size=8))
 }
-#gsub(".", " ", data, fixed=TRUE)
+
+make_tbt_delta_auc_lolipop_plot <- function(roc_object_vi, roc_object_exact, tissue_names, outlier_type, tissue_names_subset) {
+	delta_auc_vec <- c()
+	ordered_tissue_names <- c()
+	lower_bound_vec <- c()
+	upper_bound_vec <- c()
+	for (tissue_num in 1:length(tissue_names)) {
+		tissue_name <- tissue_names[tissue_num]
+		if (tissue_name %in% tissue_names_subset) {
+			#print(tissue_name)
+			tissue_auc_vi <- roc_object_vi[[tissue_num]]$evaROC$watershed_pr_auc
+			tissue_auc_independent <- roc_object_exact[[tissue_num]]$evaROC$watershed_pr_auc
+			population_tbt_delta_auc = tissue_auc_vi - tissue_auc_independent
+			#print(population_tbt_delta_auc)
+
+			bootstrapped_delta_pr_auc = roc_object_vi[[tissue_num]]$evaROC$watershed_pr_auc_bootstraps - roc_object_exact[[tissue_num]]$evaROC$watershed_pr_auc_bootstraps
+
+			c_u = population_tbt_delta_auc - quantile(bootstrapped_delta_pr_auc-population_tbt_delta_auc, .025, na.rm=TRUE)
+			c_l = population_tbt_delta_auc - quantile(bootstrapped_delta_pr_auc-population_tbt_delta_auc, .975, na.rm=TRUE)
+
+			#print(paste0("[ ",c_u, ", ", c_l, " ]"))
+			ordered_tissue_names <- c(ordered_tissue_names, tissue_name)
+			delta_auc_vec <- c(delta_auc_vec, population_tbt_delta_auc)
+			lower_bound_vec <- c(lower_bound_vec, c_l)
+			upper_bound_vec <- c(upper_bound_vec, c_u)
+		}
+	}
+
+	df <- data.frame(tissue=ordered_tissue_names, tissues_position=1:length(ordered_tissue_names), delta_auc=delta_auc_vec, lower_bound=lower_bound_vec, upper_bound=upper_bound_vec)
+	error_bar_plot <- ggplot() + geom_point(data=df, mapping=aes(x=tissues_position, y=delta_auc), color="#0D324D") +
+					geom_errorbar(data=df, mapping=aes(x=tissues_position,ymin=lower_bound, ymax=upper_bound),color="#0D324D",width=0.0) +
+					gtex_v8_figure_theme() +
+					geom_hline(yintercept = 0.0, size=.00001,linetype="dashed") +
+					theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=0.5)) +
+					scale_x_continuous(breaks=1:length(ordered_tissue_names), labels=ordered_tissue_names) + 
+					xlab("") + 
+					ylab("tissue-specific Watershed AUC (PR) - tissue-specific RIVER AUC (PR)")
+	
+	return(error_bar_plot + draw_text(outlier_type, x=11, y=.68,size=8))
+}
+
+make_tbt_delta_auc_lolipop_plot_with_median_river <- function(roc_object, tissue_names, outlier_type, tissue_names_subset) {
+	delta_auc_vec <- c()
+	ordered_tissue_names <- c()
+	lower_bound_vec <- c()
+	upper_bound_vec <- c()
+	for (tissue_num in 1:length(tissue_names)) {
+		tissue_name <- tissue_names[tissue_num]
+		if (tissue_name %in% tissue_names_subset) {
+			#print(tissue_name)
+			tissue_auc_vi <- roc_object[[tissue_num]]$evaROC$watershed_pr_auc
+			tissue_auc_independent <- roc_object[[tissue_num]]$evaROC$median_river_pr_auc
+			population_tbt_delta_auc = tissue_auc_vi - tissue_auc_independent
+			#print(population_tbt_delta_auc)
+
+			bootstrapped_delta_pr_auc = roc_object[[tissue_num]]$evaROC$watershed_pr_auc_bootstraps - roc_object[[tissue_num]]$evaROC$median_river_pr_auc_bootstraps
+
+			c_u = population_tbt_delta_auc - quantile(bootstrapped_delta_pr_auc-population_tbt_delta_auc, .025, na.rm=TRUE)
+			c_l = population_tbt_delta_auc - quantile(bootstrapped_delta_pr_auc-population_tbt_delta_auc, .975, na.rm=TRUE)
+
+			#print(paste0("[ ",c_u, ", ", c_l, " ]"))
+			ordered_tissue_names <- c(ordered_tissue_names, tissue_name)
+			delta_auc_vec <- c(delta_auc_vec, population_tbt_delta_auc)
+			lower_bound_vec <- c(lower_bound_vec, c_l)
+			upper_bound_vec <- c(upper_bound_vec, c_u)
+		}
+	}
+
+	df <- data.frame(tissue=ordered_tissue_names, tissues_position=1:length(ordered_tissue_names), delta_auc=delta_auc_vec, lower_bound=lower_bound_vec, upper_bound=upper_bound_vec)
+	error_bar_plot <- ggplot() + geom_point(data=df, mapping=aes(x=tissues_position, y=delta_auc), color="#0D324D") +
+					geom_errorbar(data=df, mapping=aes(x=tissues_position,ymin=lower_bound, ymax=upper_bound),color="#0D324D",width=0.0) +
+					gtex_v8_figure_theme() +
+					geom_hline(yintercept = 0.0, size=.00001,linetype="dashed") +
+					theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=0.5)) +
+					scale_x_continuous(breaks=1:length(ordered_tissue_names), labels=ordered_tissue_names) + 
+					xlab("") + 
+					ylab("tissue-specific Watershed AUC (PR) - RIVER AUC (PR)")
+	
+	return(error_bar_plot + draw_text(outlier_type, x=11, y=.68,size=8))
+}
+
 
 gtex_v8_figure_theme <- function() {
 	return(theme(plot.title = element_text(face="plain",size=8), text = element_text(size=8),axis.text=element_text(size=7), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=7), legend.title = element_text(size=8)))
@@ -414,13 +494,14 @@ make_tbt_auc_lolipop_plot_v2 <- function(roc_object_vi, roc_object_exact, tissue
 	}
 
 	cols <- c( "c1" = "steelblue3", "c2" = "firebrick4" )
-
+	#print(wilcox.test(auc_vi, auc_exact, alternative = "two.sided"))
+	print(binom.test(x=sum(auc_vi>auc_exact), n=length(auc_vi), alternative="greater"))
 	df <- data.frame(auc_watershed = auc_vi, auc_river=auc_exact, tissue=ordered_tissue_names, tissues_position=1:length(ordered_tissue_names))
 	plotter <- ggplot(df) +
   			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
   			   geom_point( aes(x=tissues_position, y=auc_vi, color="c1"), size=1.5) +
                geom_point( aes(x=tissues_position, y=auc_exact, color="c2"), size=1.5) +
-               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("Watershed", "River")) +
+               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue-specific\nWatershed", "tissue-specific\nRIVER")) +
                ggtitle(outlier_type) +
                 xlab("") +
                ylab("AUC (PR)") + 
@@ -449,13 +530,14 @@ make_tbt_auc_lolipop_plot_with_median_river <- function(roc_object, tissue_names
 	}
 
 	cols <- c( "c1" = "steelblue3", "c2" = rgb(0.2,0.7,0.1,0.5) )
-
+	#print(wilcox.test(auc_vi, auc_exact, alternative = "greater"))
+	print(binom.test(x=sum(auc_vi>auc_exact), n=length(auc_vi), alternative="greater"))
 	df <- data.frame(auc_watershed = auc_vi, auc_river=auc_exact, tissue=ordered_tissue_names, tissues_position=1:length(ordered_tissue_names))
 	plotter <- ggplot(df) +
   			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
   			   geom_point( aes(x=tissues_position, y=auc_vi, color="c1"), size=1.5) +
                geom_point( aes(x=tissues_position, y=auc_exact, color="c2"), size=1.5) +
-               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("Watershed", "River")) +
+               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue-specific\nWatershed", "River")) +
                ggtitle(outlier_type) +
                 xlab("") +
                ylab("AUC (PR)") + 
@@ -819,7 +901,7 @@ absolute_risk_plot_with_cadd_helper <- function(gam_predictions, watershed_predi
 }
 
 
-plot_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_object_ind, number_of_dimensions, output_file) {
+plot_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_object_ind, number_of_dimensions, output_file, use_legend=TRUE, legend_height=-.38) {
 	precision <- c()
 	recall <- c()
 	outlier_type <- c()
@@ -894,7 +976,11 @@ plot_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_o
     legend <- get_legend(plotter_ase + theme(legend.position="bottom"))
     combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"), plotter_splice+ theme(legend.position="none"), plotter_te+ theme(legend.position="none"), rel_widths=c(1,1,1), nrow=1)
 
-	combined <- ggdraw() + draw_plot(combined_plots,0,.07,1,.9) + draw_plot(legend,.38,-0.38,1,1)
+    if (use_legend==TRUE) {
+		combined <- ggdraw() + draw_plot(combined_plots,0,.07,1,.9) + draw_plot(legend,.38,legend_height,1,1)
+	} else {
+		combined <- ggdraw() + draw_plot(combined_plots,0,.07,1,.9)
+	}
 
 	return(combined)
 }
@@ -1181,15 +1267,22 @@ extract_sample_outlier_values <- function(data_input) {
 	return(outliers_discrete_train)
 }
 
+extract_real_valued_sample_outlier_values <- function(data_input) {
+	N2_pairs <- data_input$N2_pairs
+	outliers_real_valued_train <- data_input$outlier_pvalues[is.na(N2_pairs),]
+	return(outliers_real_valued_train)
+}
+
 compare_watershed_posteriors_with_different_training_inputs <- function(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact) {
 	roc_3_class_sample_names <- extract_watershed_sample_names(roc_3_class_data_input)
 	alt_roc_3_class_sample_names <- extract_watershed_sample_names(alt_roc_3_class_data_input)
 	indices <- alt_roc_3_class_sample_names %in% roc_3_class_sample_names
-	if (sum(roc_3_class_sample_names != alt_roc_3_class_sample_names[indices]) != 0) {
+	indices2 <- roc_3_class_sample_names %in% alt_roc_3_class_sample_names
+	if (sum(roc_3_class_sample_names[indices2] != alt_roc_3_class_sample_names[indices]) != 0) {
 		print("FUNDAMENTAL ASSUMPTION ERROR in compare_watershed_posteriors_with_different_training_inputs")
 	}
 
-	roc_posteriors <- roc_object_exact$model_params$posterior
+	roc_posteriors <- roc_object_exact$model_params$posterior[indices2,]
 	alt_roc_posteriors <- alt_roc_object_exact$model_params$posterior[indices,]
 
 	standard_posterior <- c()
@@ -1222,8 +1315,8 @@ compare_watershed_posteriors_with_different_training_inputs <- function(roc_3_cl
 }
 
 make_posterior_scatter_colored_by_outlier_class <- function(posterior, alt_posterior, outlier_status, title) {
-	print(title)
-	print(cor.test(posterior, alt_posterior))
+	#print(title)
+	#print(cor.test(posterior, alt_posterior))
 	df <- data.frame(standard_posterior=posterior, alt_posterior=alt_posterior, outlier=factor(outlier_status))
 	plotter <- ggplot(df, aes(x=standard_posterior, y=alt_posterior, colour=outlier)) + geom_point(size=.8) +
 			geom_abline() + 
@@ -1235,19 +1328,24 @@ make_posterior_scatter_colored_by_outlier_class <- function(posterior, alt_poste
 }
 
 compare_watershed_posteriors_seperated_by_class_with_different_training_inputs <- function(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact) {
+
 	roc_3_class_sample_names <- extract_watershed_sample_names(roc_3_class_data_input)
 	alt_roc_3_class_sample_names <- extract_watershed_sample_names(alt_roc_3_class_data_input)
 	indices <- alt_roc_3_class_sample_names %in% roc_3_class_sample_names
-	if (sum(roc_3_class_sample_names != alt_roc_3_class_sample_names[indices]) != 0) {
+	indices2 <- roc_3_class_sample_names %in% alt_roc_3_class_sample_names
+	if (sum(roc_3_class_sample_names[indices2] != alt_roc_3_class_sample_names[indices]) != 0) {
 		print("FUNDAMENTAL ASSUMPTION ERROR in compare_watershed_posteriors_with_different_training_inputs")
 	}
 
-	roc_posteriors <- roc_object_exact$model_params$posterior
+	roc_posteriors <- roc_object_exact$model_params$posterior[indices2,]
 	alt_roc_posteriors <- alt_roc_object_exact$model_params$posterior[indices,]
-	
+
+
+
 	outliers <- extract_sample_outlier_values(roc_3_class_data_input)
 	alt_outliers <- extract_sample_outlier_values(alt_roc_3_class_data_input)
 	alt_outliers <- alt_outliers[indices,]
+	outliers <- outliers[indices2,]
 	if (sum(outliers!=alt_outliers) != 0) {
 		print("FUNDAMENTAL assumption error")
 	}
@@ -1261,6 +1359,49 @@ compare_watershed_posteriors_seperated_by_class_with_different_training_inputs <
 	return(combined_scatter_plots)
 
 }
+
+compare_watershed_posteriors_seperated_by_class_with_different_training_inputs_colored_by_other_outlier_signal <- function(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact) {
+
+	roc_3_class_sample_names <- extract_watershed_sample_names(roc_3_class_data_input)
+	alt_roc_3_class_sample_names <- extract_watershed_sample_names(alt_roc_3_class_data_input)
+	indices <- alt_roc_3_class_sample_names %in% roc_3_class_sample_names
+	indices2 <- roc_3_class_sample_names %in% alt_roc_3_class_sample_names
+	if (sum(roc_3_class_sample_names[indices2] != alt_roc_3_class_sample_names[indices]) != 0) {
+		print("FUNDAMENTAL ASSUMPTION ERROR in compare_watershed_posteriors_with_different_training_inputs")
+	}
+
+	roc_posteriors <- roc_object_exact$model_params$posterior[indices2,]
+	alt_roc_posteriors <- alt_roc_object_exact$model_params$posterior[indices,]
+
+
+
+	outliers <- extract_sample_outlier_values(roc_3_class_data_input)
+	alt_outliers <- extract_sample_outlier_values(alt_roc_3_class_data_input)
+	alt_outliers <- alt_outliers[indices,]
+	outliers <- outliers[indices2,]
+	if (sum(outliers!=alt_outliers) != 0) {
+		print("FUNDAMENTAL assumption error")
+	}
+
+	ase_splicing_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,3], alt_roc_posteriors[,3], outliers[,1], "ASE posterior\ncolored by Splicing outlier status")
+	ase_expression_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,3], alt_roc_posteriors[,3], outliers[,2], "ASE posterior\ncolored by Expression outlier status")
+	ase_ase_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,3], alt_roc_posteriors[,3], outliers[,3], "ASE posterior\ncolored by ASE outlier status")
+
+	splicing_splicing_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,1], alt_roc_posteriors[,1], outliers[,1], "Splicing colored by Splicing")
+	splicing_expression_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,1], alt_roc_posteriors[,1], outliers[,2], "Splicing colored by Expression")
+	splicing_ase_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,1], alt_roc_posteriors[,1], outliers[,3], "Splicing colored by ASE")
+
+	expression_splicing_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,2], alt_roc_posteriors[,2], outliers[,1], "Expression colored by Splicing")
+	expression_expression_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,2], alt_roc_posteriors[,2], outliers[,2], "Expression colored by Expression")
+	expression_ase_scatter_plot <- make_posterior_scatter_colored_by_outlier_class(roc_posteriors[,2], alt_roc_posteriors[,2], outliers[,3], "Expression colored by ASE")	
+
+	combined_scatter_plots <- plot_grid(ase_ase_scatter_plot, ase_splicing_scatter_plot, ase_expression_scatter_plot, splicing_ase_scatter_plot, splicing_splicing_scatter_plot, splicing_expression_scatter_plot, expression_ase_scatter_plot, expression_splicing_scatter_plot, expression_expression_scatter_plot, ncol=3)
+
+	return(combined_scatter_plots)
+
+}
+
+
 
 plot_three_class_auprc_bootstrap_distributions <- function(watershed_roc, river_roc, number_of_dimensions) {
 	auprc <- c()
@@ -1375,6 +1516,8 @@ plot_three_class_delta_auprc_bootstrap_distributions <- function(watershed_roc, 
 
 		fraction = sum(watershed_roc_object$evaROC$watershed_pr_auc_bootstraps > river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps)/length(river_roc_object_ind$evaROC$watershed_pr_auc_bootstraps)
 		print(paste0(dimension_name, ": ", 1-fraction))
+		print(ci)
+		print(population_delta_pr_auc)
 
 		pvalues <- bootstrapped_delta_pr_auc
 		delta_auprc <- c(delta_auprc, bootstrapped_delta_pr_auc)
@@ -1649,7 +1792,7 @@ independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_", independent_variables)
 roc_object_exact <- readRDS(paste0(output_root, "_roc_object3.rds"))
-
+# print(paste0(output_root, "_roc_object3.rds"))
 
 ####### Pseudolikelihood approximation to watershed
 independent_variables = "false"
@@ -1665,37 +1808,23 @@ output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_
 roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
 
+if (FALSE) {
 
 #######################################
 ## delta AUPRC bootstrap hypothesis testing
 #######################################
-if (FALSE) {
 output_file <- paste0(output_dir, "watershed_3_class_delta_auprc_hypothesis_testing_bootstrap_distributions.pdf")
 delta_auprc_bootstrap_hypothesis_testing_histogram <- delta_auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
 ggsave(delta_auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
 
 
-#######################################
-## AUPRC bootstrap hypothesis testing
-#######################################
-output_file <- paste0(output_dir, "watershed_3_class_auprc_hypothesis_testing_bootstrap_distributions.pdf")
-auprc_bootstrap_hypothesis_testing_histogram <- auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
-ggsave(auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
-
+}
 #######################################
 ## Visualize bootstrap delta auprc distributions
 #######################################
 output_file <- paste0(output_dir, "watershed_3_class_delta_auprc_bootstrap_distributions.pdf")
 roc_3_bootstrap_distributions <- plot_three_class_delta_auprc_bootstrap_distributions(roc_object_exact$roc, roc_object_independent$roc, 3)
 ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, units="in")
-
-#######################################
-## Visualize bootstrap auprc distributions
-#######################################
-output_file <- paste0(output_dir, "watershed_3_class_auprc_bootstrap_distributions.pdf")
-roc_3_bootstrap_distributions <- plot_three_class_auprc_bootstrap_distributions(roc_object_exact$roc, roc_object_independent$roc, 3)
-ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, units="in")
-}
 
 
 #######################################
@@ -1773,34 +1902,89 @@ confusion_heatmap <- visualize_river_and_watershed_confusion_matrices(roc_object
 ggsave(confusion_heatmap, file=output_file, width=7.2, height=7.0, units="in")
 
 
-
 #######################################
-## Compare Watershed to versions of Watershed trained on alternative training data sets
+## Compare Watershed to versions of Watershed trained on alternative training data sets colored by outlier status of that outlier signal
 #######################################
-gene_pval="0.05"
-output_file <- paste0(output_dir, "compare_watershed_posterior_with_different_training_inputs_01_05_scatter.pdf")
-alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_data_input.rds"))
-alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
-scatter <- compare_watershed_posteriors_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
+# gene pval .05
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
+output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_gene_pvalue_threshold_.05.pdf")
+scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
 ggsave(scatter, file=output_file, width=7.2, height=5.0, units="in")
 
-gene_pval="0.05"
-output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_01_05_scatter.pdf")
-alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_data_input.rds"))
-alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
+
+# gene pval .1
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+print(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_gene_pvalue_threshold_.1.pdf")
 scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
-ggsave(scatter, file=output_file, width=13.2, height=7.0, units="in")
+ggsave(scatter, file=output_file, width=7.2, height=5.0, units="in")
+
+
+# Union gene pval .01
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_gene_pvalue_threshold_union_.01.pdf")
+scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
+ggsave(scatter, file=output_file, width=7.2, height=5.0, units="in")
+
+
+#######################################
+## Compare Watershed to versions of Watershed trained on alternative training data sets colored_by_outlier_status of other outlier signals
+#######################################
+# gene pval .05
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
+output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_colored_by_other_outlier_signal_gene_pvalue_threshold_.05.pdf")
+scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs_colored_by_other_outlier_signal(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
+ggsave(scatter, file=output_file, width=7.2, height=9.0, units="in")
+
+# gene pval .1
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_colored_by_other_outlier_signal_gene_pvalue_threshold_.1.pdf")
+scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs_colored_by_other_outlier_signal(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
+ggsave(scatter, file=output_file, width=7.2, height=9.0, units="in")
+
+
+# Union gene pval .01
+alt_roc_3_class_data_input <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_data_input.rds"))
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+output_file <- paste0(output_dir, "compare_watershed_posterior_seperated_by_outlier_class_with_different_training_inputs_colored_by_other_outlier_signal_gene_pvalue_threshold_union_.01.pdf")
+scatter <- compare_watershed_posteriors_seperated_by_class_with_different_training_inputs_colored_by_other_outlier_signal(roc_3_class_data_input, alt_roc_3_class_data_input, roc_object_exact, alt_roc_object_exact)
+ggsave(scatter, file=output_file, width=7.2, height=9.0, units="in")
 
 #######################################
 ## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)
 #######################################
 number_of_dimensions <- 3
-output_file <- paste0(output_dir, "compare_gene_threshold_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
-alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_", gene_pval, "_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_true_roc_object3.rds"))
-gam_river_watershed_3_class_pr_curves_input_data_comparison <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions)
-ggsave(gam_river_watershed_3_class_pr_curves_input_data_comparison, file=output_file, width=10, height=3.0, units="in")
+output_file <- paste0(output_dir, "compare_gene_threshold_.05_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
+alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_true_roc_object3.rds"))
+gam_river_watershed_3_class_pr_curves_input_data_comparison_05 <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, use_legend=FALSE)
 
-print("DONE")
+number_of_dimensions <- 3
+output_file <- paste0(output_dir, "compare_gene_threshold_.1_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_inference_exact_independent_true_roc_object3.rds"))
+gam_river_watershed_3_class_pr_curves_input_data_comparison_1 <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, use_legend=FALSE)
+
+
+number_of_dimensions <- 3
+output_file <- paste0(output_dir, "compare_gene_union_threshold_.01_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_true_roc_object3.rds"))
+gam_river_watershed_3_class_pr_curves_input_data_comparison_01_union <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, legend_height=-.45)
+
+
+combined_pr_curve_data_input_comparison <- plot_grid(gam_river_watershed_3_class_pr_curves_input_data_comparison_05, gam_river_watershed_3_class_pr_curves_input_data_comparison_1, gam_river_watershed_3_class_pr_curves_input_data_comparison_01_union, ncol=1, labels=c("A","B","C"))
+output_file <- paste0(output_dir, "compare_gene_threshold_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
+ggsave(combined_pr_curve_data_input_comparison, file=output_file, width=7.2, height=6.0, units="in")
+
+print("done")
+
+
 ############################
 # Model hyperparameters
 ############################
@@ -1823,8 +2007,8 @@ chrom_hmm_to_tissue <- read.table(chrom_hmm_to_tissue_mapping_file, header=TRUE,
 ############################
 outlier_type <- "splicing"
 stem <- paste0(outlier_type,"_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001")
-splicing_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object2.rds"))
-splicing_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object2.rds"))
+splicing_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object3.rds"))
+splicing_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object3.rds"))
 splicing_tissue_names <- get_tissue_names(splicing_watershed_obj, number_of_dimensions)
 
 ############################
@@ -1832,8 +2016,8 @@ splicing_tissue_names <- get_tissue_names(splicing_watershed_obj, number_of_dime
 ############################
 outlier_type <- "total_expression"
 stem <- paste0(outlier_type,"_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001")
-te_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object2.rds"))
-te_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object2.rds"))
+te_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object3.rds"))
+te_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object3.rds"))
 te_tissue_names <- get_tissue_names(te_watershed_obj, number_of_dimensions)
 ############################
 # Load in ASE data
@@ -1841,8 +2025,8 @@ te_tissue_names <- get_tissue_names(te_watershed_obj, number_of_dimensions)
 outlier_type <- "ase"
 number_of_dimensions <- 49
 stem <- paste0(outlier_type,"_tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001")
-ase_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object2.rds"))
-ase_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object2.rds"))
+ase_watershed_obj <- readRDS(paste0(tbt_roc_dir, stem, "_inference_pseudolikelihood_independent_false_roc_object3.rds"))
+ase_river_obj <- readRDS(paste0(tbt_roc_dir, stem,"_inference_exact_independent_true_roc_object3.rds"))
 ase_tissue_names <- get_tissue_names(ase_watershed_obj, number_of_dimensions)
 
 
@@ -1880,6 +2064,19 @@ watershed_phi_plot <- make_phi_bar_plot(splicing_watershed_obj$model_params$phi,
 river_phi_plot <- make_phi_bar_plot(splicing_river_obj$model_params$phi, splicing_tissue_names, paste0("river-",outlier_type))
 phi_plot <- plot_grid(river_phi_plot, watershed_phi_plot, ncol=2)
 ggsave(phi_plot, file=output_file, width=8.0, height=4.6, units="in")
+
+######################################
+# Visualize tbt delta- pr auc curves between watershed and river
+######################################
+#output_file <- paste0(output_dir, stem, "tissue_by_tissue_delta_pr_auc_between_river_watershed_lolipop.pdf")
+splicing_tbt_delta_auc_lolipop_plot <- make_tbt_delta_auc_lolipop_plot(splicing_watershed_obj$roc, splicing_river_obj$roc, splicing_tissue_names, "Splicing", tissues_with_suffiecient_n2_pairs)
+# ggsave(ase_tbt_delta_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
+######################################
+# Visualize tbt delta- pr auc curves between watershed and median-river
+######################################
+#output_file <- paste0(output_dir, stem, "tissue_by_tissue_delta_pr_auc_between_river_watershed_lolipop.pdf")
+splicing_tbt_delta_auc_median_river_lolipop_plot <- make_tbt_delta_auc_lolipop_plot_with_median_river(splicing_watershed_obj$roc, splicing_tissue_names, "Splicing", tissues_with_suffiecient_n2_pairs)
+# ggsave(ase_tbt_delta_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
 
 
 ######################################
@@ -1947,6 +2144,21 @@ ggsave(phi_plot, file=output_file, width=8.0, height=4.6, units="in")
 
 
 ######################################
+# Visualize tbt delta- pr auc curves between watershed and river
+######################################
+output_file <- paste0(output_dir, stem, "tissue_by_tissue_delta_pr_auc_between_river_watershed_lolipop.pdf")
+te_tbt_delta_auc_lolipop_plot <- make_tbt_delta_auc_lolipop_plot(te_watershed_obj$roc, te_river_obj$roc, te_tissue_names, "Expression", tissues_with_suffiecient_n2_pairs)
+#ggsave(te_tbt_delta_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
+######################################
+# Visualize tbt delta- pr auc curves between watershed and median-river
+######################################
+#output_file <- paste0(output_dir, stem, "tissue_by_tissue_delta_pr_auc_between_river_watershed_lolipop.pdf")
+te_tbt_delta_auc_median_river_lolipop_plot <- make_tbt_delta_auc_lolipop_plot_with_median_river(te_watershed_obj$roc, te_tissue_names, "Expression", tissues_with_suffiecient_n2_pairs)
+# ggsave(ase_tbt_delta_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
+
+
+
+######################################
 # Visualize tbt pr auc curves between watershed and river
 ######################################
 output_file <- paste0(output_dir, stem, "tissue_by_tissue_pr_auc_between_river_watershed_lolipop.pdf")
@@ -1997,6 +2209,20 @@ watershed_phi_plot <- make_phi_bar_plot(ase_watershed_obj$model_params$phi, ase_
 river_phi_plot <- make_phi_bar_plot(ase_river_obj$model_params$phi, ase_tissue_names, paste0("river-",outlier_type))
 phi_plot <- plot_grid(river_phi_plot, watershed_phi_plot, ncol=2)
 ggsave(phi_plot, file=output_file, width=8.0, height=4.6, units="in")
+
+
+######################################
+# Visualize tbt delta- pr auc curves between watershed and river
+######################################
+output_file <- paste0(output_dir, stem, "tissue_by_tissue_delta_pr_auc_between_river_watershed_lolipop.pdf")
+ase_tbt_delta_auc_lolipop_plot <- make_tbt_delta_auc_lolipop_plot(ase_watershed_obj$roc, ase_river_obj$roc, ase_tissue_names, "ASE", tissues_with_suffiecient_n2_pairs)
+#ggsave(ase_tbt_delta_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
+######################################
+# Visualize tbt delta- pr auc curves between watershed and median-river
+######################################
+#output_file <- paste0(output_dir, stem, "tissue_by_tissue_delta_pr_auc_between_river_watershed_lolipop.pdf")
+ase_tbt_delta_auc_median_river_lolipop_plot <- make_tbt_delta_auc_lolipop_plot_with_median_river(ase_watershed_obj$roc, ase_tissue_names, "ASE", tissues_with_suffiecient_n2_pairs)
+# ggsave(ase_tbt_delta_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
 
 ######################################
 # Visualize tbt pr auc curves between watershed and river
@@ -2061,7 +2287,6 @@ output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue
 auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot)
 #combined <- plot_grid(ase_tbt_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2.44), ncol=1)
 combined <- plot_grid(ase_tbt_auc_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,3), ncol=1)
-
 tbt_auc_plot <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,0,-.46,1,1)
 ggsave(tbt_auc_plot,file=output_file,width=7.2, height=8.2, units="in")
 
@@ -2071,7 +2296,7 @@ ggsave(tbt_auc_plot,file=output_file,width=7.2, height=8.2, units="in")
 output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_pr_auc_between_median_river_and_watershed_lolipop_by_row.pdf")
 auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot_with_median_river)
 combined <- plot_grid(ase_tbt_auc_lolipop_plot_with_median_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_with_median_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot_with_median_river +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
-combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.49,1,1)
+combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.47,1,1)
 ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
 
 ######################################
@@ -2080,8 +2305,22 @@ ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
 output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_pr_auc_between_river_and_watershed_lolipop_by_row_v2.pdf")
 auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot_v2)
 combined <- plot_grid(ase_tbt_auc_lolipop_plot_v2 + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_v2 + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot_v2 +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
-combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.49,1,1)
+combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.47,1,1)
 ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
+
+
+######################################
+# Visualize tbt delta-pr auc curves between watershed and river across outlier types all on same plot
+######################################
+output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_delta_pr_auc_between_river_and_watershed_errorbar.pdf")
+tbt_auc_plot <- plot_grid(ase_tbt_delta_auc_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_delta_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_delta_auc_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,1.9), ncol=1)
+ggsave(tbt_auc_plot,file=output_file,width=7.2, height=6.5, units="in")
+######################################
+# Visualize tbt delta-pr auc curves between watershed and median-river across outlier types all on same plot
+######################################
+output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_delta_pr_auc_between_median_river_and_watershed_errorbar.pdf")
+tbt_auc_plot <- plot_grid(ase_tbt_delta_auc_median_river_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_delta_auc_median_river_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_delta_auc_median_river_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,1.9), ncol=1)
+ggsave(tbt_auc_plot,file=output_file,width=7.2, height=6.5, units="in")
 
 
 
@@ -2097,7 +2336,7 @@ ggsave(combined_tbt_heatmap,file=output_file,width=7.2, height=11, units="in")
 
 
 ############################################
-# MAKE FIGURE 4 v4
+# MAKE FIGURE 4
 ############################################
 
 row_1 <- plot_grid(NULL, roc_3_theta_pair_exact, roc_3_absolute_risk_bar_plot, ncol=3, labels=c("A","B","C"), rel_widths=c(1,1.1,1))
@@ -2127,23 +2366,29 @@ ggsave(fig_4, file=paste0(output_dir, "fig4.pdf"), width=7.2, height=6, units="i
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 #################
 # OLD ANALYSIS
 ##################
 
 if (FALSE) {
+
+#######################################
+## AUPRC bootstrap hypothesis testing
+#######################################
+output_file <- paste0(output_dir, "watershed_3_class_auprc_hypothesis_testing_bootstrap_distributions.pdf")
+auprc_bootstrap_hypothesis_testing_histogram <- auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
+ggsave(auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
+
+#######################################
+## Visualize bootstrap auprc distributions
+#######################################
+output_file <- paste0(output_dir, "watershed_3_class_auprc_bootstrap_distributions.pdf")
+roc_3_bootstrap_distributions <- plot_three_class_auprc_bootstrap_distributions(roc_object_exact$roc, roc_object_independent$roc, 3)
+ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, units="in")
+
+
+
+
 	############################################
 # MAKE FIGURE 4
 ############################################

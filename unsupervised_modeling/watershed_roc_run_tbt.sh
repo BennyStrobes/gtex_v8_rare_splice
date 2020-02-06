@@ -1,8 +1,8 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=55:00:00
-#SBATCH --partition=shared
+#SBATCH --time=5:00:00
+#SBATCH --partition=lrgmem
 #SBATCH --nodes=1
 
 

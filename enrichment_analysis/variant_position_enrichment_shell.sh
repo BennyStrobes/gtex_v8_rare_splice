@@ -105,10 +105,12 @@ pvalue_thresholds=(".00001")
 
 distance="1000"
 # Loop through pvalue thresholds
+if false; then
 for pvalue_threshold in "${pvalue_thresholds[@]}"; do
 	echo $distance"_"$pvalue_threshold
 	python variant_position_enrichment_quantification.py $rare_variant_dir $variant_position_enrichment_dir $splicing_outlier_dir $splicing_outlier_suffix $european_ancestry_individual_list $gencode_gene_annotation_file $cluster_info_file $pvalue_threshold $distance $exon_file
 done
+fi
 
 
 
@@ -127,9 +129,8 @@ fi
 ########################
 # Visualize results
 ########################
-if false; then
 Rscript visualize_variant_position_enrichment.R $variant_position_enrichment_dir $jxn_usage_nearby_altered_ss_enrichment_dir $variant_enrichment_dir $tissue_names_file $tissue_colors_file $visualize_variant_position_enrichment_dir $splice_site_cartoon $figure_2_ab_data
-fi
+
 
 
 
