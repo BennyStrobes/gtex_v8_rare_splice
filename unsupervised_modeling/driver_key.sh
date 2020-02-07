@@ -108,9 +108,8 @@ github_repo_dir=$output_root"github_repo_data/"
 ###############################################
 # Scripts 
 ###############################################
-if false; then
 sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $variant_level_genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file $splicing_outlier_dir $ase_outlier_dir $te_outlier_dir $tissue_names_file $ase_old_outlier_file
-fi
+
 
 
 
@@ -239,14 +238,29 @@ sbatch watershed_roc_run_tbt.sh $unsupervised_learning_input_dir $watershed_tbt_
 fi
 
 
-
+#####################
+# TBT-cross signal Model
+#####################
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_method="fixed"  # fixed, sample_size, marginal
+lambda_init=".001"
+lambda_pair_init=".001"
+independent_variables="false"  # false or true
+inference_method="pseudolikelihood" # pseudolikelihood or exact
+number_of_dimensions="9"
+if false; then
+sh watershed_roc_run_tbt_cross_signal.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $number_of_dimensions
+fi
 
 
 ###############################
 # VISUALIZE RESULTS
 ################################
+if false; then
 Rscript visualize_watershed_results.R $watershed_3_class_roc_run_dir $watershed_tbt_roc_run_dir $genomic_annotations_names_file $tissue_names_file $chrom_hmm_to_tissue_mapping_file $watershed_visualization_dir $tissue_colors_file
-
+fi
 
 
 
