@@ -108,8 +108,9 @@ github_repo_dir=$output_root"github_repo_data/"
 ###############################################
 # Scripts 
 ###############################################
+if false; then
 sh prepare_input_files_for_unsupervised_learning_methods.sh $genomic_annotation_file $variant_level_genomic_annotation_file $total_expression_outlier_file $ase_outlier_file $splicing_outlier_file $unsupervised_learning_input_dir $gene_individual_to_variant_mapping_file $splicing_outlier_dir $ase_outlier_dir $te_outlier_dir $tissue_names_file $ase_old_outlier_file
-
+fi
 
 
 
@@ -120,6 +121,13 @@ gene_thresh="0.01"
 if false; then
 sh watershed_roc_run_3_outlier_types.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh
 fi
+
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+gene_thresh="0.01"
+sh submit_roc_run_single_tissue_cross_signal.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $gene_thresh $tissue_names_file
+
 
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
@@ -145,6 +153,11 @@ if false; then
 sbatch watershed_roc_run_3_outlier_types_comparison.sh $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir $n2_pair_pvalue_fraction $binary_pvalue_threshold $input_file $output_stem
 fi
 
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+if false; then
+sbatch watershed_roc_run_3_outlier_types_compare_different_trained_models_and_different_input_datas.sh $n2_pair_pvalue_fraction $binary_pvalue_threshold $unsupervised_learning_input_dir $watershed_3_class_roc_run_dir
+fi
 pseudocount="30"
 pvalue_fraction=".01"
 binary_pvalue_threshold=".01"
@@ -241,6 +254,19 @@ fi
 #####################
 # TBT-cross signal Model
 #####################
+pseudocount="10"
+n2_pair_pvalue_fraction=".01"
+binary_pvalue_threshold=".01"
+phi_method="fixed"  # fixed, sample_size, marginal
+lambda_init=".001"
+lambda_pair_init=".001"
+independent_variables="false"  # false or true
+inference_method="pseudolikelihood" # pseudolikelihood or exact
+number_of_dimensions="147"
+if false; then
+sbatch watershed_roc_run_tbt_cross_signal.sh $unsupervised_learning_input_dir $watershed_tbt_roc_run_dir $pseudocount $n2_pair_pvalue_fraction $binary_pvalue_threshold $phi_method $lambda_init $lambda_pair_init $independent_variables $inference_method $number_of_dimensions
+fi
+
 pseudocount="10"
 n2_pair_pvalue_fraction=".01"
 binary_pvalue_threshold=".01"

@@ -640,6 +640,74 @@ def randomly_filter_training_instances(input_file, standard_watershed_file, outp
 	t.close()
 	return
 
+def merge_with_standard_watershed_file_diff_n2_pairs(input_file, standard_watershed_file, output_file, max_number_of_training_instances, seeder):
+	np.random.seed(seeder)
+	# First get current number of samples
+	f = open(input_file)
+	head_count = 0
+	num_training = 0
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			continue
+		if data[-1] == 'NA': # is a training instance
+			num_training = num_training + 1
+	f.close()
+	if max_number_of_training_instances > num_training:
+		max_number_of_training_instances = num_training
+	# Get dictionary list of valid column names
+	valid_column_names = {}
+	n2_pair_lines = []
+	head_count = 0
+	f = open(standard_watershed_file)
+	for line in f:
+		line = line.rstrip()
+		data = line.split()
+		if head_count == 0:
+			head_count = head_count + 1
+			for ele in data:
+				valid_column_names[ele] = 1
+			header=data
+			continue
+	f.close()
+	# Then randomly subset to N training samples
+	randomly_selected_samples_arr = np.random.choice(range(num_training),size=max_number_of_training_instances,replace=False)
+	randomly_selected_samples_dict = {}
+	for ele in randomly_selected_samples_arr:
+		randomly_selected_samples_dict[ele] = 1
+	# Print output file
+	f = open(input_file)
+	t = open(output_file, 'w')
+	head_count = 0
+	line_counter = 0
+	for line in f:
+		line = line.rstrip()
+		data = np.asarray(line.split())
+		if head_count == 0:
+			head_count = head_count + 1
+			valid_column_positions = []
+			for i,ele in enumerate(data):
+				if ele in valid_column_names:
+					valid_column_positions.append(i)
+			valid_column_positions = np.asarray(valid_column_positions)
+			if np.array_equal(header,data[valid_column_positions]) == False:
+				print('assumption error; cant continue')
+				pdb.set_trace()
+			t.write('\t'.join(data[valid_column_positions]) + '\n')
+			continue
+		if data[-1] == 'NA':
+			if line_counter in randomly_selected_samples_arr:
+				filtered_line = data[valid_column_positions]
+				t.write('\t'.join(filtered_line) + '\n')
+		else:
+			filtered_line = data[valid_column_positions]
+			t.write('\t'.join(filtered_line) + '\n')
+		line_counter = line_counter + 1
+	f.close()
+	t.close()
+	return
 
 def merge_with_standard_watershed_file(input_file, standard_watershed_file, output_file, max_number_of_training_instances, seeder):
 	np.random.seed(seeder)
@@ -783,6 +851,21 @@ merge_three_files(splicing_output_file.split('.tx')[0] + '_features_filter_N2_pa
 # Make output file with no tissue specific genomic annotations
 merged_no_tissue_anno_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs.txt'
 #remove_tissue_specific_annotations(merged_output_file, merged_no_tissue_anno_output_file)
+
+
+
+# Randomly subset the previous file (merged_no_tissue_anno_output_file) to N training instances
+merged_no_tissue_anno_diff_n2_pairs_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_diff_N2_pairs_as_standard_450000_' + str(seeder) + '.txt'
+# Make sure it has the same features as standard watershed file
+standard_watershed_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_no_tissue_anno_N2_pairs_' + str(seeder) + '.txt'
+
+# Use same N2 pairs as was used in standard watershed analysis (p=.01).. see standard_watershed_file
+max_number_of_training_instances=450000
+merge_with_standard_watershed_file_diff_n2_pairs(merged_no_tissue_anno_output_file, standard_watershed_file, merged_no_tissue_anno_diff_n2_pairs_output_file, max_number_of_training_instances, seeder)
+
+
+
+
 
 # Randomly subset the previous file (merged_no_tissue_anno_output_file) to N training instances
 merged_no_tissue_anno_same_n2_pairs_output_file = unsupervised_learning_input_dir + 'fully_observed_merged_outliers_' + str(pvalue) + '_genes_union_between_te_ase_splicing_features_filter_no_tissue_anno_same_N2_pairs_as_standard_450000_' + str(seeder) + '.txt'

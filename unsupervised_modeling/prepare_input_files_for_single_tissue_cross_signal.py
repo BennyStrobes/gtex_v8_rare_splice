@@ -69,42 +69,24 @@ expression_genomic_annotations, expression_outlier_calls, expression_n2_pairs = 
 # Extact header
 genomic_anno_header, tissue_names, n2_pair_header = extact_header(splicing_tbt_file, number_of_tissues, number_of_genomic_annotations)
 
-# Print to output file
-output_file = unsupervised_learning_input_dir + 'tbt_' + str(number_of_tissues) + '_cross_signal_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
-t = open(output_file, 'w')
-# Write header
-t.write('\t'.join(genomic_anno_header))
-for tissue_name in tissue_names:
-	t.write('\t' + 'splicing_' + tissue_name)
-for tissue_name in tissue_names:
-	t.write('\t' + 'expression_' + tissue_name)
-for tissue_name in tissue_names:
-	t.write('\t' + 'ase_' + tissue_name)
-t.write('\t' + n2_pair_header + '\n')
-# Write lines to output file
-num_lines = len(splicing_n2_pairs)
-for line_number in range(num_lines):
-	t.write('\t'.join(splicing_genomic_annotations[line_number]) + '\t' + '\t'.join(splicing_outlier_calls[line_number]) + '\t' + '\t'.join(expression_outlier_calls[line_number]) + '\t' + '\t'.join(ase_outlier_calls[line_number]) + '\t' + expression_n2_pairs[line_number] + '\n')
-t.close()
 
-# Create connection file
-output_file = unsupervised_learning_input_dir + 'tbt_' + str(number_of_tissues) + '_cross_signal_outliers_0.01_genes_intersection_between_te_ase_splicing_connection_file.txt'
-total_nodes = number_of_tissues*3
-t = open(output_file,'w')
-for ii in range(total_nodes):
-	for jj in range(total_nodes):
-		if jj != 0:
-			t.write('\t')
-		if ii == jj:
-			t.write('0')
-		else:
-			# if in same outlier signal, place edge
-			if ii/number_of_tissues == jj/number_of_tissues:
-				t.write('1')
-			elif ii%number_of_tissues == jj%number_of_tissues: # If from same tissue, place edge
-				t.write('1')
-			else:
-				t.write('0')
-	t.write('\n')
-t.close()
+
+# Loop through tissues
+for tissue_index, tissue_name in enumerate(tissue_names):
+	# Open output file handle
+	output_file = unsupervised_learning_input_dir + 'single_tissue_' + tissue_name + '_cross_signal_outliers_0.01_genes_intersection_between_te_ase_splicing_features_filter_N2_pairs.txt'
+	t = open(output_file, 'w')
+	# Print header to output file
+	t.write('\t'.join(genomic_anno_header))
+	t.write('\t' + 'splicing_' + tissue_name)
+	t.write('\t' + 'expression_' + tissue_name)
+	t.write('\t' + 'ase_' + tissue_name)
+	t.write('\t' + n2_pair_header + '\n')
+	# Write lines to output file
+	num_lines = len(splicing_n2_pairs)
+	for line_number in range(num_lines):
+		t.write('\t'.join(splicing_genomic_annotations[line_number]) + '\t' + splicing_outlier_calls[line_number][tissue_index] + '\t' + expression_outlier_calls[line_number][tissue_index] + '\t' + ase_outlier_calls[line_number][tissue_index] + '\t' + expression_n2_pairs[line_number] + '\n')
+	t.close()
+
+
 

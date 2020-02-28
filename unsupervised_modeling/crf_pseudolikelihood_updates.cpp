@@ -39,13 +39,14 @@ double un_normalized_pseudolikelihood_crf_weight(int dimension, int combination_
 	return weight;
 }
 
-double un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections(NumericMatrix edge_connections, int dimension, int combination_number, NumericMatrix feat, NumericMatrix posterior, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
+double un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections(NumericMatrix neighbors, NumericMatrix neighbors_edge_counter, int dimension, int combination_number, NumericMatrix feat, NumericMatrix posterior, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
 	// Initialize weight
 	double weight = 0;
 	weight += combination_number*theta_singleton(dimension);
 	for (int d = 0; d < feat.ncol(); d++) {
 		weight += combination_number*feat(sample_num,d)*theta(d,dimension);
 	}
+	/*
 	int dimension_counter = 0;
 	for (int dimension1 = 0; dimension1 < number_of_dimensions; dimension1++) {
 		for (int dimension2=dimension1; dimension2 < number_of_dimensions; dimension2++) {
@@ -61,12 +62,42 @@ double un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections
 			}
 		}
 	}
+	*/
+	/*
+	int dimension1 = 0;
+	int dimension2 = 0;
+	for (int dimension_counter = 0; dimension_counter < edge_connections.ncol(); dimension_counter++) {
+		dimension1 = edge_connections(0, dimension_counter);
+		dimension2 = edge_connections(1, dimension_counter);
+		if (dimension1 == dimension) {
+			weight += theta_pair(0, dimension_counter)*posterior(sample_num, dimension2)*combination_number;
+		} else if (dimension2 == dimension) {
+			weight += theta_pair(0, dimension_counter)*posterior(sample_num, dimension1)*combination_number;
+		}
+	}
+	*/
+
+	int dimension2 = 0;
+	for (int dimension_counter = 0; dimension_counter < neighbors.ncol(); dimension_counter++) {
+		dimension2 = neighbors(dimension, dimension_counter);
+		weight += theta_pair(0, neighbors_edge_counter(dimension, dimension_counter))*posterior(sample_num, dimension2)*combination_number;
+	}
+
 	if (posterior_bool == true && discrete_outliers(sample_num, dimension) == discrete_outliers(sample_num, dimension)) {
 		if (combination_number == 1) {
 			weight += log(phi_outlier(dimension, discrete_outliers(sample_num, dimension) - 1));
 		} else {
 			weight += log(phi_inlier(dimension, discrete_outliers(sample_num, dimension) - 1));
 		}
+	}
+	return weight;
+}
+
+double un_normalized_pseudolikelihood_crf_weight_zero_valued_with_specified_edge_connections(int dimension, NumericMatrix feat, NumericMatrix posterior, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, bool posterior_bool) {
+	// Initialize weight
+	double weight = 0;
+	if (posterior_bool == true && discrete_outliers(sample_num, dimension) == discrete_outliers(sample_num, dimension)) {
+		weight += log(phi_inlier(dimension, discrete_outliers(sample_num, dimension) - 1));
 	}
 	return weight;
 }
@@ -80,12 +111,14 @@ double exact_pseudolikelihood_normalization_constant(NumericMatrix feat, Numeric
 	return log(val);
 }
 
-double exact_pseudolikelihood_normalization_constant_with_specified_edge_connections(NumericMatrix edge_connections, NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int dimension, bool posterior_bool) {
-	double val = 0;
-	for (int combination_number = 0; combination_number < 2; combination_number++) {
-		double un_normalized_wight = un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections(edge_connections, dimension, combination_number, feat, posterior, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
-		val += exp(un_normalized_wight);
-	}
+double exact_pseudolikelihood_normalization_constant_with_specified_edge_connections(NumericMatrix neighbors, NumericMatrix neighbors_edge_counter, NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int dimension, bool posterior_bool) {
+	double un_normalized_wight_zero = un_normalized_pseudolikelihood_crf_weight_zero_valued_with_specified_edge_connections(dimension, feat, posterior, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
+	double un_normalized_wight_one = un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections(neighbors, neighbors_edge_counter, dimension, 1, feat, posterior, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
+	double val = exp(un_normalized_wight_one) + exp(un_normalized_wight_zero);
+	//for (int combination_number = 0; combination_number < 2; combination_number++) {
+	//	double un_normalized_wight = un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections(edge_connections, dimension, combination_number, feat, posterior, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool);
+	//	val += exp(un_normalized_wight);
+	//}
 	return log(val);
 }
 
@@ -102,14 +135,14 @@ double exact_pseudolikelihood_marginal_probability(double normalization_constant
 }
 
 
-double exact_independent_probability_with_specified_edge_connections(NumericMatrix edge_connections,double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int combination_number, int dimension, bool posterior_bool) {
-	double prob = exp(un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections(edge_connections, dimension, combination_number, feat, posterior, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool) - normalization_constant);
+double exact_independent_probability_with_specified_edge_connections(NumericMatrix neighbors, NumericMatrix neighbors_edge_counter,double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int combination_number, int dimension, bool posterior_bool) {
+	double prob = exp(un_normalized_pseudolikelihood_crf_weight_with_specified_edge_connections(neighbors, neighbors_edge_counter, dimension, combination_number, feat, posterior, discrete_outliers, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, posterior_bool) - normalization_constant);
 	return prob;
 }
 
 
-double exact_pseudolikelihood_marginal_probability_with_specified_edge_connections(NumericMatrix edge_connections, double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int dimension, bool posterior_bool) {
-	double marginal_prob = exact_independent_probability_with_specified_edge_connections(edge_connections, normalization_constant, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, 1, dimension, posterior_bool);
+double exact_pseudolikelihood_marginal_probability_with_specified_edge_connections(NumericMatrix neighbors, NumericMatrix neighbors_edge_counter, double normalization_constant, NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int sample_num, int dimension, bool posterior_bool) {
+	double marginal_prob = exact_independent_probability_with_specified_edge_connections(neighbors, neighbors_edge_counter, normalization_constant, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, 1, dimension, posterior_bool);
 	return marginal_prob;
 }
 
@@ -205,7 +238,7 @@ List update_pseudolikelihood_marginal_probabilities_exact_inference_cpp(NumericM
 }
 
 // [[Rcpp::export]]
-List update_pseudolikelihood_marginal_probabilities_with_specified_edges_exact_inference_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int number_of_pairs, NumericMatrix edge_connections, bool posterior_bool) {
+List update_pseudolikelihood_marginal_probabilities_with_specified_edges_exact_inference_cpp(NumericMatrix feat, NumericMatrix discrete_outliers, NumericMatrix posterior, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, int number_of_pairs, NumericMatrix edge_connections, NumericMatrix neighbors, NumericMatrix neighbors_edge_counter, bool posterior_bool) {
 	// Rcpp::Rcout << discrete_outliers(0,1) << std::endl;  
 	// bool temp = discrete_outliers(0,1) == discrete_outliers(0,1);
 	// Rcpp::Rcout << temp << std::endl;  
@@ -219,9 +252,18 @@ List update_pseudolikelihood_marginal_probabilities_with_specified_edges_exact_i
 	for (int sample_num = 0; sample_num < feat.nrow(); sample_num++) {
 		// Loop through dimensions
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
-			double normalization_constant = exact_pseudolikelihood_normalization_constant_with_specified_edge_connections(edge_connections, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, posterior_bool);
-			probabilities(sample_num, dimension) = exact_pseudolikelihood_marginal_probability_with_specified_edge_connections(edge_connections, normalization_constant, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, posterior_bool);
+			double normalization_constant = exact_pseudolikelihood_normalization_constant_with_specified_edge_connections(neighbors, neighbors_edge_counter, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, posterior_bool);
+			probabilities(sample_num, dimension) = exact_pseudolikelihood_marginal_probability_with_specified_edge_connections(neighbors, neighbors_edge_counter, normalization_constant, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, posterior_bool);
 		}
+		int dimension1 = 0;
+		int dimension2 = 0;
+		for (int dimension_counter = 0; dimension_counter < edge_connections.ncol(); dimension_counter++) {
+			dimension1 = edge_connections(0, dimension_counter);
+			dimension2 = edge_connections(1, dimension_counter);
+			probabilities_pairwise1(sample_num, dimension_counter) = probabilities(sample_num, dimension1)*posterior(sample_num, dimension2);
+			probabilities_pairwise2(sample_num, dimension_counter) = posterior(sample_num, dimension1)*probabilities(sample_num, dimension2);
+		}
+		/*
 		int dimension_counter = 0;
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
 			for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
@@ -233,8 +275,8 @@ List update_pseudolikelihood_marginal_probabilities_with_specified_edges_exact_i
 					}
 				}
 			}
-
 		}
+		*/
 	}
 	List ret;
 	ret["probability"] = probabilities;
@@ -302,7 +344,7 @@ double compute_pseudolikelihood_crf_likelihood_exact_inference_cpp(NumericMatrix
 
 
 // [[Rcpp::export]]
-double compute_pseudolikelihood_crf_likelihood_with_specified_edges_exact_inference_cpp(NumericMatrix posterior, NumericMatrix posterior_pairwise, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, double lambda, double lambda_pair, double lambda_singleton, int num_specified_edges, NumericMatrix edge_connections) { 
+double compute_pseudolikelihood_crf_likelihood_with_specified_edges_exact_inference_cpp(NumericMatrix posterior, NumericMatrix posterior_pairwise, NumericMatrix feat, NumericMatrix discrete_outliers, NumericVector theta_singleton, NumericMatrix theta_pair, NumericMatrix theta, NumericMatrix phi_inlier, NumericMatrix phi_outlier, int number_of_dimensions, double lambda, double lambda_pair, double lambda_singleton, int num_specified_edges, NumericMatrix edge_connections, NumericMatrix neighbors, NumericMatrix neighbors_edge_counter) { 
 	// Rcpp::Rcout << feat(1,1) << std::endl;  
 	// Initialize output likelihood
 	double log_likelihood = 0;
@@ -312,14 +354,13 @@ double compute_pseudolikelihood_crf_likelihood_with_specified_edges_exact_infere
 		int dimension = 0;
 		int dimension_counter = 0;
 		for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
-			double normalization_constant = exact_pseudolikelihood_normalization_constant_with_specified_edge_connections(edge_connections, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, false);
+			double normalization_constant = exact_pseudolikelihood_normalization_constant_with_specified_edge_connections(neighbors, neighbors_edge_counter, feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi_inlier, phi_outlier, number_of_dimensions, sample_num, dimension, false);
 			log_likelihood = log_likelihood - normalization_constant;
 			log_likelihood += theta_singleton(dimension)*posterior(sample_num, dimension);
 			for (int d = 0; d < feat.ncol(); d++) {
 				log_likelihood += theta(d, dimension)*feat(sample_num, d)*posterior(sample_num, dimension);
 			}
-
-
+			/*
 			int dimension_counter = 0;
 			for (int dimension1 = 0; dimension1 < number_of_dimensions; dimension1++) {
 				for (int dimension2=dimension1; dimension2 < number_of_dimensions; dimension2++) {
@@ -335,6 +376,12 @@ double compute_pseudolikelihood_crf_likelihood_with_specified_edges_exact_infere
 					}
 				}
 			}
+			*/
+			int dimension2 = 0;
+			for (int dimension_counter = 0; dimension_counter < neighbors.ncol(); dimension_counter++) {
+				dimension2 = neighbors(dimension, dimension_counter);
+				log_likelihood += theta_pair(0, neighbors_edge_counter(dimension, dimension_counter))*posterior(sample_num, dimension)*posterior(sample_num, dimension2);
+			}
 		}
 	}
 
@@ -344,20 +391,23 @@ double compute_pseudolikelihood_crf_likelihood_with_specified_edges_exact_infere
 	int dimension_counter = 0;
 	for (int dimension = 0; dimension < number_of_dimensions; dimension++) {
 		log_likelihood = log_likelihood - .5*lambda_singleton*(theta_singleton(dimension)*theta_singleton(dimension));
+		/*
 		for (int dimension2=dimension; dimension2 < number_of_dimensions; dimension2++) {
 			if (dimension != dimension2) {
 				if (edge_connections(dimension, dimension2) == 1) {
 					log_likelihood = log_likelihood - lambda_pair*(theta_pair(0,dimension_counter)*theta_pair(0, dimension_counter));
-					for (int theta_pair_dimension=1; theta_pair_dimension < theta_pair.nrow(); theta_pair_dimension++) {
-						log_likelihood = log_likelihood - .5*lambda*(theta_pair(theta_pair_dimension,dimension_counter)*theta_pair(theta_pair_dimension, dimension_counter));
-					}
 					dimension_counter += 1;
 				}
 			}
 		}
+		*/
 		for (int d = 0; d < feat.ncol(); d++) {
 			log_likelihood = log_likelihood - .5*lambda*(theta(d,dimension)*theta(d,dimension));
 		}
 	}
+	for (int dimension_counter = 0; dimension_counter < edge_connections.ncol(); dimension_counter++) {
+		log_likelihood = log_likelihood - lambda_pair*(theta_pair(0,dimension_counter)*theta_pair(0, dimension_counter));
+	}
+
 	return log_likelihood;
 }

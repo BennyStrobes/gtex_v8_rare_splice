@@ -499,7 +499,7 @@ ggsave(boxplot_combined, file=output_file, width=7.2, height=7,units="in")
 
 output_file <- paste0(output_dir, "gtex_watershed_gam_posterior_vs_amish_pvalue_combined_dotplot_boxplot_3_thresholds.pdf")
 legend <- get_legend(splicing_3_threshold_dotplot_boxplot + theme(legend.position="bottom"))
-combined_plots <- plot_grid(ase_3_threshold_dotplot_boxplot + theme(legend.position="none"), splicing_3_threshold_dotplot_boxplot+ theme(legend.position="none"), te_3_threshold_dotplot_boxplot + theme(legend.position="none"), ncol=1)
+combined_plots <- plot_grid(te_3_threshold_dotplot_boxplot + theme(legend.position="none"), ase_3_threshold_dotplot_boxplot + theme(legend.position="none"), splicing_3_threshold_dotplot_boxplot+ theme(legend.position="none"), ncol=1)
 boxplot_combined <- ggdraw() + draw_plot(combined_plots,0,.07,1,.9) + draw_plot(legend,.42,-0.43,1,1)
 ggsave(boxplot_combined, file=output_file, width=7.2, height=7,units="in")
 

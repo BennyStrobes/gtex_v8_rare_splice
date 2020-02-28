@@ -16,7 +16,62 @@ get_tissue_names <- function(roc_object, number_of_dimensions) {
 	return(tissue_names)
 }
 
+make_theta_pair_heatmap_big_model <- function(theta_pair_mat, number_of_dimensions,tissue_names, outlier_type) {
+	# Cluster tissues based on similarity of theta_pairs
+	#order <- hclust( as.dist(1- abs(corr_mat)), method = "ward.D" )$order
+	order <- hclust( dist(theta_pair_mat, method = "euclidean"), method = "ward.D" )$order
 
+	rownames(theta_pair_mat) <- gsub("_", " ", tissue_names, fixed=TRUE)
+	colnames(theta_pair_mat) <- gsub("_", " ", tissue_names, fixed=TRUE)
+	#gsub("_"," ",ordered_tissue_names,fixed=TRUE)
+
+	melted_mat <- melt(theta_pair_mat)
+    # Axis labels are factors
+    melted_mat$X1 <- factor(melted_mat$X1)
+    melted_mat$X2 <- factor(melted_mat$X2)
+
+
+    #  Use factors to represent covariate and pc name
+    melted_mat$X1 <- factor(melted_mat$X1, levels = rownames(theta_pair_mat)[order])
+    melted_mat$X2 <- factor(melted_mat$X2, levels = rownames(theta_pair_mat)[order])
+
+
+    #  PLOT!
+    heatmap <- ggplot(data=melted_mat, aes(x=X1, y=X2)) + geom_tile(aes(fill=value)) 
+    heatmap <- heatmap + scale_fill_gradient2() #+ scale_fill_distiller(palette="RdBu")
+    heatmap <- heatmap + theme(panel.background = element_blank(), axis.text.x = element_text(angle = 90, vjust=.5,size=6), axis.text.y = element_text(size=6))
+    heatmap <- heatmap + gtex_v8_figure_theme() + theme(axis.text.x=element_blank())
+    heatmap <- heatmap + labs(x = "Tissue", y = "Tissue",fill="Edge Weight", title=outlier_type)
+    return(heatmap)
+
+}
+
+make_signal_by_signal_heatmap_big_model <- function(theta_pair_mat, tissue_names) {
+	rownames(theta_pair_mat) <- gsub("_", " ", tissue_names, fixed=TRUE)
+	colnames(theta_pair_mat) <- c("Expression-Splicing", "ASE-Splicing", "ASE-Expression")
+	#gsub("_"," ",ordered_tissue_names,fixed=TRUE)
+
+	melted_mat <- melt(theta_pair_mat)
+    # Axis labels are factors
+    melted_mat$X1 <- factor(melted_mat$X1)
+    melted_mat$X2 <- factor(melted_mat$X2)
+
+
+    #  Use factors to represent covariate and pc name
+    melted_mat$X1 <- factor(melted_mat$X1, levels = rownames(theta_pair_mat))
+    melted_mat$X2 <- factor(melted_mat$X2)
+
+
+    #  PLOT!
+    heatmap <- ggplot(data=melted_mat, aes(x=X1, y=X2)) + geom_tile(aes(fill=value)) 
+    heatmap <- heatmap + scale_fill_gradient2() #+ scale_fill_distiller(palette="RdBu")
+    heatmap <- heatmap + theme(panel.background = element_blank(), axis.text.x = element_text(angle = 90, vjust=.5,size=6), axis.text.y = element_text(size=6))
+    heatmap <- heatmap + gtex_v8_figure_theme()
+    heatmap <- heatmap + labs(x = "", y = "",fill="Edge Weight")
+    return(heatmap)
+
+
+}
 
 make_theta_pair_heatmap <- function(theta_pair, number_of_dimensions,tissue_names, outlier_type) {
 	# Convert theta_pair vector into matrix of number_of_tissuesXnumber_of_tissues
@@ -294,15 +349,15 @@ make_tbt_auc_distribution_plot2 <- function(ase_watershed, ase_river, ase_tissue
 		}
 	}
 	# Put all into compact data frame
-	df <- data.frame(outlier_type=factor(outlier_type, levels=c("ASE","Splicing", "Expression")), auc=auc, method=factor(method,levels=c("GAM", "RIVER", "Watershed")))
+	df <- data.frame(outlier_type=factor(outlier_type, levels=c("Expression", "ASE","Splicing")), auc=auc, method=factor(method,levels=c("GAM", "RIVER", "Watershed")))
 
 	# Make boxplot
 	boxplot <- ggplot(df, aes(x=method, y=auc, fill=outlier_type)) + geom_boxplot() +
 				gtex_v8_figure_theme() + 
-				xlab("Tissue-Specific Model") +
+				xlab("Tissue Model") +
                	ylab("AUC(PR)") + 
                	theme(legend.position="none") +
-               	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0"))  
+               	scale_fill_manual(values=c("#BFCDE0", "#7F5A83", "#0D324D"))  
                	#geom_hline(yintercept = 0)
 
 	return(boxplot)
@@ -380,7 +435,7 @@ make_tbt_delta_auc_lolipop_plot <- function(roc_object_vi, roc_object_exact, tis
 					theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=0.5)) +
 					scale_x_continuous(breaks=1:length(ordered_tissue_names), labels=ordered_tissue_names) + 
 					xlab("") + 
-					ylab("tissue-specific Watershed AUC (PR) - tissue-specific RIVER AUC (PR)")
+					ylab("tissue Watershed AUC (PR) - tissue RIVER AUC (PR)")
 	
 	return(error_bar_plot + draw_text(outlier_type, x=11, y=.68,size=8))
 }
@@ -420,7 +475,7 @@ make_tbt_delta_auc_lolipop_plot_with_median_river <- function(roc_object, tissue
 					theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust=0.5)) +
 					scale_x_continuous(breaks=1:length(ordered_tissue_names), labels=ordered_tissue_names) + 
 					xlab("") + 
-					ylab("tissue-specific Watershed AUC (PR) - RIVER AUC (PR)")
+					ylab("tissue Watershed AUC (PR) - RIVER AUC (PR)")
 	
 	return(error_bar_plot + draw_text(outlier_type, x=11, y=.68,size=8))
 }
@@ -501,7 +556,7 @@ make_tbt_auc_lolipop_plot_v2 <- function(roc_object_vi, roc_object_exact, tissue
   			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
   			   geom_point( aes(x=tissues_position, y=auc_vi, color="c1"), size=1.5) +
                geom_point( aes(x=tissues_position, y=auc_exact, color="c2"), size=1.5) +
-               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue-specific\nWatershed", "tissue-specific\nRIVER")) +
+               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue Watershed", "tissue RIVER")) +
                ggtitle(outlier_type) +
                 xlab("") +
                ylab("AUC (PR)") + 
@@ -512,6 +567,83 @@ make_tbt_auc_lolipop_plot_v2 <- function(roc_object_vi, roc_object_exact, tissue
                scale_x_continuous(breaks=1:length(ordered_tissue_names),labels=gsub("_"," ",ordered_tissue_names,fixed=TRUE)) 
     return(plotter)
 }
+
+make_tbt_auc_lolipop_plot_single_tissue_cross_signal_watershed_river <- function(tbt_roc_dir, tissue_names, outlier_name, tissue_names_subset, outlier_column) {
+	auc_vi <- c()
+	auc_exact <- c()
+	ordered_tissue_names <- c()
+
+	for (tissue_num in 1:length(tissue_names)) {
+		tissue_name <- tissue_names[tissue_num]
+		if (tissue_name %in% tissue_names_subset) {
+
+			watershed_model <- readRDS(paste0(tbt_roc_dir, "single_tissue_cross_signal_", tissue_name, "_fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_10_seed_3_inference_exact_independent_false_roc_object3.rds"))
+			river_model <- readRDS(paste0(tbt_roc_dir, "single_tissue_cross_signal_", tissue_name, "_fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_10_seed_3_inference_exact_independent_true_roc_object3.rds"))
+			tissue_auc_vi <- watershed_model$roc[[outlier_column]]$evaROC$watershed_pr_auc
+			tissue_auc_independent <- river_model$roc[[outlier_column]]$evaROC$watershed_pr_auc
+			auc_vi <- c(auc_vi, tissue_auc_vi)
+			auc_exact <- c(auc_exact, tissue_auc_independent)
+			ordered_tissue_names <- c(ordered_tissue_names, tissue_name)
+		}
+	}
+	cols <- c( "c1" = "steelblue3", "c2" = "firebrick4" )
+	#print(wilcox.test(auc_vi, auc_exact, alternative = "two.sided"))
+	print(binom.test(x=sum(auc_vi>auc_exact), n=length(auc_vi), alternative="greater"))
+	df <- data.frame(auc_watershed = auc_vi, auc_river=auc_exact, tissue=ordered_tissue_names, tissues_position=1:length(ordered_tissue_names))
+	plotter <- ggplot(df) +
+  			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
+  			   geom_point( aes(x=tissues_position, y=auc_vi, color="c1"), size=1.5) +
+               geom_point( aes(x=tissues_position, y=auc_exact, color="c2"), size=1.5) +
+               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue Watershed", "tissue RIVER")) +
+               ggtitle(outlier_type) +
+                xlab("") +
+               ylab("AUC (PR)") + 
+               theme(legend.position="bottom") +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5)) +
+               gtex_v8_figure_theme() +
+               #scale_y_continuous(expand = c(0, 0), limits = c(0, 1.06)) + 
+               scale_x_continuous(breaks=1:length(ordered_tissue_names),labels=gsub("_"," ",ordered_tissue_names,fixed=TRUE)) 
+    return(plotter)
+
+}
+
+make_tbt_auc_lolipop_plot_watershed_big_watershed <- function(roc_object_vi, big_roc_object, start_index, tissue_names, outlier_type, tissue_names_subset) {
+	auc_vi <- c()
+	auc_exact <- c()
+	ordered_tissue_names <- c()
+
+	for (tissue_num in 1:length(tissue_names)) {
+		tissue_name <- tissue_names[tissue_num]
+		if (tissue_name %in% tissue_names_subset) {
+			tissue_auc_vi <- roc_object_vi[[tissue_num]]$evaROC$watershed_pr_auc
+			tissue_auc_independent <- big_roc_object[[(tissue_num + start_index-1)]]$evaROC$watershed_pr_auc
+			auc_vi <- c(auc_vi, tissue_auc_vi)
+			auc_exact <- c(auc_exact, tissue_auc_independent)
+			ordered_tissue_names <- c(ordered_tissue_names, tissue_name)
+		}
+	}
+
+	cols <- c( "c1" = "steelblue3", "c2" = "aquamarine2" )
+	#print(wilcox.test(auc_vi, auc_exact, alternative = "two.sided"))
+	print('BIG')
+	print(binom.test(x=sum(auc_vi>auc_exact), n=length(auc_vi), alternative="greater"))
+	df <- data.frame(auc_watershed = auc_vi, auc_river=auc_exact, tissue=ordered_tissue_names, tissues_position=1:length(ordered_tissue_names))
+	plotter <- ggplot(df) +
+  			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
+  			   geom_point( aes(x=tissues_position, y=auc_vi, color="c1"), size=1.5) +
+               geom_point( aes(x=tissues_position, y=auc_exact, color="c2"), size=1.5) +
+               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue\nWatershed", "cross-signal tissue\nWatershed")) +
+               ggtitle(outlier_type) +
+                xlab("") +
+               ylab("AUC (PR)") + 
+               theme(legend.position="bottom") +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5)) +
+               gtex_v8_figure_theme() +
+               #scale_y_continuous(expand = c(0, 0), limits = c(0, 1.06)) + 
+               scale_x_continuous(breaks=1:length(ordered_tissue_names),labels=gsub("_"," ",ordered_tissue_names,fixed=TRUE)) 
+    return(plotter)
+}
+
 
 make_tbt_auc_lolipop_plot_with_median_river <- function(roc_object, tissue_names, outlier_type, tissue_names_subset) {
 	auc_vi <- c()
@@ -537,7 +669,7 @@ make_tbt_auc_lolipop_plot_with_median_river <- function(roc_object, tissue_names
   			   geom_segment(aes(x=tissues_position, xend=tissues_position, y=auc_vi, yend=auc_exact), color="grey") +
   			   geom_point( aes(x=tissues_position, y=auc_vi, color="c1"), size=1.5) +
                geom_point( aes(x=tissues_position, y=auc_exact, color="c2"), size=1.5) +
-               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue-specific\nWatershed", "River")) +
+               scale_color_manual(name="", breaks=c("c1","c2"), values=cols, labels=c("tissue Watershed", "River")) +
                ggtitle(outlier_type) +
                 xlab("") +
                ylab("AUC (PR)") + 
@@ -652,13 +784,14 @@ plot_three_class_theta_pair_term <- function(theta_pair) {
 	#mat[3,1] <- theta_pair[1,2]
 	#mat[3,2] <- theta_pair[1,3]
 	#mat[2,3] <- theta_pair[1,3]
-	mat[1,2] <- theta_pair[1,2]
-	mat[2,1] <- theta_pair[1,2]
-	mat[1,3] <- theta_pair[1,3]
-	mat[3,1] <- theta_pair[1,3]
-	mat[3,2] <- theta_pair[1,1]
-	mat[2,3] <- theta_pair[1,1]
+	mat[3,2] <- theta_pair[1,2] 
+	mat[2,3] <- theta_pair[1,2]
+	mat[1,2] <- theta_pair[1,3] 
+	mat[2,1] <- theta_pair[1,3]
+	mat[1,3] <- theta_pair[1,1] 
+	mat[3,1] <- theta_pair[1,1]
 
+	print(mat)
 	melted_corr <- melt(mat)
 
 	
@@ -675,8 +808,8 @@ plot_three_class_theta_pair_term <- function(theta_pair) {
     heatmap <- heatmap + gtex_v8_figure_theme()
     heatmap <- heatmap + labs(fill="Edge weight",x = "", y="")
 
-    heatmap <- heatmap + scale_x_discrete(breaks=c("1", "2", "3"),labels=c("ASE", "Splicing", "Expression"))
-    heatmap <- heatmap + scale_y_discrete(breaks=c("1", "2", "3"),labels=c("ASE", "Splicing", "Expression"))
+    heatmap <- heatmap + scale_x_discrete(breaks=c("1", "2", "3"),labels=c("Expresssion", "ASE", "Splicing"))
+    heatmap <- heatmap + scale_y_discrete(breaks=c("1", "2", "3"),labels=c("Expression", "ASE", "Splicing"))
 
     legend <- get_legend(heatmap)
 
@@ -760,12 +893,12 @@ absolute_risk_plot <- function(gam_predictions, watershed_predictions, data_inpu
   		model_type <- c(model_type, "GAM")
 
 
-    df <- data.frame(watershed_threshold=thresh, absolute_risk=absolute_risks, outlier_type=factor(outlier_type, levels=c("aseOutlier","sOutlier","eOutlier")), model_type=factor(model_type, levels=c("GAM", "Watershed")))
+    df <- data.frame(watershed_threshold=thresh, absolute_risk=absolute_risks, outlier_type=factor(outlier_type, levels=c("eOutlier", "aseOutlier","sOutlier")), model_type=factor(model_type, levels=c("GAM", "Watershed")))
 	p <- ggplot(data=df, aes(x=model_type, y=absolute_risk, fill=outlier_type)) +
 	geom_bar(stat="identity", color="black", position=position_dodge())+
   	gtex_v8_figure_theme() + 
   	labs(x="", y="Proportion of variants\nleading to outlier", fill="") + 
-  	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0"))
+  	scale_fill_manual(values=c("#BFCDE0", "#7F5A83", "#0D324D"))
 
   	legend <- get_legend(p)
 
@@ -888,7 +1021,7 @@ absolute_risk_plot_with_cadd_helper <- function(gam_predictions, watershed_predi
   		model_type <- c(model_type, "CADD")
 
 
-    df <- data.frame(watershed_threshold=thresh, absolute_risk=absolute_risks, outlier_type=factor(outlier_type, levels=c("aseOutlier","sOutlier","eOutlier")), model_type=factor(model_type, levels=c("CADD", "GAM", "Watershed")))
+    df <- data.frame(watershed_threshold=thresh, absolute_risk=absolute_risks, outlier_type=factor(outlier_type, levels=c("eOutlier", "aseOutlier","sOutlier")), model_type=factor(model_type, levels=c("CADD", "GAM", "Watershed")))
 	print(watershed_threshold)
 	print(df)
 	p <- ggplot(data=df, aes(x=model_type, y=absolute_risk, fill=outlier_type)) +
@@ -896,10 +1029,111 @@ absolute_risk_plot_with_cadd_helper <- function(gam_predictions, watershed_predi
 	ylim(0,.72) + 
   	gtex_v8_figure_theme() + 
   	labs(x="", y="Proportion of variants\nleading to outlier", fill="", title=paste0("Watershed posterior > ", watershed_threshold)) + 
-  	scale_fill_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0")) 
+  	scale_fill_manual(values=c("#BFCDE0", "#7F5A83", "#0D324D")) 
   	return(p)
 }
 
+
+plot_alt_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_object_ind, number_of_dimensions, title, use_legend=TRUE, legend_height=-.38) {
+	precision <- c()
+	recall <- c()
+	outlier_type <- c()
+	prediction_type <- c()
+	cis <- c()
+	for (dimension in 1:number_of_dimensions) {
+		dimension_roc_object <- roc_object_exact[[dimension]]
+		dimension_name <- dimension_roc_object$name
+		dimension_roc_object_ind <- roc_object_ind[[dimension]]
+		# Tied watershed (exact inference)
+		precision <- c(precision, dimension_roc_object$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("Watershed", length(dimension_roc_object$evaROC$watershed_precision)))
+
+		# GAM
+		precision <- c(precision, dimension_roc_object$evaROC$GAM_precision)
+		recall <- c(recall, dimension_roc_object$evaROC$GAM_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object$evaROC$GAM_precision)))
+		prediction_type <- c(prediction_type, rep("GAM", length(dimension_roc_object$evaROC$GAM_precision)))
+
+
+		# Indepdent
+		precision <- c(precision, dimension_roc_object_ind$evaROC$watershed_precision)
+		recall <- c(recall, dimension_roc_object_ind$evaROC$watershed_recall)
+		outlier_type <- c(outlier_type, rep(dimension_name, length(dimension_roc_object_ind$evaROC$watershed_precision)))
+		prediction_type <- c(prediction_type, rep("RIVER", length(dimension_roc_object_ind$evaROC$watershed_precision)))
+
+		# BootStrapped delta_auprc
+		population_watershed_pr_auc = dimension_roc_object$evaROC$watershed_pr_auc
+		population_river_pr_auc = dimension_roc_object_ind$evaROC$watershed_pr_auc
+		population_delta_pr_auc = population_watershed_pr_auc - population_river_pr_auc
+		# BootStrapped delta_auprc
+		bootstrapped_delta_pr_auc = dimension_roc_object$evaROC$watershed_pr_auc_bootstraps - dimension_roc_object_ind$evaROC$watershed_pr_auc_bootstraps
+		c_u = population_delta_pr_auc - quantile(bootstrapped_delta_pr_auc-population_delta_pr_auc, .025)
+		c_l = population_delta_pr_auc - quantile(bootstrapped_delta_pr_auc-population_delta_pr_auc, .975)
+
+		ci <- paste0("[", signif(c_l, digits=2), ", ", signif(c_u, digits=2), "]")
+		cis <- c(cis, signif(population_delta_pr_auc, digits=2))
+
+	}
+	df <- data.frame(precision, recall, outlier_type=factor(outlier_type), prediction_type=factor(prediction_type, levels=c("Watershed","RIVER", "GAM")))
+  
+
+	outlier_type <- "ase"
+	outlier_name <- paste0("ASE ", cis[3])
+	outlier_name <- "ASE"
+  	plotter_ase <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=recall, y=precision, group=prediction_type)) + geom_line(aes(linetype=prediction_type, colour=prediction_type)) + 
+                labs(x="Recall", y="Precision", group="", linetype="", colour="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                scale_color_manual(values=c("steelblue3", "steelblue3", "firebrick4")) +
+                scale_linetype_manual(values=c("solid", "dotted", "solid")) +
+                gtex_v8_figure_theme() + 
+                draw_label(outlier_name,x=.5,y=.95,size=8)
+
+	outlier_type <- "splicing"
+	outlier_name <- paste0("Splicing ", cis[1])
+	outlier_name <- "Splicing"
+  	plotter_splice <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=recall, y=precision, group=prediction_type)) + geom_line(aes(linetype=prediction_type, colour=prediction_type)) + 
+                labs(x="Recall", y="Precision",group="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                scale_color_manual(values=c("steelblue3", "steelblue3", "firebrick4")) +
+                scale_linetype_manual(values=c("solid", "dotted", "solid")) +
+                gtex_v8_figure_theme() +
+                 draw_label(outlier_name,x=.5,y=.95,size=8)
+
+	outlier_type <- "total_expression"
+	outlier_name <- paste0("Expression ", cis[2])
+	outlier_name <- "Expression"
+  	plotter_te <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=recall, y=precision, group=prediction_type)) + geom_line(aes(linetype=prediction_type, colour=prediction_type)) + 
+                labs(x="Recall", y="Precision", group="") +
+                scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                scale_x_continuous(expand = c(0, 0), limits = c(0, 1)) + 
+                theme(legend.position="bottom") +
+                theme(panel.spacing = unit(2, "lines")) +
+                scale_color_manual(values=c("steelblue3", "steelblue3", "firebrick4")) +
+                scale_linetype_manual(values=c("solid", "dotted", "solid")) +
+                gtex_v8_figure_theme() + 
+                draw_label(outlier_name,x=.5,y=.95,size=8)
+
+    legend <- get_legend(plotter_ase + theme(legend.position="bottom"))
+    
+
+    if (use_legend==TRUE) {
+    	combined_plots <- plot_grid(plotter_te+ theme(legend.position="none"), plotter_ase + theme(legend.position="none"), plotter_splice+ theme(legend.position="none"), rel_widths=c(1,1,1), nrow=1)
+		combined <- ggdraw() + draw_text(title,size=8, x=.53,y=.92) + draw_plot(combined_plots,0,0.03,1,.83) + draw_plot(legend,.38,legend_height,1,1)
+	} else {
+		combined_plots <- plot_grid(plotter_te + labs(x="") + theme(legend.position="none"), plotter_ase + labs(x="") + theme(legend.position="none"), plotter_splice + labs(x="") + theme(legend.position="none"), rel_widths=c(1,1,1), nrow=1)
+		combined <- ggdraw() + draw_text(title,size=8, x=.53,y=.92) + draw_plot(combined_plots,0,-.13,1,1.03)
+	}
+
+	return(combined)
+}
 
 plot_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_object_ind, number_of_dimensions, output_file, use_legend=TRUE, legend_height=-.38) {
 	precision <- c()
@@ -974,14 +1208,13 @@ plot_pr_gam_river_watershed_comparison_curve <- function(roc_object_exact, roc_o
                 draw_label(outlier_name,x=.5,y=.95,size=8)
 
     legend <- get_legend(plotter_ase + theme(legend.position="bottom"))
-    combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"), plotter_splice+ theme(legend.position="none"), plotter_te+ theme(legend.position="none"), rel_widths=c(1,1,1), nrow=1)
+    combined_plots <- plot_grid(plotter_te+ theme(legend.position="none"), plotter_ase + theme(legend.position="none"), plotter_splice+ theme(legend.position="none"), rel_widths=c(1,1,1), nrow=1)
 
     if (use_legend==TRUE) {
 		combined <- ggdraw() + draw_plot(combined_plots,0,.07,1,.9) + draw_plot(legend,.38,legend_height,1,1)
 	} else {
 		combined <- ggdraw() + draw_plot(combined_plots,0,.07,1,.9)
 	}
-
 	return(combined)
 }
 
@@ -1052,7 +1285,7 @@ plot_pr_cadd_watershed_comparison_curve <- function(roc_object_exact, roc_object
                 draw_label(outlier_name,x=.5,y=.95,size=8)
 
     legend <- get_legend(plotter_ase + theme(legend.position="bottom"))
-    combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"), plotter_splice+ theme(legend.position="none"), plotter_te+ theme(legend.position="none"), rel_widths=c(1,1,1), nrow=1)
+    combined_plots <- plot_grid(plotter_te+ theme(legend.position="none"), plotter_ase + theme(legend.position="none"), plotter_splice+ theme(legend.position="none"), rel_widths=c(1,1,1), nrow=1)
 
 	combined <- ggdraw() + draw_plot(combined_plots,0,.07,1,.9) + draw_plot(legend,.44,-0.42,1,1)
 
@@ -1159,7 +1392,6 @@ plot_pr_river_watershed_comparison_curve <- function(roc_object_exact, roc_objec
 	}
 	df <- data.frame(precision, recall, outlier_type=factor(outlier_type), inference=factor(inference_method, levels=c("Exact","Approximate")), prediction_type=factor(prediction_type, levels=c("Watershed","RIVER")))
   
-
 	outlier_type <- "ase"
   	plotter_ase <- ggplot(data=df[as.character(df$outlier_type)==outlier_type,], aes(x=recall, y=precision, colour=prediction_type, linetype=inference)) + geom_line() + 
                 labs(x="Recall", y="Precision", colour="", linetype="", title="ASE") +
@@ -1194,7 +1426,7 @@ plot_pr_river_watershed_comparison_curve <- function(roc_object_exact, roc_objec
                 #theme(text = element_text(size=14),axis.text=element_text(size=14), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=14), legend.title = element_text(size=14))
 
     legend <- get_legend(plotter_ase)
-    combined_plots <- plot_grid(plotter_ase + theme(legend.position="none"),plotter_splice+ theme(legend.position="none"), plotter_te + theme(legend.position="none"), nrow=1)
+    combined_plots <- plot_grid(plotter_te + theme(legend.position="none"), plotter_ase + theme(legend.position="none"),plotter_splice+ theme(legend.position="none"), nrow=1)
 
 
 	return(plot_grid(combined_plots,legend,ncol=1,rel_heights=c(1,.06)))
@@ -1209,13 +1441,13 @@ plot_beta_difference_scatter_between_exact_and_vi <- function(model_params_exact
 	approximate_betas <- c(model_params_approximate$theta[,1], model_params_approximate$theta[,2], model_params_approximate$theta[,3])
 	outlier_class <- c(rep("Splicing", length(model_params_approximate$theta[,1])), rep("Expression", length(model_params_approximate$theta[,2])), rep("ASE", length(model_params_approximate$theta[,3])))
 
-	df <- data.frame(exact_betas=exact_betas, approximate_betas=approximate_betas, outlier_class=factor(outlier_class, levels=c("ASE", "Splicing", "Expression")))
+	df <- data.frame(exact_betas=exact_betas, approximate_betas=approximate_betas, outlier_class=factor(outlier_class, levels=c("Expression", "ASE", "Splicing")))
 
 	plotter <- ggplot(df, aes(x=exact_betas, y=approximate_betas, colour=outlier_class)) + geom_point() +
 			geom_abline() + 
 			theme(text = element_text(size=11),axis.text=element_text(size=11), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"), legend.text = element_text(size=11), legend.title = element_text(size=11)) +
 			labs(x="Beta (exact)", y="Beta (approximate)",colour="") + 
-			scale_color_manual(values=c("#7F5A83", "#0D324D", "#BFCDE0")) +
+			scale_color_manual(values=c("#BFCDE0", "#7F5A83", "#0D324D")) +
 			gtex_v8_figure_theme()
 	return(plotter)
 }
@@ -1751,6 +1983,36 @@ delta_auprc_bootstrap_hypothesis_testing <- function(watershed_object, river_obj
     return(combined_plots)
 }
 
+extract_edge_weights_from_big_model <- function(theta_pair, number_of_dimensions) {
+	number_of_dimensions_per_outlier_type <- number_of_dimensions/3
+	theta_pair_mat = matrix(0, number_of_dimensions, number_of_dimensions)
+	dimension_counter = 1
+	for (dimension1 in 1:number_of_dimensions) {
+		for (dimension2 in dimension1:number_of_dimensions) {
+			if (dimension1 != dimension2) {
+				theta_pair_mat[dimension1, dimension2] = theta_pair[1, dimension_counter]
+				theta_pair_mat[dimension2, dimension1] = theta_pair[1, dimension_counter]
+				dimension_counter = dimension_counter + 1
+			}
+		}
+		theta_pair_mat[dimension1, dimension1] = NA
+	}
+	theta_pair_mat_splicing <- theta_pair_mat[1:number_of_dimensions_per_outlier_type, 1:number_of_dimensions_per_outlier_type]
+	theta_pair_mat_expression <- theta_pair_mat[(number_of_dimensions_per_outlier_type+1):(2*number_of_dimensions_per_outlier_type), (number_of_dimensions_per_outlier_type+1):(2*number_of_dimensions_per_outlier_type)]
+	theta_pair_mat_ase <- theta_pair_mat[(2*number_of_dimensions_per_outlier_type+1):(3*number_of_dimensions_per_outlier_type), (2*number_of_dimensions_per_outlier_type+1):(3*number_of_dimensions_per_outlier_type)]
+
+	theta_pair_cross_signal = matrix(0, number_of_dimensions_per_outlier_type, 3)
+
+	for (dimension in 1:number_of_dimensions_per_outlier_type) {
+		theta_pair_cross_signal[dimension, 1] = theta_pair_mat[dimension, (dimension+number_of_dimensions_per_outlier_type)] # Splicing-Expression
+		theta_pair_cross_signal[dimension, 2] = theta_pair_mat[dimension, (dimension + 2*number_of_dimensions_per_outlier_type)]  # Splicing-ASE
+		theta_pair_cross_signal[dimension, 3] = theta_pair_mat[(dimension+number_of_dimensions_per_outlier_type), (dimension + 2*number_of_dimensions_per_outlier_type)]
+	}
+	big_theta_pair_info = list(theta_pair_mat_splicing=theta_pair_mat_splicing, theta_pair_mat_expression=theta_pair_mat_expression, theta_pair_mat_ase=theta_pair_mat_ase, theta_pair_cross_signal=theta_pair_cross_signal)
+	return(big_theta_pair_info)
+
+}
+
 
 options(bitmapType = 'cairo', device = 'pdf')
 ############################
@@ -1776,6 +2038,7 @@ for (tiss_num in 1:length(tissue_colors$tissue_id)) {
 		tissue_colors$tissue_id[tiss_num] = "Cells_EBV.transformed_lymphocytes"
 	}
 }
+if (FALSE) {
 
 
 #############################
@@ -1808,17 +2071,16 @@ output_root <- paste0(input_stem,"_inference_", inference_method, "_independent_
 roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
 
 
-if (FALSE) {
 
 #######################################
 ## delta AUPRC bootstrap hypothesis testing
 #######################################
+if (FALSE) {
 output_file <- paste0(output_dir, "watershed_3_class_delta_auprc_hypothesis_testing_bootstrap_distributions.pdf")
 delta_auprc_bootstrap_hypothesis_testing_histogram <- delta_auprc_bootstrap_hypothesis_testing(roc_object_exact, roc_object_independent, 3)
 ggsave(delta_auprc_bootstrap_hypothesis_testing_histogram, file=output_file, width=7.2, height=9, units="in")
-
-
 }
+
 #######################################
 ## Visualize bootstrap delta auprc distributions
 #######################################
@@ -1956,35 +2218,65 @@ scatter <- compare_watershed_posteriors_seperated_by_class_with_different_traini
 ggsave(scatter, file=output_file, width=7.2, height=9.0, units="in")
 
 #######################################
-## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase)
+## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase) for different watershed models
 #######################################
 number_of_dimensions <- 3
-output_file <- paste0(output_dir, "compare_gene_threshold_.05_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
 alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_false_roc_object3.rds"))
 alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.05_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_inference_exact_independent_true_roc_object3.rds"))
-gam_river_watershed_3_class_pr_curves_input_data_comparison_05 <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, use_legend=FALSE)
+title <- "Train models on genes where each of 3 outlier signals has at least one outlier individual (median p-value < 0.05)"
+gam_river_watershed_3_class_pr_curves_input_data_comparison_05 <- plot_alt_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, title, use_legend=FALSE)
 
 number_of_dimensions <- 3
-output_file <- paste0(output_dir, "compare_gene_threshold_.1_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
 alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
 alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.1_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_gene_theshold_comparison_450000_inference_exact_independent_true_roc_object3.rds"))
-gam_river_watershed_3_class_pr_curves_input_data_comparison_1 <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, use_legend=FALSE)
+title <- "Train models on genes where each of 3 outlier signals has at least one outlier individual (median p-value < 0.1)"
+gam_river_watershed_3_class_pr_curves_input_data_comparison_1 <- plot_alt_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, title, use_legend=FALSE)
 
 
 number_of_dimensions <- 3
-output_file <- paste0(output_dir, "compare_gene_union_threshold_.01_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
 alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
 alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_true_roc_object3.rds"))
-gam_river_watershed_3_class_pr_curves_input_data_comparison_01_union <- plot_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, legend_height=-.45)
+title <- "Train models on genes where at least 1 outlier signal has at least one outlier individual (median p-value < 0.01)"
+print(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_false_roc_object3.rds"))
+print(paste0(three_class_roc_dir, "fully_observed_te_ase_splicing_outliers_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_union_intersection_comparison_450000_inference_exact_independent_true_roc_object3.rds"))
+gam_river_watershed_3_class_pr_curves_input_data_comparison_01_union <- plot_alt_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, title, use_legend=FALSE)
+
+#combined_pr_curve_data_input_comparison <- plot_grid(gam_river_watershed_3_class_pr_curves_input_data_comparison_05, gam_river_watershed_3_class_pr_curves_input_data_comparison_1, gam_river_watershed_3_class_pr_curves_input_data_comparison_01_union, ncol=1, labels=c("A","B","C"))
+#output_file <- paste0(output_dir, "compare_gene_threshold_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
+#ggsave(combined_pr_curve_data_input_comparison, file=output_file, width=7.2, height=6.0, units="in")
+
+#######################################
+## Visualize precision-recall curves for river, GAM, watershed-exact comparison and all three outlier types (te, splice, ase) for different N2 Pairs
+#######################################
+number_of_dimensions <- 3
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "watershed_roc_3_class_model_data_comparison_standard_model_gene_0.05_intersection_data__inference_exact_independent_false_roc_object3.rds"))
+alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "watershed_roc_3_class_model_data_comparison_standard_model_gene_0.05_intersection_data__inference_exact_independent_true_roc_object3.rds"))
+title <- "Evaluate models on genes where each of 3 outlier signals has at least one outlier individual (median p-value < 0.05)"
+#roc_3_bootstrap_distributions <- plot_three_class_delta_auprc_bootstrap_distributions(alt_roc_object_exact$roc, alt_roc_object_independent$roc, 3)
+gam_river_watershed_3_class_pr_curves_evaluation_data_comparison_05 <- plot_alt_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, title, use_legend=FALSE)
+
+number_of_dimensions <- 3
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "watershed_roc_3_class_model_data_comparison_standard_model_gene_0.1_intersection_data__inference_exact_independent_false_roc_object3.rds"))
+alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "watershed_roc_3_class_model_data_comparison_standard_model_gene_0.1_intersection_data__inference_exact_independent_true_roc_object3.rds"))
+#roc_3_bootstrap_distributions <- plot_three_class_delta_auprc_bootstrap_distributions(alt_roc_object_exact$roc, alt_roc_object_independent$roc, 3)
+title <- "Evaluate models on genes where each of 3 outlier signals has at least one outlier individual (median p-value < 0.1)"
+gam_river_watershed_3_class_pr_curves_evaluation_data_comparison_1 <- plot_alt_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, title, use_legend=FALSE)
 
 
-combined_pr_curve_data_input_comparison <- plot_grid(gam_river_watershed_3_class_pr_curves_input_data_comparison_05, gam_river_watershed_3_class_pr_curves_input_data_comparison_1, gam_river_watershed_3_class_pr_curves_input_data_comparison_01_union, ncol=1, labels=c("A","B","C"))
-output_file <- paste0(output_dir, "compare_gene_threshold_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
-ggsave(combined_pr_curve_data_input_comparison, file=output_file, width=7.2, height=6.0, units="in")
+number_of_dimensions <- 3
+alt_roc_object_exact <- readRDS(paste0(three_class_roc_dir, "watershed_roc_3_class_model_data_comparison_standard_model_gene_0.01_union_data__inference_exact_independent_false_roc_object3.rds"))
+alt_roc_object_independent <- readRDS(paste0(three_class_roc_dir, "watershed_roc_3_class_model_data_comparison_standard_model_gene_0.01_union_data__inference_exact_independent_true_roc_object3.rds"))
+#roc_3_bootstrap_distributions <- plot_three_class_delta_auprc_bootstrap_distributions(alt_roc_object_exact$roc, alt_roc_object_independent$roc, 3)
+title <- "Evaluate models on genes where at least 1 outlier signal has at least one outlier individual (median p-value < 0.01)"
+gam_river_watershed_3_class_pr_curves_evaluation_data_comparison_01_union <- plot_alt_pr_gam_river_watershed_comparison_curve(alt_roc_object_exact$roc, alt_roc_object_independent$roc, number_of_dimensions, title, legend_height=-.45)
 
-print("done")
 
+combined_pr_curve_data_input_comparison <- plot_grid(gam_river_watershed_3_class_pr_curves_input_data_comparison_05, gam_river_watershed_3_class_pr_curves_input_data_comparison_1, gam_river_watershed_3_class_pr_curves_input_data_comparison_01_union, gam_river_watershed_3_class_pr_curves_evaluation_data_comparison_05, gam_river_watershed_3_class_pr_curves_evaluation_data_comparison_1, gam_river_watershed_3_class_pr_curves_evaluation_data_comparison_01_union, ncol=1, rel_heights=c(1,1,1,1,1,1.28), labels=c("A","B","C", "D", "E", "F"))
+output_file <- paste0(output_dir, "compare_gene_threshold_on_n2_pair_data_watershed_3_class_roc_exact_gam_river_watershed_precision_recall.pdf")
+ggsave(combined_pr_curve_data_input_comparison, file=output_file, width=7.2, height=9.0, units="in")
 
+print("DONE")
+}
 ############################
 # Model hyperparameters
 ############################
@@ -2001,6 +2293,14 @@ tissue_names <- as.character(read.table(tissue_names_file)$V1)
 
 # Load in data mapping tissue name to chromHMM cell type
 chrom_hmm_to_tissue <- read.table(chrom_hmm_to_tissue_mapping_file, header=TRUE, sep="\t")
+
+###########################
+# Load in big model data
+###########################
+big_model <- readRDS(paste0(tbt_roc_dir, "tbt_49_cross_signal_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_10_fixed_.001_.001_inference_pseudolikelihood_independent_false_roc_object.rds"))
+big_theta_pair_info <- extract_edge_weights_from_big_model(big_model$model_params$theta_pair, big_model$model_params$number_of_dimensions)
+
+
 
 ############################
 # Load in splicing data
@@ -2056,6 +2356,12 @@ output_file <- paste0(output_dir, stem, "_tissue_by_tissue_theta_pair_heatmap.pd
 splicing_theta_pair_heatmap <- make_theta_pair_heatmap(splicing_watershed_obj$model_params$theta_pair, number_of_dimensions, splicing_tissue_names, "Splicing")
 ggsave(splicing_theta_pair_heatmap, file=output_file, width=7.2, height=4.6, units="in")
 
+
+######################################
+# Visualize theta-pair heatmap to look at correlation structure across tissues from big model
+######################################
+splicing_big_model_theta_pair_heatmap <- make_theta_pair_heatmap_big_model(big_theta_pair_info$theta_pair_mat_splicing, number_of_dimensions, splicing_tissue_names, "Splicing")
+
 ######################################
 # Visualize P(E|Z)
 ######################################
@@ -2080,6 +2386,13 @@ splicing_tbt_delta_auc_median_river_lolipop_plot <- make_tbt_delta_auc_lolipop_p
 
 
 ######################################
+# Visualize tbt pr auc curves between single_tissue-cross_signal watershed and RIVER
+######################################
+splicing_tbt_auc_lolipop_plot_single_tissue_x_signal_watershed_river <- make_tbt_auc_lolipop_plot_single_tissue_cross_signal_watershed_river(tbt_roc_dir, splicing_tissue_names, "Splicing", tissues_with_suffiecient_n2_pairs, 1)
+
+
+
+######################################
 # Visualize tbt pr auc curves between watershed and river
 ######################################
 output_file <- paste0(output_dir, stem, "tissue_by_tissue_pr_auc_between_river_watershed_lolipop.pdf")
@@ -2093,6 +2406,10 @@ output_file <- paste0(output_dir, stem, "tissue_by_tissue_pr_auc_between_river_w
 splicing_tbt_auc_lolipop_plot_v2 <- make_tbt_auc_lolipop_plot_v2(splicing_watershed_obj$roc, splicing_river_obj$roc, splicing_tissue_names, "Splicing", tissues_with_suffiecient_n2_pairs)
 # ggsave(splicing_tbt_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
 
+######################################
+# Visualize tbt pr auc curves between watershed and big watershed
+######################################
+splicing_tbt_auc_lolipop_plot_watershed_big_watershed <- make_tbt_auc_lolipop_plot_watershed_big_watershed(splicing_watershed_obj$roc, big_model$roc, 1, splicing_tissue_names, "Splicing", tissues_with_suffiecient_n2_pairs)
 
 
 ######################################
@@ -2128,6 +2445,12 @@ te_theta_pair_heatmap <- make_theta_pair_heatmap(te_watershed_obj$model_params$t
 ggsave(te_theta_pair_heatmap, file=output_file, width=7.2, height=4.6, units="in")
 
 ######################################
+# Visualize theta-pair heatmap to look at correlation structure across tissues from big model
+######################################
+te_big_model_theta_pair_heatmap <- make_theta_pair_heatmap_big_model(big_theta_pair_info$theta_pair_mat_expression, number_of_dimensions, te_tissue_names, "Expression")
+
+
+######################################
 # Visualize theta-pair heatmap to look at correlation structure across tissues
 ######################################
 output_file <- paste0(output_dir, stem, "_tissue_by_tissue_fig5_theta_pair_heatmap.pdf")
@@ -2159,18 +2482,27 @@ te_tbt_delta_auc_median_river_lolipop_plot <- make_tbt_delta_auc_lolipop_plot_wi
 
 
 ######################################
+# Visualize tbt pr auc curves between single_tissue-cross_signal watershed and RIVER
+######################################
+te_tbt_auc_lolipop_plot_single_tissue_x_signal_watershed_river <- make_tbt_auc_lolipop_plot_single_tissue_cross_signal_watershed_river(tbt_roc_dir, te_tissue_names, "Expression", tissues_with_suffiecient_n2_pairs, 2)
+
+
+######################################
 # Visualize tbt pr auc curves between watershed and river
 ######################################
 output_file <- paste0(output_dir, stem, "tissue_by_tissue_pr_auc_between_river_watershed_lolipop.pdf")
 te_tbt_auc_lolipop_plot <- make_tbt_auc_lolipop_plot(te_watershed_obj$roc, te_river_obj$roc, te_tissue_names, "Expression", tissues_with_suffiecient_n2_pairs)
-# ggsave(te_tbt_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
 
 ######################################
 # Visualize tbt pr auc curves between watershed and river
 ######################################
 output_file <- paste0(output_dir, stem, "tissue_by_tissue_pr_auc_between_river_watershed_lolipop.pdf")
 te_tbt_auc_lolipop_plot_v2 <- make_tbt_auc_lolipop_plot_v2(te_watershed_obj$roc, te_river_obj$roc, te_tissue_names, "Expression", tissues_with_suffiecient_n2_pairs)
-# ggsave(splicing_tbt_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
+
+######################################
+# Visualize tbt pr auc curves between watershed and big watershed
+######################################
+te_tbt_auc_lolipop_plot_watershed_big_watershed <- make_tbt_auc_lolipop_plot_watershed_big_watershed(te_watershed_obj$roc, big_model$roc, 50, te_tissue_names, "Expression", tissues_with_suffiecient_n2_pairs)
 
 
 ######################################
@@ -2201,6 +2533,13 @@ number_of_dimensions <- 49
 output_file <- paste0(output_dir, stem, "_tissue_by_tissue_theta_pair_heatmap.pdf")
 ase_theta_pair_heatmap <- make_theta_pair_heatmap(ase_watershed_obj$model_params$theta_pair, number_of_dimensions, ase_tissue_names, "ASE")
 ggsave(ase_theta_pair_heatmap, file=output_file, width=7.2, height=4.6, units="in")
+
+######################################
+# Visualize theta-pair heatmap to look at correlation structure across tissues from big model
+######################################
+ase_big_model_theta_pair_heatmap <- make_theta_pair_heatmap_big_model(big_theta_pair_info$theta_pair_mat_ase, number_of_dimensions, ase_tissue_names, "ASE")
+
+
 ######################################
 # Visualize P(E|Z)
 ######################################
@@ -2224,6 +2563,14 @@ ase_tbt_delta_auc_lolipop_plot <- make_tbt_delta_auc_lolipop_plot(ase_watershed_
 ase_tbt_delta_auc_median_river_lolipop_plot <- make_tbt_delta_auc_lolipop_plot_with_median_river(ase_watershed_obj$roc, ase_tissue_names, "ASE", tissues_with_suffiecient_n2_pairs)
 # ggsave(ase_tbt_delta_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
 
+
+######################################
+# Visualize tbt pr auc curves between single_tissue-cross_signal watershed and RIVER
+######################################
+ase_tbt_auc_lolipop_plot_single_tissue_x_signal_watershed_river <- make_tbt_auc_lolipop_plot_single_tissue_cross_signal_watershed_river(tbt_roc_dir, ase_tissue_names, "ASE", tissues_with_suffiecient_n2_pairs, 3)
+
+
+
 ######################################
 # Visualize tbt pr auc curves between watershed and river
 ######################################
@@ -2237,6 +2584,11 @@ ase_tbt_auc_lolipop_plot <- make_tbt_auc_lolipop_plot(ase_watershed_obj$roc, ase
 output_file <- paste0(output_dir, stem, "tissue_by_tissue_pr_auc_between_river_watershed_lolipop.pdf")
 ase_tbt_auc_lolipop_plot_v2 <- make_tbt_auc_lolipop_plot_v2(ase_watershed_obj$roc, ase_river_obj$roc, ase_tissue_names, "ASE", tissues_with_suffiecient_n2_pairs)
 # ggsave(splicing_tbt_auc_lolipop_plot, file=output_file, width=7.2, height=4.0, units="in")
+
+######################################
+# Visualize tbt pr auc curves between watershed and big watershed
+######################################
+ase_tbt_auc_lolipop_plot_watershed_big_watershed <- make_tbt_auc_lolipop_plot_watershed_big_watershed(ase_watershed_obj$roc, big_model$roc, 99, ase_tissue_names, "ASE", tissues_with_suffiecient_n2_pairs)
 
 
 ######################################
@@ -2286,7 +2638,7 @@ ggsave(tbt_auc_distribution_plot2, file=output_file, width=7.2, height=4.0, unit
 output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_pr_auc_between_river_and_watershed_lolipop_by_row.pdf")
 auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot)
 #combined <- plot_grid(ase_tbt_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2.44), ncol=1)
-combined <- plot_grid(ase_tbt_auc_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,3), ncol=1)
+combined <- plot_grid(te_tbt_auc_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), ase_tbt_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,3), ncol=1)
 tbt_auc_plot <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,0,-.46,1,1)
 ggsave(tbt_auc_plot,file=output_file,width=7.2, height=8.2, units="in")
 
@@ -2295,7 +2647,7 @@ ggsave(tbt_auc_plot,file=output_file,width=7.2, height=8.2, units="in")
 ######################################
 output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_pr_auc_between_median_river_and_watershed_lolipop_by_row.pdf")
 auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot_with_median_river)
-combined <- plot_grid(ase_tbt_auc_lolipop_plot_with_median_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_with_median_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot_with_median_river +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
+combined <- plot_grid(te_tbt_auc_lolipop_plot_with_median_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), ase_tbt_auc_lolipop_plot_with_median_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_with_median_river +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
 combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.47,1,1)
 ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
 
@@ -2304,7 +2656,28 @@ ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
 ######################################
 output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_pr_auc_between_river_and_watershed_lolipop_by_row_v2.pdf")
 auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot_v2)
-combined <- plot_grid(ase_tbt_auc_lolipop_plot_v2 + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_v2 + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_auc_lolipop_plot_v2 +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
+combined <- plot_grid(te_tbt_auc_lolipop_plot_v2 + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), ase_tbt_auc_lolipop_plot_v2 + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_v2 +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
+combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.47,1,1)
+ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
+
+######################################
+# Visualize tbt pr auc curves between watershed and median river across outlier tyeps all on same plot
+######################################
+output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_pr_auc_between_river_and_watershed_single_tissue_cross_signal_lolipop_by_row_v2.pdf")
+auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot_single_tissue_x_signal_watershed_river)
+combined <- plot_grid(te_tbt_auc_lolipop_plot_single_tissue_x_signal_watershed_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), ase_tbt_auc_lolipop_plot_single_tissue_x_signal_watershed_river + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_single_tissue_x_signal_watershed_river +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
+combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.47,1,1)
+ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
+
+
+
+
+######################################
+# Visualize tbt pr auc curves between watershed and big watershed across outlier tyeps all on same plot
+######################################
+output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_pr_auc_between_big_watershed_and_watershed_lolipop_by_row.pdf")
+auc_tbt_legend <- get_legend(ase_tbt_auc_lolipop_plot_watershed_big_watershed)
+combined <- plot_grid(te_tbt_auc_lolipop_plot_watershed_big_watershed + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), ase_tbt_auc_lolipop_plot_watershed_big_watershed + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_auc_lolipop_plot_watershed_big_watershed +theme(legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1,1,2), ncol=1)
 combined2 <- ggdraw() + draw_plot(combined,0,0,1,1) + draw_plot(auc_tbt_legend,.7,.47,1,1)
 ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
 
@@ -2313,13 +2686,13 @@ ggsave(combined2,file=output_file,width=7.2, height=7.2, units="in")
 # Visualize tbt delta-pr auc curves between watershed and river across outlier types all on same plot
 ######################################
 output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_delta_pr_auc_between_river_and_watershed_errorbar.pdf")
-tbt_auc_plot <- plot_grid(ase_tbt_delta_auc_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_delta_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_delta_auc_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,1.9), ncol=1)
+tbt_auc_plot <- plot_grid(te_tbt_delta_auc_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), ase_tbt_delta_auc_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_delta_auc_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,1.9), ncol=1)
 ggsave(tbt_auc_plot,file=output_file,width=7.2, height=6.5, units="in")
 ######################################
 # Visualize tbt delta-pr auc curves between watershed and median-river across outlier types all on same plot
 ######################################
 output_file <- paste0(output_dir, "tbt_intersect_te_ase_splicing_out_gene_pvalue_0.01_n2_pair_outlier_fraction_.01_binary_pvalue_threshold_.01_pseudocount_", pseudocount, "_", phi_update_method, "_.001_.001_cross_outlier_tissue_by_tissue_delta_pr_auc_between_median_river_and_watershed_errorbar.pdf")
-tbt_auc_plot <- plot_grid(ase_tbt_delta_auc_median_river_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_delta_auc_median_river_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), te_tbt_delta_auc_median_river_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,1.9), ncol=1)
+tbt_auc_plot <- plot_grid(te_tbt_delta_auc_median_river_lolipop_plot + ylab("        ")  + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), ase_tbt_delta_auc_median_river_lolipop_plot + theme(plot.margin=grid::unit(c(0,0,0,0), "mm"), legend.position="none",axis.text.x=element_blank()), splicing_tbt_delta_auc_median_river_lolipop_plot+ ylab("        ") +theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), legend.position="none",plot.margin=grid::unit(c(0,0,0,0), "mm")), rel_heights=c(1.24,1.24,1.9), ncol=1)
 ggsave(tbt_auc_plot,file=output_file,width=7.2, height=6.5, units="in")
 
 
@@ -2328,12 +2701,24 @@ ggsave(tbt_auc_plot,file=output_file,width=7.2, height=6.5, units="in")
 # Combined heatmap
 ######################################
 output_file <- paste0(output_dir, "combined_tbt_heatmap.pdf")
-combined_tbt_heatmap <- plot_grid(ase_theta_pair_heatmap, splicing_theta_pair_heatmap, te_theta_pair_heatmap, ncol=1)
+combined_tbt_heatmap <- plot_grid(te_theta_pair_heatmap, ase_theta_pair_heatmap, splicing_theta_pair_heatmap, ncol=1)
 ggsave(combined_tbt_heatmap,file=output_file,width=7.2, height=11, units="in")
 
 
+######################################
+# Combined heatmap
+######################################
+output_file <- paste0(output_dir, "combined_tbt_heatmap_big_model.pdf")
+combined_tbt_heatmap_big_model <- plot_grid(te_big_model_theta_pair_heatmap, ase_big_model_theta_pair_heatmap, splicing_big_model_theta_pair_heatmap, ncol=1)
+ggsave(combined_tbt_heatmap_big_model,file=output_file,width=7.2, height=11, units="in")
 
-
+######################################
+# Heatmap for outlier signal connections in big model
+######################################
+output_file <- paste0(output_dir, "signal_by_signal_heatmap_big_model.pdf")
+print(tissue_names)
+signal_by_signal_heatmap_big_model <- make_signal_by_signal_heatmap_big_model(big_theta_pair_info$theta_pair_cross_signal, tissue_names)
+ggsave(signal_by_signal_heatmap_big_model,file=output_file,width=7.2, height=6, units="in")
 
 ############################################
 # MAKE FIGURE 4
@@ -2389,7 +2774,7 @@ ggsave(roc_3_bootstrap_distributions, file=output_file, width=7.2, height=9, uni
 
 
 
-	############################################
+############################################
 # MAKE FIGURE 4
 ############################################
 

@@ -2262,13 +2262,13 @@ extract_ppt_odds_ratio_data <- function(outlier_distances, inlier_distances, ppt
 
 make_panel_2a <- function(figure_2_ab_data) {
 	load(figure_2_ab_data)
-	dcols = c('#7F5A83', '#0D324D', '#BFCDE0')
+	dcols = c('#BFCDE0', '#7F5A83', '#0D324D')
 	#dist.data$Type = sapply(dist.data$Type, function(x) ifelse(x == 'SNPs', 'SNVs', as.character(x)))
 	dist.data$Type = factor(dist.data$Type, levels=c('SNVs', 'indels', 'SVs'))
 	dist.data$Method = sapply(dist.data$Method, function(x) ifelse(x == 'Splicing', 'sOutlier', as.character(x)))
 	dist.data$Method = sapply(dist.data$Method, function(x) ifelse(x == 'ASE', 'aseOutlier', as.character(x)))
 	dist.data$Method = sapply(dist.data$Method, function(x) ifelse(x == 'MEDZ', 'eOutlier', as.character(x)))
-	dist.data$Method = factor(dist.data$Method, levels=c('aseOutlier', 'sOutlier', 'eOutlier'))
+	dist.data$Method = factor(dist.data$Method, levels=c('eOutlier', 'aseOutlier', 'sOutlier'))
 
 	dist.data.filtered1 = dist.data[dist.data$Riskratio > 1 & dist.data$Type=='SNVs',]
 

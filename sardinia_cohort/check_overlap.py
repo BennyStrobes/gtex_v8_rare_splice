@@ -71,7 +71,7 @@ variants = get_gtex_sardinia_overlap(sardinia_variants, gtex_watershed_file)
 
 t = open(overlap_file, 'w')
 
-t.write('variant_id\tmedian_expression_pvalue\tmedian_ase_pvalue\tmedian_splicing_pvalue\tnum_expression\tnum_ase\tnum_splicing\n')
+t.write('variant_id\tmedian_expression_pvalue\tmedian_ase_pvalue\tmedian_splicing_pvalue\tmedian_expression_watershed_posterior\tmedian_ase_watershed_posterior\tmedian_splicing_watershed_posterior\tnum_expression\tnum_ase\tnum_splicing\n')
 
 for variant in variants.keys():
 	if len(variants[variant]) == 0:
@@ -79,14 +79,22 @@ for variant in variants.keys():
 	eOutliers = []
 	sOutliers = []
 	aseOutliers = []
+	e_watersheds = []
+	s_watersheds = []
+	ase_watersheds = []
 	for info in variants[variant]:
 		if info[2] != 'NaN':
 			eOutliers.append(np.abs(float(info[2])))
+			e_watersheds.append(float(info[11]))
 		if info[1] != 'NaN':
 			sOutliers.append(np.abs(float(info[1])))
+			s_watersheds.append(float(info[10]))
 		if info[3] != 'NaN':	
 			aseOutliers.append(np.abs(float(info[3])))
-	t.write(variant + '\t' + str(np.median(eOutliers)) + '\t' + str(np.median(aseOutliers)) + '\t' + str(np.median(sOutliers)) + '\t' + str(len(eOutliers)) + '\t' + str(len(aseOutliers)) + '\t' + str(len(sOutliers)) + '\n')
+			ase_watersheds.append(float(info[12]))
+	t.write(variant + '\t' + str(np.median(eOutliers)) + '\t' + str(np.median(aseOutliers)) + '\t' + str(np.median(sOutliers)) + '\t')
+	t.write(str(np.median(e_watersheds)) + '\t' + str(np.median(ase_watersheds)) + '\t' + str(np.median(s_watersheds)) + '\t')
+	t.write(str(np.median(sOutliers)) + '\t' + str(len(eOutliers)) + '\t' + str(len(aseOutliers)) + '\t' + str(len(sOutliers)) + '\n')
 
 t.close()
 

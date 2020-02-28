@@ -184,8 +184,7 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
   		roc_obj <- roc.curve(scores.class0 = remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
   		pr_obj <- pr.curve(scores.class0 = remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
 
-  		valid_indices <- !is.na(real_valued_outliers_test1[,dimension]) & !is.na(test_outlier_status)
-  		watershed_auc_prc_ci <- compute_confidence_interval_on_auprc_with_non_parametric_bootstrap(posterior_prob_test[valid_indices,dimension], test_outlier_status[valid_indices], num_non_parametric_bootstrap_samples)
+  		watershed_auc_prc_ci <- compute_confidence_interval_on_auprc_with_non_parametric_bootstrap(posterior_prob_test[,dimension], test_outlier_status, num_non_parametric_bootstrap_samples)
 
   		pos_list <- c(pos_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]))
   		neg_list <- c(neg_list, remove_na(posterior_prob_test[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]))
@@ -199,8 +198,7 @@ compute_roc_across_dimensions <- function(number_of_dimensions, dimension_labels
    		gam_roc_obj <- roc.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
    		gam_pr_obj <- pr.curve(scores.class0 = remove_na(gam_posteriors[,dimension][test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(gam_posteriors[,dimension][test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
 
-   		valid_indices <- !is.na(real_valued_outliers_test1[,dimension]) & !is.na(test_outlier_status)
-   		gam_auc_prc_ci <- compute_confidence_interval_on_auprc_with_non_parametric_bootstrap(gam_posteriors[valid_indices,dimension], test_outlier_status[valid_indices], num_non_parametric_bootstrap_samples)
+   		gam_auc_prc_ci <- compute_confidence_interval_on_auprc_with_non_parametric_bootstrap(gam_posteriors[,dimension], test_outlier_status, num_non_parametric_bootstrap_samples)
 
   		# predictions with CADD
    		cadd_roc_obj <- roc.curve(scores.class0 = remove_na(cadd_scores[test_outlier_status==1 & !is.na(real_valued_outliers_test1[,dimension])]), scores.class1 = remove_na(cadd_scores[test_outlier_status==0 & !is.na(real_valued_outliers_test1[,dimension])]), curve = T)
@@ -358,12 +356,10 @@ gtex_v8_figure_theme <- function() {
 
 
 
-roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init) {
-	#watershed_data <- readRDS(file_name)
-	#watershed_model <- watershed_data$model_params
-	#gam_data <- watershed_data$gam_model_params
-	#posterior_prob_test <- watershed_data$watershed_predictions
-	#gam_test_posteriors <- watershed_data$gam_predictions
+roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init, watershed_model_file_name) {
+	watershed_data <- readRDS(watershed_model_file_name)
+	watershed_model <- watershed_data$model_params
+	gam_data <- watershed_data$gam_model_params
 
 	#######################################
 	# Load in all data (training and test)
@@ -408,7 +404,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
 	#######################################
 	nfolds <- 5
 
-	gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
+	#gam_data <- logistic_regression_genomic_annotation_model_cv(feat_train, binary_outliers_train, nfolds, lambda_costs, lambda_init)
 	print(paste0(nfolds,"-fold cross validation on GAM yielded optimal lambda of ", gam_data$lambda))
 
 	gam_posterior_test_obj <- update_independent_marginal_probabilities_exact_inference_cpp(feat_test, binary_outliers_test1, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta, matrix(0,2,2), matrix(0,2,2), number_of_dimensions, choose(number_of_dimensions, 2), FALSE)
@@ -429,8 +425,7 @@ roc_analysis <- function(data_input, number_of_dimensions, lambda_costs, pseudoc
   	lambda_pair <- gam_data$lambda
   	lambda <- gam_data$lambda
 
-  	edge_connections <- NA
-  	watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold, edge_connections)
+  	# watershed_model <- integratedEM(feat_train, discrete_outliers_train, phi_init, gam_data$gam_parameters$theta_pair, gam_data$gam_parameters$theta_singleton, gam_data$gam_parameters$theta, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_threshold)
 
 
 
@@ -494,20 +489,98 @@ initialize_phi<- function(num_bins,dim) {
   return(phi_init)
 }
 
+get_min_num_discrete_outliers <- function(discrete) {
+	arr <- c()
+	arr <- c(arr, sum(discrete==1))
+	arr <- c(arr, sum(discrete==2))
+	arr <- c(arr, sum(discrete==3))
+	return(min(arr))
+}
+
+load_watershed_data_for_gene_threshold_comparison <- function(input_file, standard_input_file, number_of_dimensions, pvalue_fraction, pvalue_threshold) {
+	# LOAD IN STANDARD INPUT DATA (JUST TO GET SAME THRESHOLDS).. not to use data
+	raw_data_standard <- read.table(standard_input_file, header=TRUE)
+	standard_outlier_pvalues <- as.matrix(raw_data_standard[,(ncol(raw_data_standard)-number_of_dimensions):(ncol(raw_data_standard)-1)])
+
+	standard_outliers_discrete <- get_discretized_outliers(standard_outlier_pvalues)
+
+	standard_outliers_binary <- ifelse(abs(standard_outlier_pvalues)<=pvalue_threshold,1,0)
+
+	standard_num_training_instances = sum(is.na(as.character(raw_data_standard[,"N2pair"])))
+	standard_n2_pairs = as.character(raw_data_standard[,"N2pair"])
+	#standard_num_training_outliers = sum(standard_outliers_binary[is.na(standard_n2_pairs),])
+	# sample name as SubjectID:GeneName
+	rownames(standard_outlier_pvalues) <- paste(raw_data_standard[,"SubjectID"], ":", raw_data_standard[,"GeneName"],sep="")
+
+	# Load in actual data
+	raw_data <- read.table(input_file, header=TRUE)
+	# Get genomic features (first 2 columns are line identifiers and last (number_of_dimensions+1) columns are outlier status' and N2 pair
+	feat <- raw_data[,3:(ncol(raw_data)-number_of_dimensions-1)]
+	# sample name as SubjectID:GeneName
+	rownames(feat) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
+	# Pvalues of outlier status of a particular sample (rows) for a particular outlier type (columns)
+	outlier_pvalues <- as.matrix(raw_data[,(ncol(raw_data)-number_of_dimensions):(ncol(raw_data)-1)])
+	# sample name as SubjectID:GeneName
+	rownames(outlier_pvalues) <- paste(raw_data[,"SubjectID"], ":", raw_data[,"GeneName"],sep="")
+	# Convert outlier status into binary random variables
+	fraction_outliers_binary <- ifelse(abs(outlier_pvalues)<=.1,1,0) # Strictly for initialization of binary output matrix
+	N2_pairs=factor(raw_data[,"N2pair"], levels=unique(raw_data[,"N2pair"]))
+	outliers_binary_temp <- ifelse(abs(outlier_pvalues)<=pvalue_threshold,1,0)
+
+	# Convert outlier status into discretized random variables
+	outliers_discrete <- get_discretized_outliers(outlier_pvalues)
+	num_training_outliers = 0
+	standard_num_training_outliers = 0
+	pseudoc_arr <- c()
+	for (dimension_num in 1:number_of_dimensions) {
+		ordered <- sort(abs(standard_outlier_pvalues[,dimension_num]))
+		max_val <- ordered[floor(length(ordered)*pvalue_fraction)]
+   		print(max_val)
+		fraction_outliers_binary[,dimension_num] <- ifelse(abs(outlier_pvalues[,dimension_num])<=max_val,1,0)
+
+
+		standard_num_outliers_dimension <- get_min_num_discrete_outliers(standard_outliers_discrete[is.na(standard_n2_pairs),dimension_num])
+		num_outliers_dimension <- get_min_num_discrete_outliers(outliers_discrete[is.na(as.character(N2_pairs)), dimension_num])
+		frac = num_outliers_dimension/standard_num_outliers_dimension
+		frac = sum(outliers_binary_temp[is.na(as.character(N2_pairs)),dimension_num])/sum(standard_outliers_binary[is.na(standard_n2_pairs),dimension_num])
+		dimension_pseudoc = (frac*30.0)
+		pseudoc_arr <- c(pseudoc_arr, dimension_pseudoc)
+		num_training_outliers = num_outliers_dimension + num_training_outliers
+		standard_num_training_outliers = standard_num_training_outliers + standard_num_outliers_dimension
+	}
+  	outliers_binary <- ifelse(abs(outlier_pvalues)<=pvalue_threshold,1,0)
+
+
+
+  	#num_training_outliers = sum(outliers_binary_temp[is.na(as.character(N2_pairs)),])
+	# Extract array of N2 pairs
+	num_training_instances = sum(is.na(as.character(N2_pairs)))
+	# Put all data into compact data structure
+	#scaled_pseudoc = 30.0*num_training_instances/standard_num_training_instances
+	# scaled_pseudoc = 30.0*num_training_outliers/standard_num_training_outliers
+	scaled_pseudoc = 30.0
+
+	data_input <- list(feat=as.matrix(feat), outlier_pvalues=as.matrix(outlier_pvalues),outliers_binary=as.matrix(outliers_binary), fraction_outliers_binary=as.matrix(fraction_outliers_binary),outliers_discrete=outliers_discrete, N2_pairs=N2_pairs, pseudoc=scaled_pseudoc)
+	return(data_input)
+}
+
 
 
 
 #########################################
 # Command line arguments
 #########################################
-input_file <- args[1]  # Watershed input file
-output_stem <- args[2]  # Stem to save all output files
-number_of_dimensions <- as.numeric(args[3])  # Dimensionality of space
-pseudoc <- as.numeric(args[4])  # Prior specification for P(E|Z)
-n2_pair_pvalue_fraction <- as.numeric(args[5])  # For N2 Pair cross-validation, pick pvalue threshold for each outlier dimension such that this fraction of cases are positive examples
-binary_pvalue_threshold <- as.numeric(args[6])  # Pvalue threshold to call binary outliers for genomic annotation model
+standard_input_file <- args[1]
+input_file <- args[2]
+watershed_model <- args[3]
+river_model <- args[4]
+output_stem <- args[5]
+number_of_dimensions <- as.numeric(args[6])
+n2_pair_pvalue_fraction <- as.numeric(args[7])
+binary_pvalue_threshold <- as.numeric(args[8])
 
-print(output_stem)
+
+
 
 #####################
 # Parameters
@@ -522,24 +595,9 @@ set.seed(3)
 #######################################
 ## Load in data
 #######################################
-data_input <- load_watershed_data(input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
-saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
-
-#######################################
-## Run models (RIVER and GAM) assuming edges (connections) between dimensions with mean field variational inference and pseudolikelihood
-#######################################
-#independent_variables = "false"
-#inference_method = "pseudolikelihood"
-#output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-#roc_object_pseudo <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
-#saveRDS(roc_object_pseudo, paste0(output_root, "_roc_object3.rds"))
-#roc_object_pseudo <- readRDS(paste0(output_root, "_roc_object3.rds"))
-#print(roc_object_pseudo$roc[[1]]$evaROC$watershed_pr_auc)
-#print(roc_object_pseudo$roc[[1]]$evaROC$GAM_pr_auc)
-#print(roc_object_pseudo$roc[[2]]$evaROC$watershed_pr_auc)
-#print(roc_object_pseudo$roc[[2]]$evaROC$GAM_pr_auc)
-#print(roc_object_pseudo$roc[[3]]$evaROC$watershed_pr_auc)
-#print(roc_object_pseudo$roc[[3]]$evaROC$GAM_pr_auc)
+data_input <- load_watershed_data_for_gene_threshold_comparison(input_file, standard_input_file, number_of_dimensions, n2_pair_pvalue_fraction, binary_pvalue_threshold)
+# saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
+pseudoc = data_input$pseudoc
 
 #######################################
 ## Run models (RIVER and GAM) assuming edges (connections) between dimensions with exact inference
@@ -547,9 +605,9 @@ saveRDS(data_input, paste0(output_stem,"_data_input.rds"))
 independent_variables = "false"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
+roc_object_exact <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init, watershed_model)
 saveRDS(roc_object_exact, paste0(output_root, "_roc_object3.rds"))
-#roc_object_exact <- readRDS(paste0(output_root, "_roc_object3.rds"))
+#roc_object_exact <- readRDS(paste0(output_root, "_roc_object.rds"))
 
 print(roc_object_exact$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_exact$roc[[1]]$evaROC$GAM_pr_auc)
@@ -564,27 +622,13 @@ print(roc_object_exact$roc[[3]]$evaROC$GAM_pr_auc)
 independent_variables = "true"
 inference_method = "exact"
 output_root <- paste0(output_stem,"_inference_", inference_method, "_independent_", independent_variables)
-roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init)
+roc_object_independent <- roc_analysis(data_input, number_of_dimensions, lambda_costs, pseudoc, inference_method, independent_variables, vi_step_size, vi_threshold, lambda_init, river_model)
 saveRDS(roc_object_independent, paste0(output_root, "_roc_object3.rds"))
-#roc_object_independent <- readRDS(paste0(output_root, "_roc_object3.rds"))
-
 print(roc_object_independent$roc[[1]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[1]]$evaROC$GAM_pr_auc)
 print(roc_object_independent$roc[[2]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[2]]$evaROC$GAM_pr_auc)
 print(roc_object_independent$roc[[3]]$evaROC$watershed_pr_auc)
 print(roc_object_independent$roc[[3]]$evaROC$GAM_pr_auc)
-
-#roc_object_independent <- readRDS(paste0(output_root, "_roc_object.rds"))
-
-#colnames(roc_object_exact$model_params$theta) = colnames(feat)
-#for (anno_num in 1:length(feat_names)) {
-#	anno_name = feat_names[anno_num]
-#	print(paste0(anno_name, " ", roc_object_exact$model_params$theta[anno_num, 1], " ", roc_object_exact$model_params$theta[anno_num, 2], " ", roc_object_exact$model_params$theta[anno_num, 3]))
-#}
-
-
-
-
 
 

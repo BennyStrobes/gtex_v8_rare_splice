@@ -454,6 +454,8 @@ load_watershed_data <- function(input_file, number_of_dimensions, pvalue_fractio
 	N2_pairs=factor(raw_data[,"N2pair"], levels=unique(raw_data[,"N2pair"]))
 	# Put all data into compact data structure
 	data_input <- list(feat=as.matrix(feat), outlier_pvalues=as.matrix(outlier_pvalues),outliers_binary=as.matrix(outliers_binary), fraction_outliers_binary=as.matrix(fraction_outliers_binary),outliers_discrete=outliers_discrete, N2_pairs=N2_pairs)
+
+
 	return(data_input)
 }
 
@@ -536,6 +538,8 @@ extract_gradient_variable_vector <- function(model_params) {
 # Next there are model_params$number_of_dimensions choose 2 theta_pairs
 extract_binary_edge_connection_vector <- function(model_params) {
 
+  edges1 <- c()
+  edges2 <- c()
   # Extract edges of theta_pair that are potentially non-zero
   binary_edge_connection_arr <- c()
   for (dimension in 1:model_params$number_of_dimensions) {
@@ -543,6 +547,8 @@ extract_binary_edge_connection_vector <- function(model_params) {
       if (dimension != dimension2) {
         if (model_params$edge_connections[dimension, dimension2] == 1) {
           binary_edge_connection_arr <- c(binary_edge_connection_arr, TRUE)
+          edges1 <- c(edges1, dimension-1)
+          edges2 <- c(edges2, dimension2-1)
         } else {
           binary_edge_connection_arr <- c(binary_edge_connection_arr, FALSE)
         }
@@ -551,8 +557,27 @@ extract_binary_edge_connection_vector <- function(model_params) {
   }
 
 
+  edges <- matrix(rbind(edges1,edges2), nrow=2)
+  # Make neighbors matrix
+  dimension_neighbors <- c()
+  neighbors_dimension_counter <- c()
+  for (dimension in 1:model_params$number_of_dimensions) {
+  	for (dimension_counter in 1:ncol(edges)) {
+  		if (edges[1, dimension_counter] == (dimension-1)) {
+  			dimension_neighbors <- c(dimension_neighbors, edges[2, dimension_counter])
+  			neighbors_dimension_counter <- c(neighbors_dimension_counter, dimension_counter-1)
+  		}
+  		if (edges[2, dimension_counter] == (dimension-1)) {
+  			dimension_neighbors <- c(dimension_neighbors, edges[1, dimension_counter])
+  			neighbors_dimension_counter <- c(neighbors_dimension_counter, dimension_counter-1)
+  		}
+  	}
+  }
+  neighbors <- matrix(dimension_neighbors, nrow=model_params$number_of_dimensions, byrow=TRUE)
+  neighbors_dimension_counter <- matrix(neighbors_dimension_counter, nrow=model_params$number_of_dimensions, byrow=TRUE)
 
-  return(binary_edge_connection_arr)
+  output <- list(binary_edge_connection_arr=binary_edge_connection_arr, edges=edges, neighbors=neighbors, neighbors_edge_counter=neighbors_dimension_counter)
+  return(output)
 }
 
 # Extract gradient variable vector
@@ -677,7 +702,7 @@ compute_exact_crf_likelihood_for_lbfgs <- function(x, feat, discrete_outliers, p
 }
 
 # Calculate gradient of crf likelihood (fxn formatted to be used in LBFGS)
-compute_exact_crf_pseudolikelihood_gradient_with_specified_edges_for_lbfgs <- function(x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, independent_variables, num_specified_edges, edge_connections) {
+compute_exact_crf_pseudolikelihood_gradient_with_specified_edges_for_lbfgs <- function(x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, independent_variables, num_specified_edges, edge_connections, neighbors, neighbors_edge_counter) {
   # Extract relevent scalers describing data
   num_genomic_features <- ncol(feat)
   num_samples <- nrow(feat)
@@ -685,34 +710,46 @@ compute_exact_crf_pseudolikelihood_gradient_with_specified_edges_for_lbfgs <- fu
 
   # Get crf coefficients back into inference format
   theta_singleton <- x[1:number_of_dimensions]
-  theta <- matrix(0,num_genomic_features,number_of_dimensions)
-  for (dimension in 1:number_of_dimensions) {
-    theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
-  }
+  # theta <- matrix(0,num_genomic_features,number_of_dimensions)
+  # for (dimension in 1:number_of_dimensions) {
+  #   theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
+  # }
+
+  theta <- matrix(x[(number_of_dimensions + 1):(number_of_dimensions + num_genomic_features*(number_of_dimensions))], ncol=number_of_dimensions, byrow=FALSE)
+
   theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=num_specified_edges,byrow=TRUE)
 
 
+
   # Compute expected value of the CRFs (mu)
-  mu_list <- update_pseudolikelihood_marginal_probabilities_with_specified_edges_exact_inference_cpp(feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, num_specified_edges, edge_connections, FALSE)
+  mu_list <- update_pseudolikelihood_marginal_probabilities_with_specified_edges_exact_inference_cpp(feat, discrete_outliers, posterior, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, num_specified_edges, edge_connections, neighbors, neighbors_edge_counter, FALSE)
   mu <- mu_list$probability
   mu_pairwise1 <- mu_list$probability_pairwise1
   mu_pairwise2 <- mu_list$probability_pairwise2
+
+
 
   # Gradient of singleton terms (intercepts)
   grad_singleton <- (colSums(posterior) - colSums(mu))*(1/nrow(posterior)) - lambda_singleton*theta_singleton
 
   # Gradient of theta terms (betas)
-  theta_vec <- x[(number_of_dimensions+1):(length(x)-(num_specified_edges*nrow(theta_pair)))]
-  grad_theta <- c()
-  for (dimension in 1:number_of_dimensions) {
-    temp_grad <- colSums(posterior[,dimension]*feat) - colSums(mu[,dimension]*feat)
-    grad_theta <- c(grad_theta, temp_grad)
-  }
+  #theta_vec <- x[(number_of_dimensions+1):(length(x)-(num_specified_edges*nrow(theta_pair)))]
+  theta_vec <- as.vector(theta)
+
+  #grad_theta <- c()
+  #for (dimension in 1:number_of_dimensions) {
+  #  temp_grad <- colSums(posterior[,dimension]*feat) - colSums(mu[,dimension]*feat)
+  #  grad_theta <- c(grad_theta, temp_grad)
+  #}
+
+  grad_theta <- as.vector(t((t(posterior) %*% feat) - (t(mu) %*% feat)))
 
   grad_theta <- grad_theta*(1/nrow(posterior)) - lambda*theta_vec
-
   # Gradient of theta pair terms (edges)
   grad_pair <- (2.0*colSums(posterior_pairwise) - colSums(mu_pairwise1) - colSums(mu_pairwise2))*(1/nrow(posterior_pairwise)) - 2.0*lambda_pair*theta_pair[1,]
+  
+
+
   # Merge all gradients
   grad <- c(grad_singleton, grad_theta, grad_pair)
   return(-grad)
@@ -761,7 +798,7 @@ compute_exact_crf_pseudolikelihood_gradient_for_lbfgs <- function(x, feat, discr
   return(-grad)
 }
 
-compute_exact_crf_pseudolikelihood_with_specified_edges_for_lbfgs <- function(x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, independent_variables, num_specified_edges, edge_connections) {
+compute_exact_crf_pseudolikelihood_with_specified_edges_for_lbfgs <- function(x, feat, discrete_outliers, posterior, posterior_pairwise, phi, lambda, lambda_pair, lambda_singleton, independent_variables, num_specified_edges, edge_connections, neighbors, neighbors_edge_counter) {
   # Extract relevent scalers describing data
   num_genomic_features <- ncol(feat)
   num_samples <- nrow(feat)
@@ -769,15 +806,18 @@ compute_exact_crf_pseudolikelihood_with_specified_edges_for_lbfgs <- function(x,
 
   # Get crf coefficients back into inference format
   theta_singleton <- x[1:number_of_dimensions]
-  theta <- matrix(0,num_genomic_features,number_of_dimensions)
-  for (dimension in 1:number_of_dimensions) {
-    theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
-  }
+  # theta <- matrix(0,num_genomic_features,number_of_dimensions)
+  # for (dimension in 1:number_of_dimensions) {
+  #   theta[,dimension] <- x[(number_of_dimensions + 1 + num_genomic_features*(dimension-1)):(number_of_dimensions + num_genomic_features*(dimension))]
+  # }
+
+  theta <- matrix(x[(number_of_dimensions + 1):(number_of_dimensions + num_genomic_features*(number_of_dimensions))], ncol=number_of_dimensions, byrow=FALSE)
+  
   theta_pair <- matrix(x[(number_of_dimensions + (number_of_dimensions*num_genomic_features) + 1):length(x)], ncol=num_specified_edges,byrow=TRUE)
 
   # Compute likelihood in cpp function
-  log_likelihood <- compute_pseudolikelihood_crf_likelihood_with_specified_edges_exact_inference_cpp(posterior, posterior_pairwise, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, lambda, lambda_pair, lambda_singleton, num_specified_edges, edge_connections)
-                     
+  log_likelihood <- compute_pseudolikelihood_crf_likelihood_with_specified_edges_exact_inference_cpp(posterior, posterior_pairwise, feat, discrete_outliers, theta_singleton, theta_pair, theta, phi$inlier_component, phi$outlier_component, number_of_dimensions, lambda, lambda_pair, lambda_singleton, num_specified_edges, edge_connections, neighbors, neighbors_edge_counter)
+                
   return(-log_likelihood)
 
 
@@ -956,7 +996,13 @@ map_crf <- function(feat, discrete_outliers, model_params) {
 # Compute MAP estimates of the coefficients defining the conditional random field (CRF)
 map_crf_specified_edge_connections <- function(feat, discrete_outliers, model_params) {
   # Extract gradient variable vector
-  binary_edge_connection_arr <- extract_binary_edge_connection_vector(model_params)
+  edge_info <- extract_binary_edge_connection_vector(model_params)
+
+  binary_edge_connection_arr <- edge_info$binary_edge_connection_arr
+  edges <- edge_info$edges
+  neighbors <- edge_info$neighbors
+  neighbors_edge_counter <- edge_info$neighbors_edge_counter
+
   gradient_variable_vec <- extract_gradient_variable_vector_specified_edge_connections(model_params,binary_edge_connection_arr)
 
   num_specified_edges <- get_number_of_edge_pairs_not_fully_connected(model_params$number_of_dimensions, model_params$edge_connections)
@@ -964,7 +1010,7 @@ map_crf_specified_edge_connections <- function(feat, discrete_outliers, model_pa
 
   # Run LBFGS (https://cran.r-project.org/web/packages/lbfgs/lbfgs.pdf) using our gradient and likelihood functions.
   if (model_params$inference_method == "pseudolikelihood") {
-    lbfgs_output <- lbfgs(compute_exact_crf_pseudolikelihood_with_specified_edges_for_lbfgs, compute_exact_crf_pseudolikelihood_gradient_with_specified_edges_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise[,binary_edge_connection_arr], phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables, num_specified_edges=num_specified_edges, edge_connections=model_params$edge_connections, invisible=1)
+    lbfgs_output <- lbfgs(compute_exact_crf_pseudolikelihood_with_specified_edges_for_lbfgs, compute_exact_crf_pseudolikelihood_gradient_with_specified_edges_for_lbfgs, gradient_variable_vec, feat=feat, discrete_outliers=discrete_outliers, posterior=model_params$posterior, posterior_pairwise=model_params$posterior_pairwise[,binary_edge_connection_arr], phi=model_params$phi, lambda=model_params$lambda, lambda_pair=model_params$lambda_pair, lambda_singleton=0, independent_variables=model_params$independent_variables, num_specified_edges=num_specified_edges, edge_connections=edges, neighbors=neighbors, neighbors_edge_counter=neighbors_edge_counter, invisible=1)
   } else {
     print(paste0(model_parms$inference_method, " currently not implemented with edge connections"))
   }
@@ -1144,18 +1190,21 @@ load_edge_connection_data <- function(connection_file) {
 
 integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, number_of_dimensions, inference_method, independent_variables, vi_step_size, vi_thresh, edge_connections) {
   model_params <- initialize_model_params(dim(feat)[1], dim(feat)[2], number_of_dimensions, phi_init, theta_pair_init, theta_singleton_init, theta_init, pseudoc, lambda, lambda_singleton, lambda_pair, inference_method, independent_variables, vi_step_size, vi_thresh, edge_connections)
+  #model_params <- readRDS("watershed.RDS")
   #################
 	# Start loop here
 	##################
   converged = FALSE
   iter = 1
-  max_iter = 1000
+  #iter = 9
+  max_iter = 2000
 	while (converged==FALSE) {
 		################ E Step
 		expected_posteriors <- update_marginal_posterior_probabilities(feat, discrete_outliers, model_params)
 
 		model_params$posterior = expected_posteriors$probability
 		model_params$posterior_pairwise = expected_posteriors$probability_pairwise
+
 
 		################## Compute observed data log likelihood
 		#observed_data_log_likelihood <- compute_exact_observed_data_log_likelihood_cpp(feat, discrete_outliers, model_params$theta_singleton, model_params$theta_pair, model_params$theta, model_params$phi$inlier_component, model_params$phi$outlier_component, model_params$number_of_dimensions, choose(model_params$number_of_dimensions, 2)) #+
@@ -1189,16 +1238,18 @@ integratedEM <- function(feat, discrete_outliers, phi_init, theta_pair_init, the
 		model_params <- map_phi(discrete_outliers, model_params)
     	#saveRDS(model_params, paste0(output_root, "_iter_",iter,".rds"))
 
-    print(model_params$theta_singleton)
-    print(model_params$theta)
-    print(model_params$theta_pair)
-    print("CONVERGENCE CHECK")
+    #print(model_params$theta_singleton)
+    #print(model_params$theta)
+    #print(model_params$theta_pair)
+    #print("CONVERGENCE CHECK")
     ##########################
     # Check for convergence
     ##########################
     #*# ??
     converged = check_convergence(model_params, phi_old, theta_old, theta_singleton_old, theta_pair_old, iter, max_iter)
     iter = iter + 1
+
+    #saveRDS(model_params,"watershed2.RDS")
 
   }
 	return(model_params)
